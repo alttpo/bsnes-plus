@@ -34,6 +34,7 @@ const char defaultStylesheet[] =
 #include "link/music.cpp"
 #include "link/reader.cpp"
 #include "utility/utility.cpp"
+#include "nwaccess/nwaccess.cpp"
 
 int main(int argc, char **argv) {
   return application.main(argc, argv);

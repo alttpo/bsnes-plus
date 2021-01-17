@@ -102,6 +102,7 @@ using namespace ruby;
 #include "tools/soundviewer.moc.hpp"
 
 #include "utility/utility.hpp"
+#include "nwaccess/nwaccess.moc.hpp"
 
 struct Style {
   static const char Monospace[64];

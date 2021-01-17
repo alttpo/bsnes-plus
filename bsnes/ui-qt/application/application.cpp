@@ -163,7 +163,9 @@ int Application::main(int &argc, char **argv) {
   mainWindow->system_loadSpecial_superGameBoy->setVisible(SNES::supergameboy.opened());
 
   parseArguments();
-
+  
+  nwaccess = new NWAccess(this);
+  
   timer = new QTimer(this);
   connect(timer, SIGNAL(timeout()), this, SLOT(run()));
   timer->start(0);

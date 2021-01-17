@@ -1,4 +1,4 @@
-qtlibs := $(strip QtCore QtGui QtWidgets $(if $(findstring osx,$(platform)),QtOpenGL))
+qtlibs := $(strip QtCore QtGui QtWidgets QtNetwork $(if $(findstring osx,$(platform)),QtOpenGL))
 include $(nall)/qt/Makefile
 
 ui_objects := ui-main ui-base ui-cartridge ui-debugger ui-input ui-movie ui-settings ui-state ui-tools
@@ -73,7 +73,7 @@ $(foreach f,$(moc_objects), \
   $(eval $f: $(__file)) \
 )
 
-$(objdir)/ui-main.o: $(ui)/main.cpp $(headers) obj/resource.rcc $(wildcard $(ui)/*.cpp) $(wildcard $(ui)/application/*.cpp) $(wildcard $(ui)/link/*.cpp) $(wildcard $(ui)/platform/*.cpp) $(wildcard $(ui)/utility/*.cpp); $(qt_compile)
+$(objdir)/ui-main.o: $(ui)/main.cpp $(headers) obj/resource.rcc $(wildcard $(ui)/*.cpp) $(wildcard $(ui)/application/*.cpp) $(wildcard $(ui)/link/*.cpp) $(wildcard $(ui)/platform/*.cpp) $(wildcard $(ui)/utility/*.cpp) $(wildcard $(ui)/nwaccess/*.cpp); $(qt_compile)
 $(objdir)/ui-base.o: $(ui)/base/base.cpp $(headers) $(wildcard $(ui)/base/*.cpp); $(qt_compile)
 $(objdir)/ui-cartridge.o: $(ui)/cartridge/cartridge.cpp $(headers) $(wildcard $(ui)/cartridge/*.cpp); $(qt_compile)
 $(objdir)/ui-debugger.o: $(ui)/debugger/debugger.cpp $(headers) $(call rwildcard,$(ui)/debugger/,%.cpp); $(qt_compile)
