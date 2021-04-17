@@ -254,12 +254,12 @@ QByteArray NWAccess::cmdLoadCore(QString core)
 QByteArray NWAccess::cmdCoreMemories()
 {
 #if defined(DEBUGGER)
-    return makeHashReply("name:ROM\n"   "access:rw\n"
-                         "name:WRAM\n"  "access:rw\n"
-                         "name:SRAM\n"  "access:rw\n"
-                         "name:VRAM\n"  "access:rw\n"
-                         "name:OAM\n"   "access:rw\n"
-                         "name:CGRAM\n" "access:rw");
+    return makeHashReply("name:CARTROM\n" "access:rw\n"
+                         "name:WRAM\n"    "access:rw\n"
+                         "name:SRAM\n"    "access:rw\n"
+                         "name:VRAM\n"    "access:rw\n"
+                         "name:OAM\n"     "access:rw\n"
+                         "name:CGRAM\n"   "access:rw");
 #else
     // TODO: regular bsnes
     return makeEmptyListReply();
@@ -391,7 +391,7 @@ bool NWAccess::mapDebuggerMemory(const QString &memory, SNES::Debugger::MemorySo
     } else if (memory == "SRAM") {
         source = SNES::Debugger::MemorySource::CartRAM;
         size = SNES::cartridge.loaded() ? SNES::memory::cartram.size() : 0;
-    } else if (memory == "ROM") {
+    } else if (memory == "CARTROM") {
         source = SNES::Debugger::MemorySource::CartROM;
         size = SNES::cartridge.loaded() ? SNES::memory::cartrom.size() : 0;
     } else if (memory == "VRAM") {
@@ -492,7 +492,7 @@ QByteArray NWAccess::cmdCoreWrite(QString memory, QList< QPair<int,int> >& regio
     if (!mapDebuggerMemory(memory, source, offset, size))
         return makeErrorReply("unknown memory");
     if (SNES::cartridge.loaded()) {
-        if (memory == "ROM" && size<0x800000) size = 0x800000;
+        if (memory == "CARTROM" && size<0x800000) size = 0x800000;
         SNES::debugger.bus_access = true;
         const uint8_t *p = (uint8_t*)data.constData();
         for (const auto& pair: regions) {
