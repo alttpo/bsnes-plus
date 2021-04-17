@@ -1,3 +1,10 @@
+# bsnes-plus with NWAccess
+
+Implements [emulator-networkaccess](https://github.com/usb2snes/emulator-networkaccess) protocol to interact with auto-splitters and trackers through [QUsb2Snes](https://github.com/Skarsnik/QUsb2snes).\
+See also [client library](https://github.com/black-sliver/EmuNWAccess-qt) and [test client](https://github.com/black-sliver/EmuNWAccessTest).
+
+Original README below
+
 # bsnes-plus
 
 bsnes-plus (or bsnes+) is a fork of bsnes (based on bsnes-classic) intended to
