@@ -64,7 +64,7 @@ static int toInt(const QString& s, int def=0)
 
 void NWAccess::clientDataReady()
 {
-    QIODevice *socket = reinterpret_cast<QIODevice*>(QObject::sender());
+    QAbstractSocket *socket = reinterpret_cast<QAbstractSocket*>(QObject::sender());
     QByteArray data = buffers[socket] + socket->readAll();
     while (data.length()>0) {
         if (data.front() == '\0') { // dangling binary data (from previous command that was not supported)
@@ -197,6 +197,7 @@ void NWAccess::clientDataReady()
         }
     }
     buffers[socket] = data;
+    socket->flush();
 }
 
 
