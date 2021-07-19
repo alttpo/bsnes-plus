@@ -151,16 +151,24 @@ void PPU::render_line_extra() {
 
       uint8 col, d0, d1, d2, d3, d4, d5, d6, d7;
       uint8 mask = 1 << (7-(x&7));
-      uint8 *tile_ptr = vram + (x >> 3) + ((((y >> 3) << 4) + (y & 7)) << 1);
+      uint8 *tile_ptr = vram;
 
       switch (t->bpp) {
       case 2:
+        // 16 bytes per 8x8 tile
+        tile_ptr += ((x >> 3) << 4);
+        tile_ptr += ((y >> 3) << 8);
+        tile_ptr += (y & 7) << 1;
         d0 = *(tile_ptr    );
         d1 = *(tile_ptr + 1);
         col  = !!(d0 & mask) << 0;
         col += !!(d1 & mask) << 1;
         break;
       case 4:
+        // 32 bytes per 8x8 tile
+        tile_ptr += ((x >> 3) << 5);
+        tile_ptr += ((y >> 3) << 9);
+        tile_ptr += (y & 7) << 1;
         d0 = *(tile_ptr     );
         d1 = *(tile_ptr +  1);
         d2 = *(tile_ptr + 16);
@@ -171,6 +179,10 @@ void PPU::render_line_extra() {
         col += !!(d3 & mask) << 3;
         break;
       case 8:
+        // 64 bytes per 8x8 tile
+        tile_ptr += ((x >> 3) << 6);
+        tile_ptr += ((y >> 3) << 10);
+        tile_ptr += (y & 7) << 1;
         d0 = *(tile_ptr     );
         d1 = *(tile_ptr +  1);
         d2 = *(tile_ptr + 16);
@@ -196,7 +208,7 @@ void PPU::render_line_extra() {
       col += t->palette;
 
       // look up color in cgram:
-      uint16 bgr = *(cgram + col) + (*(cgram + col + 1) << 8);
+      uint16 bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
 
       if(bg_enabled    == true && !wt_main[sx]) {
         if(pixel_cache[sx].pri_main < t->priority) {
