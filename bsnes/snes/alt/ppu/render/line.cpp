@@ -113,6 +113,7 @@ void PPU::render_line_extra() {
 
       uint16 col = *(tile_ptr + ((t->hflip == false) ? x : (t->width-1 - x)));
       if((col&0x8000) == 0) continue;
+      col &= 0x7FFF;
 
       if(bg_enabled    == true && !wt_main[x]) {
         if(pixel_cache[sx].pri_main < t->priority) {
