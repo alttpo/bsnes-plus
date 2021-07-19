@@ -42,7 +42,9 @@ protected:
     QByteArray cmdDebugBreak();
     QByteArray cmdDebugContinue();
 #endif
-    
+    QByteArray cmdSnesPpuExtraProps(QByteArray args);
+    QByteArray cmdSnesPpuExtraColors(QByteArray args, QByteArray data);
+
 public slots:
     void newConnection();
     void clientDisconnected();
