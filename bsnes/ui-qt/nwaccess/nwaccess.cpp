@@ -187,10 +187,19 @@ void NWAccess::clientDataReady()
                 socket->write(cmdDebugContinue());
             }
 #endif
+            else if (cmd == "SNES_PPU_EXTRA_PROPS")
+            {
+                socket->write(cmdSnesPpuExtraProps(args));
+            }
+            else if (cmd == "SNES_PPU_EXTRA_COLORS")
+            {
+                socket->write(cmdSnesPpuExtraColors(args, data.mid(p+1)));
+            }
             else
             {
                 socket->write("\nerror:unsupported command\n\n");
             }
+        done:
             data = data.mid(p+1); // remove command from buffer
         } else {
             break; // incomplete command
@@ -528,3 +537,82 @@ QByteArray NWAccess::cmdDebugContinue()
     return makeOkReply();
 }
 #endif
+
+QByteArray NWAccess::cmdSnesPpuExtraProps(QByteArray args)
+{
+    QStringList sargs = QString::fromUtf8(args).split(';');
+    if (sargs.isEmpty()) return makeErrorReply("missing index");
+
+    QString arg = sargs.takeFirst();
+    auto index = toInt(arg);
+    if (index < 0 || index >= 128) return makeErrorReply("index must be 0..127");
+    QString reply = QString("index:%1").arg(index);
+
+    auto t = &SNES::ppu.extra_list[index];
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //bool   enabled;
+        t->enabled = toInt(arg);
+    }
+    reply += QString("\nenabled:%1").arg(t->enabled);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //uint16 x, y;
+        t->x = toInt(arg);
+    }
+    reply += QString("\nx:%1").arg(t->x);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        t->y = toInt(arg);
+    }
+    reply += QString("\ny:%1").arg(t->y);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //bool   hflip, vflip;
+        t->hflip = toInt(arg);
+    }
+    reply += QString("\nhflip:%1").arg(t->hflip);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        t->vflip = toInt(arg);
+    }
+    reply += QString("\nvflip:%1").arg(t->vflip);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //uint8  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
+        t->layer = toInt(arg);
+        if (t->layer > 4) return makeErrorReply("layer must be 0..4");
+    }
+    reply += QString("\nlayer:%1").arg(t->layer);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //uint8  priority; // 1..12
+        t->priority = toInt(arg);
+        if (t->priority > 12) return makeErrorReply("priority must be 0..12");
+    }
+    reply += QString("\npriority:%1").arg(t->priority);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //bool   color_exemption;
+        t->color_exemption = toInt(arg);
+    }
+    reply += QString("\ncolor_exemption:%1").arg(t->color_exemption);
+
+done:
+    return makeHashReply(reply);
+}
+
+QByteArray NWAccess::cmdSnesPpuExtraColors(QByteArray args, QByteArray data)
+{
+    //uint16 width, height;
+    //uint16 stride;
+    //uint16 colors[4096];
+}
