@@ -78,12 +78,13 @@ uint8 oam_line_pal[256], oam_line_pri[256];
 
 struct extra_item {
   bool   enabled;
-  uint16 width, height, stride;
   uint16 x, y;
-  bool   vflip, hflip;
+  bool   hflip, vflip;
   uint8  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
   uint8  priority; // 1..12
   bool   color_exemption;
+  uint16 width, height;
+  uint16 stride;
   uint16 colors[4096];
 } extra_list[128];
 
