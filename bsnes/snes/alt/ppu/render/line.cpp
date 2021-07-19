@@ -84,6 +84,56 @@ inline uint16 PPU::get_pixel_swap(uint32 x) {
   return src_main;
 }
 
+void PPU::render_line_extra() {
+  for(int s = 0; s < 128; s++) {
+    struct extra_item *t = &extra_list[s];
+
+    if(!t->enabled) continue;
+    if(t->layer > 5) continue;
+    if(t->priority > 12) continue;
+
+    bool bg_enabled    = regs.bg_enabled[t->layer];
+    bool bgsub_enabled = regs.bgsub_enabled[t->layer];
+    if (bg_enabled == false && bgsub_enabled == false) continue;
+
+    uint8 *wt_main = window[t->layer].main;
+    uint8 *wt_sub  = window[t->layer].sub;
+
+    if(t->x > 256 && (t->x + t->width - 1) < 512) continue;
+    if(line < t->y) continue;
+    if(line >= t->y + t->height) continue;
+
+    unsigned sx = t->x;
+    unsigned y = (t->vflip == false) ? t->y : (t->height-1 - t->y);
+
+    uint16 *tile_ptr = t->colors + (t->stride * (line - y));
+    for(unsigned x = 0; x < t->width; x++, sx++) {
+      sx &= 511;
+      if(sx >= 256) continue;
+
+      uint16 col = *(tile_ptr + ((t->hflip == false) ? x : (t->width-1 - x)));
+      if((col&0x8000) == 0) continue;
+
+      if(bg_enabled    == true && !wt_main[x]) {
+        if(pixel_cache[sx].pri_main < t->priority) {
+          pixel_cache[sx].pri_main = t->priority;
+          pixel_cache[sx].bg_main  = t->layer;
+          pixel_cache[sx].src_main = col;
+          pixel_cache[sx].ce_main  = t->color_exemption;
+        }
+      }
+      if(bgsub_enabled == true && !wt_sub[x]) {
+        if(pixel_cache[sx].pri_sub < t->priority) {
+          pixel_cache[sx].pri_sub = t->priority;
+          pixel_cache[sx].bg_sub  = t->layer;
+          pixel_cache[sx].src_sub = col;
+          pixel_cache[sx].ce_sub  = t->color_exemption;
+        }
+      }
+    }
+  }
+}
+
 inline void PPU::render_line_output() {
   uint16 *ptr = (uint16*)output + (line * 1024) + ((interlace() && field()) ? 512 : 0);
   uint16 *luma = light_table[regs.display_brightness];
