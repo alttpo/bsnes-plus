@@ -84,6 +84,36 @@ inline uint16 PPU::get_pixel_swap(uint32 x) {
   return src_main;
 }
 
+uint8* PPU::get_extra_vram(uint8 extra) {
+  if (extra == 0) {
+    return memory::vram.data();
+  } else if (extra < 128) {
+    StaticRAM *ram = extra_vram[extra-1];
+    if (!ram) {
+      // allocate on demand:
+      extra_vram[extra-1] = ram = new StaticRAM(0x10000);
+    }
+    return ram->data();
+  } else {
+    return nullptr;
+  }
+}
+
+uint8* PPU::get_extra_cgram(uint8 extra) {
+  if (extra == 0) {
+    return memory::cgram.data();
+  } else if (extra < 128) {
+    StaticRAM *ram = extra_cgram[extra-1];
+    if (!ram) {
+      // allocate on demand:
+      extra_cgram[extra-1] = ram = new StaticRAM(0x200);
+    }
+    return ram->data();
+  } else {
+    return nullptr;
+  }
+}
+
 void PPU::render_line_extra() {
   for(int s = 0; s < 128; s++) {
     struct extra_item *t = &extra_list[s];
@@ -104,30 +134,83 @@ void PPU::render_line_extra() {
     if(line >= t->y + t->height) continue;
 
     unsigned sx = t->x;
-    unsigned y = (t->vflip == false) ? t->y : (t->height-1 - t->y);
+    unsigned y = (t->vflip == false) ? (line - t->y) : (t->height-1 - (line - t->y));
 
-    uint16 *tile_ptr = t->colors + (t->stride * (line - y));
-    for(unsigned x = 0; x < t->width; x++, sx++) {
+    uint8 *vram = get_extra_vram(t->extra);
+    if (!vram) continue;
+
+    uint8 *cgram = get_extra_cgram(t->extra);
+    if(!cgram) continue;
+
+    vram += t->vram_addr << 1;
+    for(unsigned tx = 0; tx < t->width; tx++, sx++) {
       sx &= 511;
       if(sx >= 256) continue;
 
-      uint16 col = *(tile_ptr + ((t->hflip == false) ? x : (t->width-1 - x)));
-      if((col&0x8000) == 0) continue;
-      col &= 0x7FFF;
+      unsigned x = ((t->hflip == false) ? tx : (t->width-1 - tx));
 
-      if(bg_enabled    == true && !wt_main[x]) {
+      uint8 col, d0, d1, d2, d3, d4, d5, d6, d7;
+      uint8 mask = 1 << (7-(x&7));
+      uint8 *tile_ptr = vram + (x >> 3) + ((((y >> 3) << 4) + (y & 7)) << 1);
+
+      switch (t->bpp) {
+      case 2:
+        d0 = *(tile_ptr    );
+        d1 = *(tile_ptr + 1);
+        col  = !!(d0 & mask) << 0;
+        col += !!(d1 & mask) << 1;
+        break;
+      case 4:
+        d0 = *(tile_ptr     );
+        d1 = *(tile_ptr +  1);
+        d2 = *(tile_ptr + 16);
+        d3 = *(tile_ptr + 17);
+        col  = !!(d0 & mask) << 0;
+        col += !!(d1 & mask) << 1;
+        col += !!(d2 & mask) << 2;
+        col += !!(d3 & mask) << 3;
+        break;
+      case 8:
+        d0 = *(tile_ptr     );
+        d1 = *(tile_ptr +  1);
+        d2 = *(tile_ptr + 16);
+        d3 = *(tile_ptr + 17);
+        d4 = *(tile_ptr + 32);
+        d5 = *(tile_ptr + 33);
+        d6 = *(tile_ptr + 48);
+        d7 = *(tile_ptr + 49);
+        col  = !!(d0 & mask) << 0;
+        col += !!(d1 & mask) << 1;
+        col += !!(d2 & mask) << 2;
+        col += !!(d3 & mask) << 3;
+        col += !!(d4 & mask) << 4;
+        col += !!(d5 & mask) << 5;
+        col += !!(d6 & mask) << 6;
+        col += !!(d7 & mask) << 7;
+        break;
+      }
+
+      // color 0 is always transparent:
+      if(col == 0) continue;
+
+      col += t->palette;
+
+      // look up color in cgram:
+      uint16 bgr = *(cgram + col) + (*(cgram + col + 1) << 8);
+
+      if(bg_enabled    == true && !wt_main[sx]) {
         if(pixel_cache[sx].pri_main < t->priority) {
           pixel_cache[sx].pri_main = t->priority;
           pixel_cache[sx].bg_main  = t->layer;
-          pixel_cache[sx].src_main = col;
+          pixel_cache[sx].src_main = bgr;
           pixel_cache[sx].ce_main  = t->color_exemption;
         }
       }
-      if(bgsub_enabled == true && !wt_sub[x]) {
+      if(bgsub_enabled == true && !wt_sub[sx]) {
         if(pixel_cache[sx].pri_sub < t->priority) {
           pixel_cache[sx].pri_sub = t->priority;
           pixel_cache[sx].bg_sub  = t->layer;
-          pixel_cache[sx].src_sub = col;
+          pixel_cache[sx].src_sub = bgr;
           pixel_cache[sx].ce_sub  = t->color_exemption;
         }
       }

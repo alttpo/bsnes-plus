@@ -187,11 +187,11 @@ void NWAccess::clientDataReady()
                 socket->write(cmdDebugContinue());
             }
 #endif
-            else if (cmd == "PPUX_SET")
+            else if (cmd == "PPUX_SPR")
             {
-                socket->write(cmdSnesPpuExtraProps(args));
+                socket->write(cmdPpuxSprite(args));
             }
-            else if (cmd == "PPUX_DATA")
+            else if (cmd == "PPUX_VRAM")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
@@ -202,7 +202,24 @@ void NWAccess::clientDataReady()
                     if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
 
                     QByteArray wr = data.mid(p+1+5, len);
-                    socket->write(cmdSnesPpuExtraColors(args, wr));
+                    socket->write(cmdPpuxVram(args, wr));
+
+                    data = data.mid(p+1+5+len); // remove wr data from buffer
+                    continue;
+                }
+            }
+            else if (cmd == "PPUX_CGRAM")
+            {
+                if (data.length()-p-1 < 1) break; // did not receive binary start
+                if (data[p+1] != '\0') { // no binary data
+                    socket->write(makeErrorReply("no data"));
+                } else {
+                    if (data.length()-p-1 < 5) break; // did not receive binary header yet
+                    quint32 len = qFromBigEndian<quint32>(data.constData()+p+1+1);
+                    if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
+
+                    QByteArray wr = data.mid(p+1+5, len);
+                    socket->write(cmdPpuxCgram(args, wr));
 
                     data = data.mid(p+1+5+len); // remove wr data from buffer
                     continue;
@@ -550,7 +567,7 @@ QByteArray NWAccess::cmdDebugContinue()
 }
 #endif
 
-QByteArray NWAccess::cmdSnesPpuExtraProps(QByteArray args)
+QByteArray NWAccess::cmdPpuxSprite(QByteArray args)
 {
     QStringList sargs = QString::fromUtf8(args).split(';');
     if (sargs.isEmpty()) return makeErrorReply("missing index");
@@ -620,23 +637,12 @@ QByteArray NWAccess::cmdSnesPpuExtraProps(QByteArray args)
     }
     reply += QString("\ncolor_exemption:%1").arg(t->color_exemption);
 
-    return makeHashReply(reply);
-}
-
-QByteArray NWAccess::cmdSnesPpuExtraColors(QByteArray args, QByteArray data)
-{
-    if (data.size() > 4096*sizeof(uint16_t)) return makeErrorReply("too much data; cannot support more than 4096 colors");
-    if (data.size() & 1) return makeErrorReply("color data must be size multiple of 2");
-
-    QStringList sargs = QString::fromUtf8(args).split(';');
-    if (sargs.isEmpty()) return makeErrorReply("missing index");
-
-    QString arg = sargs.takeFirst();
-    auto index = toInt(arg);
-    if (index < 0 || index >= 128) return makeErrorReply("index must be 0..127");
-    QString reply = QString("index:%1").arg(index);
-
-    auto t = &SNES::ppu.extra_list[index];
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //uint8  bpp;
+        t->bpp = toInt(arg);
+    }
+    reply += QString("\nbpp:%1").arg(t->bpp);
 
     arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
     if (!arg.isEmpty()) {
@@ -654,18 +660,92 @@ QByteArray NWAccess::cmdSnesPpuExtraColors(QByteArray args, QByteArray data)
 
     arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
     if (!arg.isEmpty()) {
-        //uint16 stride;
-        t->stride = toInt(arg);
+        //uint8 extra;
+        t->extra = toInt(arg);
     }
-    reply += QString("\nstride:%1").arg(t->stride);
+    reply += QString("\nextra:%1").arg(t->extra);
 
-    //uint16 colors[4096];
-    uint8_t *d = (uint8_t*)data.data();
-    for (unsigned i = 0; i < data.size(); i += 2) {
-        // big endian:
-        t->colors[i>>1] = (d[i] << 8) + (d[i+1]);
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //uint8 palette;
+        t->palette = toInt(arg);
     }
-    reply += QString("\ncolors:%1").arg(data.size());
+    reply += QString("\npalette:%1").arg(t->palette);
+
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        //uint16 vram_addr;
+        t->vram_addr = toInt(arg);
+    }
+    reply += QString("\nvram_addr:%1").arg(t->vram_addr);
+
+    return makeHashReply(reply);
+}
+
+QByteArray NWAccess::cmdPpuxVram(QByteArray args, QByteArray data)
+{
+    if (data.size() > 0x10000) return makeErrorReply("too much data; cannot support more than 0x10000 vram bytes");
+    if (data.size() & 1) return makeErrorReply("vram data must be size multiple of 2");
+
+    QStringList sargs = QString::fromUtf8(args).split(';');
+    if (sargs.isEmpty()) return makeErrorReply("missing `extra`");
+
+    QString arg = sargs.takeFirst();
+    auto index = toInt(arg);
+    if (index < 0 || index >= 128) return makeErrorReply("extra must be 0..127");
+
+    QString reply = QString("extra:%1").arg(index);
+
+    auto t = SNES::ppu.get_extra_vram(index);
+    if (!t) return makeErrorReply("vram index must be 0..127");
+
+    uint16_t offset = 0;
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        offset = toInt(arg);
+    }
+    if (offset & 1) return makeErrorReply("offset must be multiple of 2");
+    reply += QString("\noffset:%1").arg(offset);
+
+    uint8_t *d = (uint8_t*)data.data();
+    for (unsigned i = 0; i < data.size(); i++) {
+        *(t + offset + i) = d[i];
+    }
+    reply += QString("\nsize:%1").arg(data.size());
+
+    return makeHashReply(reply);
+}
+
+QByteArray NWAccess::cmdPpuxCgram(QByteArray args, QByteArray data)
+{
+    if (data.size() > 0x200) return makeErrorReply("too much data; cannot support more than 0x200 cgram bytes");
+    if (data.size() & 1) return makeErrorReply("cgram data must be size multiple of 2");
+
+    QStringList sargs = QString::fromUtf8(args).split(';');
+    if (sargs.isEmpty()) return makeErrorReply("missing `extra`");
+
+    QString arg = sargs.takeFirst();
+    auto index = toInt(arg);
+    if (index < 0 || index >= 128) return makeErrorReply("extra must be 0..127");
+
+    QString reply = QString("extra:%1").arg(index);
+
+    auto t = SNES::ppu.get_extra_cgram(index);
+    if (!t) return makeErrorReply("cgram index must be 0..127");
+
+    uint16_t offset = 0;
+    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+    if (!arg.isEmpty()) {
+        offset = toInt(arg);
+    }
+    if (offset & 1) return makeErrorReply("offset must be multiple of 2");
+    reply += QString("\noffset:%1").arg(offset);
+
+    uint8_t *d = (uint8_t*)data.data();
+    for (unsigned i = 0; i < data.size(); i++) {
+        *(t + offset + i) = d[i];
+    }
+    reply += QString("\nsize:%1").arg(data.size());
 
     return makeHashReply(reply);
 }
