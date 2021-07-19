@@ -625,6 +625,9 @@ QByteArray NWAccess::cmdSnesPpuExtraProps(QByteArray args)
 
 QByteArray NWAccess::cmdSnesPpuExtraColors(QByteArray args, QByteArray data)
 {
+    if (data.size() > 4096*sizeof(uint16_t)) return makeErrorReply("too much data; cannot support more than 4096 colors");
+    if (data.size() & 1) return makeErrorReply("color data must be size multiple of 2");
+
     QStringList sargs = QString::fromUtf8(args).split(';');
     if (sargs.isEmpty()) return makeErrorReply("missing index");
 
@@ -657,7 +660,11 @@ QByteArray NWAccess::cmdSnesPpuExtraColors(QByteArray args, QByteArray data)
     reply += QString("\nstride:%1").arg(t->stride);
 
     //uint16 colors[4096];
-    memcpy(t->colors, data.data(), data.size());
+    uint8_t *d = (uint8_t*)data.data();
+    for (unsigned i = 0; i < data.size(); i += 2) {
+        // big endian:
+        t->colors[i>>1] = (d[i] << 8) + (d[i+1]);
+    }
     reply += QString("\ncolors:%1").arg(data.size());
 
     return makeHashReply(reply);
