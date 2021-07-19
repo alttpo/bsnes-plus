@@ -85,7 +85,7 @@ jobs:
           rm out/.gitignore
 
           mingw32-make -j2 build platform=win profile=performance version=${{env.GITHUB_REF_SLUG}}
-          mingw32-make -j2 build platform=win profile=accuracy version=${{env.GITHUB_REF_SLUG}}
+          #mingw32-make -j2 build platform=win profile=accuracy version=${{env.GITHUB_REF_SLUG}}
           mingw32-make -j2 platform=win version=${{env.GITHUB_REF_SLUG}}
 
           cd out
