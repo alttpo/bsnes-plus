@@ -78,15 +78,25 @@ uint8 oam_line_pal[256], oam_line_pri[256];
 
 struct extra_item {
   bool   enabled;
+
   uint16 x, y;
   bool   hflip, vflip;
-  uint8  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
-  uint8  priority; // 1..12
-  bool   color_exemption;
-  uint16 width, height;
-  uint16 stride;
-  uint16 colors[4096];
+
+  uint8  layer;             // 0.. 4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
+  uint8  priority;          // 1..12
+  bool   color_exemption;   // true = ignore color math, false = obey color math
+  uint8  bpp;               // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
+
+  uint16 width;             // number of pixels width
+  uint16 height;            // number of pixels high
+
+  uint8  extra;             //     0 ..   127; 0 = local, 1..127 = extra
+  uint8  palette;           //     0 ..   255
+  uint16 vram_addr;         // $0000 .. $7FFF
 } extra_list[128];
+
+StaticRAM *extra_vram[127];
+StaticRAM *extra_cgram[127];
 
 void update_sprite_list(unsigned addr, uint8 data);
 void build_sprite_list();
@@ -107,6 +117,8 @@ inline uint16 get_palette(uint8 index);
 inline uint16 get_direct_color(uint8 p, uint8 t);
 inline uint16 get_pixel_normal(uint32 x);
 inline uint16 get_pixel_swap(uint32 x);
+uint8* get_extra_vram(uint8 extra);
+uint8* get_extra_cgram(uint8 extra);
 void   render_line_extra();
 void   render_line_output();
 void   render_line_clear();

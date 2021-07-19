@@ -42,8 +42,9 @@ protected:
     QByteArray cmdDebugBreak();
     QByteArray cmdDebugContinue();
 #endif
-    QByteArray cmdSnesPpuExtraProps(QByteArray args);
-    QByteArray cmdSnesPpuExtraColors(QByteArray args, QByteArray data);
+    QByteArray cmdPpuxSprite(QByteArray args);
+    QByteArray cmdPpuxVram(QByteArray args, QByteArray data);
+    QByteArray cmdPpuxCgram(QByteArray args, QByteArray data);
 
 public slots:
     void newConnection();
