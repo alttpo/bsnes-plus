@@ -187,11 +187,11 @@ void NWAccess::clientDataReady()
                 socket->write(cmdDebugContinue());
             }
 #endif
-            else if (cmd == "SNES_PPU_EXTRA_PROPS")
+            else if (cmd == "PPUX_SET")
             {
                 socket->write(cmdSnesPpuExtraProps(args));
             }
-            else if (cmd == "SNES_PPU_EXTRA_COLORS")
+            else if (cmd == "PPUX_DATA")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
