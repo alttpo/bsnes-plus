@@ -123,6 +123,8 @@ void PPU::render_line() {
     case 7: render_line_mode7(); break;
   }
 
+  render_line_extra();
+
   render_line_output();
 }
 
