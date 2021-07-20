@@ -191,28 +191,15 @@ void NWAccess::clientDataReady()
             {
                 socket->write(cmdPpuxReset(args));
             }
-            else if (cmd == "PPUX_SPR_W")
+            else if (cmd == "PPUX_SPR_WRITE")
             {
                 socket->write(cmdPpuxSpriteWrite(args));
             }
-            else if (cmd == "PPUX_VRAM_W")
+            else if (cmd == "PPUX_RAM_READ")
             {
-                if (data.length()-p-1 < 1) break; // did not receive binary start
-                if (data[p+1] != '\0') { // no binary data
-                    socket->write(makeErrorReply("no data"));
-                } else {
-                    if (data.length()-p-1 < 5) break; // did not receive binary header yet
-                    quint32 len = qFromBigEndian<quint32>(data.constData()+p+1+1);
-                    if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
-
-                    QByteArray wr = data.mid(p+1+5, len);
-                    socket->write(cmdPpuxVramWrite(args, wr));
-
-                    data = data.mid(p+1+5+len); // remove wr data from buffer
-                    continue;
-                }
+                socket->write(cmdPpuxRamRead(args));
             }
-            else if (cmd == "PPUX_CGRAM_W")
+            else if (cmd == "PPUX_RAM_WRITE")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
@@ -223,7 +210,7 @@ void NWAccess::clientDataReady()
                     if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
 
                     QByteArray wr = data.mid(p+1+5, len);
-                    socket->write(cmdPpuxCgramWrite(args, wr));
+                    socket->write(cmdPpuxRamWrite(args, wr));
 
                     data = data.mid(p+1+5+len); // remove wr data from buffer
                     continue;
@@ -706,28 +693,43 @@ QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
     return makeHashReply(reply);
 }
 
-QByteArray NWAccess::cmdPpuxVramWrite(QByteArray args, QByteArray data)
+QByteArray NWAccess::cmdPpuxRamWrite(QByteArray args, QByteArray data)
 {
     QStringList sargs = QString::fromUtf8(args).split(';');
 
     QString reply;
     while (!sargs.isEmpty()) {
         QString arg = sargs.takeFirst();
+        QString memory = arg;
+
+        if (!reply.isEmpty()) reply.append("\n");
+        reply += QString("memory:%1").arg(memory);
+
+        arg = sargs.takeFirst();
         auto space = toInt(arg);
         if (space < 0 || space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
 
-        if (!reply.isEmpty()) reply.append("\n");
-        reply += QString("space:%1").arg(space);
+        reply += QString("\nspace:%1").arg(space);
 
-        auto t = SNES::ppu.get_extra_vram(space);
-        if (!t) return makeErrorReply("vram space not allocated");
+        unsigned maxSize = 0;
+        uint8_t *t = nullptr;
+        if (memory == "VRAM") {
+            t = SNES::ppu.get_extra_vram(space);
+            maxSize = 0x10000;
+        } else if (memory == "CGRAM") {
+            t = SNES::ppu.get_extra_cgram(space);
+            maxSize = 0x200;
+        } else {
+            return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
+        }
+        if (!t) return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
 
         unsigned offset = 0;
         arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
         if (!arg.isEmpty()) {
             offset = toInt(arg);
         }
-        if (offset >= 0x10000) return makeErrorReply("offset must be 0..$FFFF");
+        if (offset >= maxSize) return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
         if (offset & 1) return makeErrorReply("offset must be multiple of 2");
 
         unsigned size = 0;
@@ -735,9 +737,9 @@ QByteArray NWAccess::cmdPpuxVramWrite(QByteArray args, QByteArray data)
         if (!arg.isEmpty()) {
             size = toInt(arg);
         }
-        if (size > data.size()) return makeErrorReply(QString("size %1 > binary payload size %2").arg(size, data.size()));
+        if (size > data.size()) return makeErrorReply(QString("size $%1 > payload $%2").arg(size, 0, 16).arg(data.size(), 0, 16));
 
-        if (offset + size > 0x10000) return makeErrorReply(QString("offset+size must be 0..$10000, offset+size=$%1").arg(offset+size, 0, 16));
+        if (offset + size > maxSize) return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
         reply += QString("\noffset:%1").arg(offset);
         reply += QString("\nsize:%1").arg(size);
 
@@ -751,28 +753,40 @@ QByteArray NWAccess::cmdPpuxVramWrite(QByteArray args, QByteArray data)
     return makeHashReply(reply);
 }
 
-QByteArray NWAccess::cmdPpuxCgramWrite(QByteArray args, QByteArray data)
+QByteArray NWAccess::cmdPpuxRamRead(QByteArray args)
 {
-    QStringList sargs = QString::fromUtf8(args).split(';');
+    QByteArray data;
 
-    QString reply;
-    while (!sargs.isEmpty()) {
+    QStringList regions = QString::fromUtf8(args).split('|');
+    while (!regions.isEmpty()) {
+        QStringList sargs = regions.takeFirst().split(';');
+
         QString arg = sargs.takeFirst();
+        QString memory = arg;
+
+        arg = sargs.takeFirst();
         auto space = toInt(arg);
         if (space < 0 || space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
 
-        if (!reply.isEmpty()) reply.append("\n");
-        reply += QString("space:%1").arg(space);
-
-        auto t = SNES::ppu.get_extra_cgram(space);
-        if (!t) return makeErrorReply("cgram space not allocated");
+        unsigned maxSize = 0;
+        uint8_t *t = nullptr;
+        if (memory == "VRAM") {
+            t = SNES::ppu.get_extra_vram(space);
+            maxSize = 0x10000;
+        } else if (memory == "CGRAM") {
+            t = SNES::ppu.get_extra_cgram(space);
+            maxSize = 0x200;
+        } else {
+            return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
+        }
+        if (!t) return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
 
         unsigned offset = 0;
         arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
         if (!arg.isEmpty()) {
             offset = toInt(arg);
         }
-        if (offset >= 0x200) return makeErrorReply("offset must be 0..$1FF");
+        if (offset >= maxSize) return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
         if (offset & 1) return makeErrorReply("offset must be multiple of 2");
 
         unsigned size = 0;
@@ -780,18 +794,11 @@ QByteArray NWAccess::cmdPpuxCgramWrite(QByteArray args, QByteArray data)
         if (!arg.isEmpty()) {
             size = toInt(arg);
         }
-        if (size > data.size()) return makeErrorReply(QString("size %1 > binary payload size %2").arg(size, data.size()));
 
-        if (offset + size > 0x200) return makeErrorReply(QString("offset+size must be 0..$200, offset+size=$%1").arg(offset+size, 0, 16));
-        reply += QString("\noffset:%1").arg(offset);
-        reply += QString("\nsize:%1").arg(size);
+        if (offset + size > maxSize) return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
 
-        uint8_t *d = (uint8_t*)data.data();
-        for (unsigned i = 0; i < size; i++) {
-            *(t + offset + i) = d[i];
-        }
-        data = data.mid(size);
+        data.append((const char *)(t + offset), size);
     }
 
-    return makeHashReply(reply);
+    return makeBinaryReply(data);
 }
