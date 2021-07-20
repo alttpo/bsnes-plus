@@ -187,6 +187,10 @@ void NWAccess::clientDataReady()
                 socket->write(cmdDebugContinue());
             }
 #endif
+            else if (cmd == "PPUX_RESET")
+            {
+                socket->write(cmdPpuxReset(args));
+            }
             else if (cmd == "PPUX_SPR_W")
             {
                 socket->write(cmdPpuxSpriteWrite(args));
@@ -566,6 +570,12 @@ QByteArray NWAccess::cmdDebugContinue()
     return makeOkReply();
 }
 #endif
+
+QByteArray NWAccess::cmdPpuxReset(QByteArray args)
+{
+    SNES::ppu.ppuxReset();
+    return makeOkReply();
+}
 
 QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
 {

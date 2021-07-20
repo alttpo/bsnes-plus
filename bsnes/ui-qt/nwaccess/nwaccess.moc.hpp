@@ -42,6 +42,7 @@ protected:
     QByteArray cmdDebugBreak();
     QByteArray cmdDebugContinue();
 #endif
+    QByteArray cmdPpuxReset(QByteArray args);
     QByteArray cmdPpuxSpriteWrite(QByteArray args);
     QByteArray cmdPpuxSpriteRead(QByteArray args);
     QByteArray cmdPpuxVramWrite(QByteArray args, QByteArray data);
