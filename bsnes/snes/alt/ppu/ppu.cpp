@@ -372,13 +372,13 @@ void PPU::reset() {
 void PPU::ppuxReset() {
   memset(extra_list, 0, sizeof(extra_list));
   for (unsigned i = 0; i < extra_spaces; i++) {
-    if (extra_vram[i]) {
-      delete extra_vram[i];
-      extra_vram[i] = nullptr;
+    if (vram_space[i]) {
+      delete vram_space[i];
+      vram_space[i] = nullptr;
     }
-    if (extra_cgram[i]) {
-      delete extra_cgram[i];
-      extra_cgram[i] = nullptr;
+    if (cgram_space[i]) {
+      delete cgram_space[i];
+      cgram_space[i] = nullptr;
     }
   }
 }

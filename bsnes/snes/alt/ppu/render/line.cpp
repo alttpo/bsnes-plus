@@ -84,14 +84,14 @@ inline uint16 PPU::get_pixel_swap(uint32 x) {
   return src_main;
 }
 
-uint8* PPU::get_extra_vram(uint8 space) {
+uint8* PPU::get_vram_space(uint8 space) {
   if (space == 0) {
     return memory::vram.data();
   } else if (space < extra_spaces) {
-    StaticRAM *ram = extra_vram[space-1];
+    StaticRAM *ram = vram_space[space-1];
     if (!ram) {
       // allocate on demand:
-      extra_vram[space-1] = ram = new StaticRAM(0x10000);
+      vram_space[space-1] = ram = new StaticRAM(0x10000);
     }
     return ram->data();
   } else {
@@ -99,14 +99,14 @@ uint8* PPU::get_extra_vram(uint8 space) {
   }
 }
 
-uint8* PPU::get_extra_cgram(uint8 space) {
+uint8* PPU::get_cgram_space(uint8 space) {
   if (space == 0) {
     return memory::cgram.data();
   } else if (space < extra_spaces) {
-    StaticRAM *ram = extra_cgram[space-1];
+    StaticRAM *ram = cgram_space[space-1];
     if (!ram) {
       // allocate on demand:
-      extra_cgram[space-1] = ram = new StaticRAM(0x200);
+      cgram_space[space-1] = ram = new StaticRAM(0x200);
     }
     return ram->data();
   } else {
@@ -133,10 +133,10 @@ void PPU::render_line_extra() {
     unsigned sx = t->x;
     unsigned y = (t->vflip == false) ? (line - t->y) : (t->height-1 - (line - t->y));
 
-    uint8 *vram = get_extra_vram(t->space);
+    uint8 *vram = get_vram_space(t->vram_space);
     if (!vram) continue;
 
-    uint8 *cgram = get_extra_cgram(t->space);
+    uint8 *cgram = get_cgram_space(t->cgram_space);
     if(!cgram) continue;
 
     uint8 *wt_main = window[t->layer].main;
