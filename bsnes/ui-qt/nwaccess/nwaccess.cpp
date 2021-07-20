@@ -187,11 +187,11 @@ void NWAccess::clientDataReady()
                 socket->write(cmdDebugContinue());
             }
 #endif
-            else if (cmd == "PPUX_SPR")
+            else if (cmd == "PPUX_SPR_W")
             {
-                socket->write(cmdPpuxSprite(args));
+                socket->write(cmdPpuxSpriteWrite(args));
             }
-            else if (cmd == "PPUX_VRAM")
+            else if (cmd == "PPUX_VRAM_W")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
@@ -202,13 +202,13 @@ void NWAccess::clientDataReady()
                     if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
 
                     QByteArray wr = data.mid(p+1+5, len);
-                    socket->write(cmdPpuxVram(args, wr));
+                    socket->write(cmdPpuxVramWrite(args, wr));
 
                     data = data.mid(p+1+5+len); // remove wr data from buffer
                     continue;
                 }
             }
-            else if (cmd == "PPUX_CGRAM")
+            else if (cmd == "PPUX_CGRAM_W")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
@@ -219,7 +219,7 @@ void NWAccess::clientDataReady()
                     if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
 
                     QByteArray wr = data.mid(p+1+5, len);
-                    socket->write(cmdPpuxCgram(args, wr));
+                    socket->write(cmdPpuxCgramWrite(args, wr));
 
                     data = data.mid(p+1+5+len); // remove wr data from buffer
                     continue;
@@ -567,185 +567,218 @@ QByteArray NWAccess::cmdDebugContinue()
 }
 #endif
 
-QByteArray NWAccess::cmdPpuxSprite(QByteArray args)
+QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
 {
     QStringList sargs = QString::fromUtf8(args).split(';');
-    if (sargs.isEmpty()) return makeErrorReply("missing index");
 
-    QString arg = sargs.takeFirst();
-    auto index = toInt(arg);
-    if (index < 0 || index >= 128) return makeErrorReply("index must be 0..127");
-    QString reply = QString("index:%1").arg(index);
+    QString reply;
+    while (!sargs.isEmpty()) {
+        QString arg = sargs.takeFirst();
+        auto index = toInt(arg);
+        if (index < 0 || index >= SNES::PPU::extra_count)
+            return makeErrorReply(QString("index must be 0..%1").arg(SNES::PPU::extra_count-1));
 
-    auto t = &SNES::ppu.extra_list[index];
+        if (!reply.isEmpty()) reply.append("\n");
+        reply += QString("index:%1").arg(index);
 
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //bool   enabled;
-        t->enabled = toInt(arg);
+        auto t = &SNES::ppu.extra_list[index];
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //bool   enabled;
+            t->enabled = toInt(arg);
+        }
+        reply += QString("\nenabled:%1").arg(t->enabled);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            uint8_t space;
+            space = toInt(arg);
+            if (space < 0 || space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+            t->space = space;
+        }
+        reply += QString("\nspace:%1").arg(t->space);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //uint16 x;
+            t->x = toInt(arg);
+        }
+        reply += QString("\nx:%1").arg(t->x);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //uint16 y;
+            t->y = toInt(arg);
+        }
+        reply += QString("\ny:%1").arg(t->y);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //bool   hflip;
+            t->hflip = toInt(arg);
+        }
+        reply += QString("\nhflip:%1").arg(t->hflip);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //bool   vflip;
+            t->vflip = toInt(arg);
+        }
+        reply += QString("\nvflip:%1").arg(t->vflip);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //uint16 vram_addr;
+            t->vram_addr = toInt(arg);
+        }
+        reply += QString("\nvram_addr:%1").arg(t->vram_addr);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //uint8 palette;
+            t->palette = toInt(arg);
+        }
+        reply += QString("\npalette:%1").arg(t->palette);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            uint8_t  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
+            layer = toInt(arg);
+            if (layer > 4) return makeErrorReply("layer must be 0..4");
+            t->layer = layer;
+        }
+        reply += QString("\nlayer:%1").arg(t->layer);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            uint8_t  priority; // 1..12
+            priority = toInt(arg);
+            if (priority > 12) return makeErrorReply("priority must be 0..12");
+            t->priority = priority;
+        }
+        reply += QString("\npriority:%1").arg(t->priority);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //bool   color_exemption;
+            t->color_exemption = toInt(arg);
+        }
+        reply += QString("\ncolor_exemption:%1").arg(t->color_exemption);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            uint8_t  bpp;
+            bpp = toInt(arg);
+            if (bpp != 2 && bpp != 4 && bpp != 8) return makeErrorReply("bpp can only be one of [2, 4, 8]");
+            t->bpp = bpp;
+        }
+        reply += QString("\nbpp:%1").arg(t->bpp);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //uint16 width;
+            t->width = toInt(arg);
+        }
+        reply += QString("\nwidth:%1").arg(t->width);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            //uint16 height;
+            t->height = toInt(arg);
+        }
+        reply += QString("\nheight:%1").arg(t->height);
     }
-    reply += QString("\nenabled:%1").arg(t->enabled);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint16 x;
-        t->x = toInt(arg);
-    }
-    reply += QString("\nx:%1").arg(t->x);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint16 y;
-        t->y = toInt(arg);
-    }
-    reply += QString("\ny:%1").arg(t->y);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //bool   hflip;
-        t->hflip = toInt(arg);
-    }
-    reply += QString("\nhflip:%1").arg(t->hflip);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //bool   vflip;
-        t->vflip = toInt(arg);
-    }
-    reply += QString("\nvflip:%1").arg(t->vflip);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint8  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
-        t->layer = toInt(arg);
-        if (t->layer > 4) return makeErrorReply("layer must be 0..4");
-    }
-    reply += QString("\nlayer:%1").arg(t->layer);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint8  priority; // 1..12
-        t->priority = toInt(arg);
-        if (t->priority > 12) return makeErrorReply("priority must be 0..12");
-    }
-    reply += QString("\npriority:%1").arg(t->priority);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //bool   color_exemption;
-        t->color_exemption = toInt(arg);
-    }
-    reply += QString("\ncolor_exemption:%1").arg(t->color_exemption);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint8  bpp;
-        t->bpp = toInt(arg);
-    }
-    reply += QString("\nbpp:%1").arg(t->bpp);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint16 width;
-        t->width = toInt(arg);
-    }
-    reply += QString("\nwidth:%1").arg(t->width);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint16 height;
-        t->height = toInt(arg);
-    }
-    reply += QString("\nheight:%1").arg(t->height);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint8 extra;
-        t->extra = toInt(arg);
-    }
-    reply += QString("\nextra:%1").arg(t->extra);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint8 palette;
-        t->palette = toInt(arg);
-    }
-    reply += QString("\npalette:%1").arg(t->palette);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        //uint16 vram_addr;
-        t->vram_addr = toInt(arg);
-    }
-    reply += QString("\nvram_addr:%1").arg(t->vram_addr);
 
     return makeHashReply(reply);
 }
 
-QByteArray NWAccess::cmdPpuxVram(QByteArray args, QByteArray data)
+QByteArray NWAccess::cmdPpuxVramWrite(QByteArray args, QByteArray data)
 {
-    if (data.size() > 0x10000) return makeErrorReply("too much data; cannot support more than 0x10000 vram bytes");
-    if (data.size() & 1) return makeErrorReply("vram data must be size multiple of 2");
-
     QStringList sargs = QString::fromUtf8(args).split(';');
-    if (sargs.isEmpty()) return makeErrorReply("missing `extra`");
 
-    QString arg = sargs.takeFirst();
-    auto index = toInt(arg);
-    if (index < 0 || index >= 128) return makeErrorReply("extra must be 0..127");
+    QString reply;
+    while (!sargs.isEmpty()) {
+        QString arg = sargs.takeFirst();
+        auto space = toInt(arg);
+        if (space < 0 || space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
 
-    QString reply = QString("extra:%1").arg(index);
+        if (!reply.isEmpty()) reply.append("\n");
+        reply += QString("space:%1").arg(space);
 
-    auto t = SNES::ppu.get_extra_vram(index);
-    if (!t) return makeErrorReply("vram index must be 0..127");
+        auto t = SNES::ppu.get_extra_vram(space);
+        if (!t) return makeErrorReply("vram space not allocated");
 
-    uint16_t offset = 0;
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        offset = toInt(arg);
+        unsigned offset = 0;
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            offset = toInt(arg);
+        }
+        if (offset >= 0x10000) return makeErrorReply("offset must be 0..$FFFF");
+        if (offset & 1) return makeErrorReply("offset must be multiple of 2");
+
+        unsigned size = 0;
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            size = toInt(arg);
+        }
+        if (size > data.size()) return makeErrorReply(QString("size %1 > binary payload size %2").arg(size, data.size()));
+
+        if (offset + size > 0x10000) return makeErrorReply(QString("offset+size must be 0..$10000, offset+size=$%1").arg(offset+size, 0, 16));
+        reply += QString("\noffset:%1").arg(offset);
+        reply += QString("\nsize:%1").arg(size);
+
+        uint8_t *d = (uint8_t*)data.data();
+        for (unsigned i = 0; i < size; i++) {
+            *(t + offset + i) = d[i];
+        }
+        data = data.mid(size);
     }
-    if (offset & 1) return makeErrorReply("offset must be multiple of 2");
-    reply += QString("\noffset:%1").arg(offset);
-
-    uint8_t *d = (uint8_t*)data.data();
-    for (unsigned i = 0; i < data.size(); i++) {
-        *(t + offset + i) = d[i];
-    }
-    reply += QString("\nsize:%1").arg(data.size());
 
     return makeHashReply(reply);
 }
 
-QByteArray NWAccess::cmdPpuxCgram(QByteArray args, QByteArray data)
+QByteArray NWAccess::cmdPpuxCgramWrite(QByteArray args, QByteArray data)
 {
-    if (data.size() > 0x200) return makeErrorReply("too much data; cannot support more than 0x200 cgram bytes");
-    if (data.size() & 1) return makeErrorReply("cgram data must be size multiple of 2");
-
     QStringList sargs = QString::fromUtf8(args).split(';');
-    if (sargs.isEmpty()) return makeErrorReply("missing `extra`");
 
-    QString arg = sargs.takeFirst();
-    auto index = toInt(arg);
-    if (index < 0 || index >= 128) return makeErrorReply("extra must be 0..127");
+    QString reply;
+    while (!sargs.isEmpty()) {
+        QString arg = sargs.takeFirst();
+        auto space = toInt(arg);
+        if (space < 0 || space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
 
-    QString reply = QString("extra:%1").arg(index);
+        if (!reply.isEmpty()) reply.append("\n");
+        reply += QString("space:%1").arg(space);
 
-    auto t = SNES::ppu.get_extra_cgram(index);
-    if (!t) return makeErrorReply("cgram index must be 0..127");
+        auto t = SNES::ppu.get_extra_cgram(space);
+        if (!t) return makeErrorReply("cgram space not allocated");
 
-    uint16_t offset = 0;
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-        offset = toInt(arg);
+        unsigned offset = 0;
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            offset = toInt(arg);
+        }
+        if (offset >= 0x200) return makeErrorReply("offset must be 0..$1FF");
+        if (offset & 1) return makeErrorReply("offset must be multiple of 2");
+
+        unsigned size = 0;
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            size = toInt(arg);
+        }
+        if (size > data.size()) return makeErrorReply(QString("size %1 > binary payload size %2").arg(size, data.size()));
+
+        if (offset + size > 0x200) return makeErrorReply(QString("offset+size must be 0..$200, offset+size=$%1").arg(offset+size, 0, 16));
+        reply += QString("\noffset:%1").arg(offset);
+        reply += QString("\nsize:%1").arg(size);
+
+        uint8_t *d = (uint8_t*)data.data();
+        for (unsigned i = 0; i < size; i++) {
+            *(t + offset + i) = d[i];
+        }
+        data = data.mid(size);
     }
-    if (offset & 1) return makeErrorReply("offset must be multiple of 2");
-    reply += QString("\noffset:%1").arg(offset);
-
-    uint8_t *d = (uint8_t*)data.data();
-    for (unsigned i = 0; i < data.size(); i++) {
-        *(t + offset + i) = d[i];
-    }
-    reply += QString("\nsize:%1").arg(data.size());
 
     return makeHashReply(reply);
 }

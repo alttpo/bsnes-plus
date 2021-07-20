@@ -356,6 +356,18 @@ void PPU::reset() {
   memset(sprite_list, 0, sizeof(sprite_list));
   sprite_list_valid = false;
 
+  memset(extra_list, 0, sizeof(extra_list));
+  for (unsigned i = 0; i < extra_spaces; i++) {
+    if (extra_vram[i]) {
+      delete extra_vram[i];
+      extra_vram[i] = nullptr;
+    }
+    if (extra_cgram[i]) {
+      delete extra_cgram[i];
+      extra_cgram[i] = nullptr;
+    }
+  }
+
   //open bus support
   regs.ppu1_mdr = 0xff;
   regs.ppu2_mdr = 0xff;

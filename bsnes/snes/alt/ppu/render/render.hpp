@@ -76,11 +76,16 @@ struct oam_tileitem {
 enum { OAM_PRI_NONE = 4 };
 uint8 oam_line_pal[256], oam_line_pri[256];
 
+const static unsigned extra_count = 4096;
 struct extra_item {
   bool   enabled;
+  uint8  space;             //     0 ..   255; 0 = local, 1..255 = extra
 
   uint16 x, y;
   bool   hflip, vflip;
+
+  uint16 vram_addr;         // $0000 .. $FFFF (byte address)
+  uint8  palette;           //     0 ..   255
 
   uint8  layer;             // 0.. 4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
   uint8  priority;          // 1..12
@@ -89,14 +94,11 @@ struct extra_item {
 
   uint16 width;             // number of pixels width
   uint16 height;            // number of pixels high
+} extra_list[extra_count];
 
-  uint8  extra;             //     0 ..   127; 0 = local, 1..127 = extra
-  uint8  palette;           //     0 ..   255
-  uint16 vram_addr;         // $0000 .. $7FFF
-} extra_list[128];
-
-StaticRAM *extra_vram[127];
-StaticRAM *extra_cgram[127];
+const static unsigned extra_spaces = 255;
+StaticRAM *extra_vram[extra_spaces];
+StaticRAM *extra_cgram[extra_spaces];
 
 void update_sprite_list(unsigned addr, uint8 data);
 void build_sprite_list();

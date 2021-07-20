@@ -42,9 +42,12 @@ protected:
     QByteArray cmdDebugBreak();
     QByteArray cmdDebugContinue();
 #endif
-    QByteArray cmdPpuxSprite(QByteArray args);
-    QByteArray cmdPpuxVram(QByteArray args, QByteArray data);
-    QByteArray cmdPpuxCgram(QByteArray args, QByteArray data);
+    QByteArray cmdPpuxSpriteWrite(QByteArray args);
+    QByteArray cmdPpuxSpriteRead(QByteArray args);
+    QByteArray cmdPpuxVramWrite(QByteArray args, QByteArray data);
+    QByteArray cmdPpuxVramRead(QByteArray args);
+    QByteArray cmdPpuxCgramWrite(QByteArray args, QByteArray data);
+    QByteArray cmdPpuxCgramRead(QByteArray args);
 
 public slots:
     void newConnection();
