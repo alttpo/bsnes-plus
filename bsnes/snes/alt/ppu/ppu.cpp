@@ -92,6 +92,9 @@ void PPU::scanline() {
     for(int bg = BG1; bg <= BG4; bg++) regs.bg_y[bg] = 1;
     regs.mosaic_countdown = regs.mosaic_size + 1;
     regs.mosaic_countdown--;
+
+    // ppux:
+    ppux_render_frame_pre();
   } else {
     for(int bg = BG1; bg <= BG4; bg++) {
       if(!regs.mosaic_enabled[bg] || !regs.mosaic_countdown) regs.bg_y[bg] = line;

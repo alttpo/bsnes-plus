@@ -654,7 +654,6 @@ QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
         if (!arg.isEmpty()) {
             uint8_t  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
             layer = toInt(arg);
-            if (layer > 4) return makeErrorReply("layer must be 0..4");
             t->layer = layer;
         }
         reply += QString("\nlayer:%1").arg(t->layer);
@@ -663,7 +662,6 @@ QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
         if (!arg.isEmpty()) {
             uint8_t  priority; // 1..12
             priority = toInt(arg);
-            if (priority > 12) return makeErrorReply("priority must be 0..12");
             t->priority = priority;
         }
         reply += QString("\npriority:%1").arg(t->priority);

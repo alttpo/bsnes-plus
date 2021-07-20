@@ -113,6 +113,9 @@ void PPU::render_line() {
   build_window_tables(COL);
   update_bg_info();
 
+  // ppux:
+  ppux_render_line_pre();
+
   switch(regs.bg_mode) {
     case 0: render_line_mode0(); break;
     case 1: render_line_mode1(); break;
@@ -125,7 +128,7 @@ void PPU::render_line() {
   }
 
   // ppux:
-  render_line_extra();
+  ppux_render_line_post();
 
   render_line_output();
 }

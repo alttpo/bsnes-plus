@@ -22,6 +22,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
 
   int32 px, py;
   int32 tx, ty, tile, palette;
+  unsigned cgramspace;
 
   int32 a = sclip<16>(cache.m7a);
   int32 b = sclip<16>(cache.m7b);
@@ -63,7 +64,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
         tx = ((px >> 3) & 127);
         ty = ((py >> 3) & 127);
         tile    = memory::vram[(ty * 128 + tx) << 1];
-        palette = memory::vram[(((tile << 6) + ((py & 7) << 3) + (px & 7)) << 1) + 1];
+        ppux_mode7_fetch(px, py, tile, bg, palette, cgramspace);
       } break;
       case 2: {  //palette color 0 outside of screen area
         if((px | py) & ~1023) {
@@ -74,7 +75,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
           tx = ((px >> 3) & 127);
           ty = ((py >> 3) & 127);
           tile    = memory::vram[(ty * 128 + tx) << 1];
-          palette = memory::vram[(((tile << 6) + ((py & 7) << 3) + (px & 7)) << 1) + 1];
+          ppux_mode7_fetch(px, py, tile, bg, palette, cgramspace);
         }
       } break;
       case 3: {  //character 0 repetition outside of screen area
@@ -87,7 +88,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
           ty = ((py >> 3) & 127);
           tile = memory::vram[(ty * 128 + tx) << 1];
         }
-        palette = memory::vram[(((tile << 6) + ((py & 7) << 3) + (px & 7)) << 1) + 1];
+        ppux_mode7_fetch(px, py, tile, bg, palette, cgramspace);
       } break;
     }
 
@@ -107,7 +108,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
       //direct color mode does not apply to bg2, as it is only 128 colors...
       col = get_direct_color(0, palette);
     } else {
-      col = get_palette(palette);
+      col = get_palette_space(cgramspace, palette);
     }
 
     if(regs.bg_enabled[bg] == true && !wt_main[_x]) {
