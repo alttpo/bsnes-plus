@@ -26,7 +26,14 @@ const static unsigned extra_spaces = 255;
 StaticRAM *vram_space[extra_spaces];
 StaticRAM *cgram_space[extra_spaces];
 
+uint8 ppux_mode7_pal[2][1024 * 1024];
+uint8 ppux_mode7_space[2][1024 * 1024];
+
 // ppux.cpp
+inline uint16 get_palette_space(uint8 space, uint8 index);
 uint8* get_vram_space(uint8 space);
 uint8* get_cgram_space(uint8 space);
-void   render_line_extra();
+void   ppux_render_frame_pre();
+void   ppux_render_line_pre();
+void   ppux_render_line_post();
+void   ppux_mode7_fetch(int32 px, int32 py, int32 tile, unsigned layer, int32 &palette, unsigned &cgramspace);
