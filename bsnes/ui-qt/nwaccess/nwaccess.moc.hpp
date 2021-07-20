@@ -45,10 +45,8 @@ protected:
     QByteArray cmdPpuxReset(QByteArray args);
     QByteArray cmdPpuxSpriteWrite(QByteArray args);
     QByteArray cmdPpuxSpriteRead(QByteArray args);
-    QByteArray cmdPpuxVramWrite(QByteArray args, QByteArray data);
-    QByteArray cmdPpuxVramRead(QByteArray args);
-    QByteArray cmdPpuxCgramWrite(QByteArray args, QByteArray data);
-    QByteArray cmdPpuxCgramRead(QByteArray args);
+    QByteArray cmdPpuxRamWrite(QByteArray args, QByteArray data);
+    QByteArray cmdPpuxRamRead(QByteArray args);
 
 public slots:
     void newConnection();
