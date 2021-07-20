@@ -10,7 +10,7 @@ echo -ne 'PPUX_RESET\n' | socat stdio tcp:localhost:65400
 #echo -ne 'PPUX_RESET\nPPUX_SPR_WRITE 0;1;$30;$30;0;0;0;$f810;0;$18;1;5;0;2;160;8|1;1;$30;$38;0;0;0;$f960;0;$18;1;5;0;2;160;8\n' | socat stdio tcp:localhost:65400
 
 #mode7
-echo -ne 'PPUX_RESET\nPPUX_SPR_WRITE 0;1;$130;$130;0;0;0;$f810;0;$18;$80;5;0;2;160;8|1;1;$130;$138;0;0;0;$f960;0;$18;$80;5;0;2;160;8\n' | socat stdio tcp:localhost:65400
+echo -ne 'PPUX_RESET\nPPUX_SPR_WRITE 0;1;$130;$130;0;0;0;$f810;0;$D8;$80;5;0;2;160;8|1;1;$130;$138;0;0;0;$f960;0;$D8;$80;5;0;2;160;8\n' | socat stdio tcp:localhost:65400
 
 # ALTTP copy ROM sprite sheet into extra VRAM:
 #(echo -ne 'PPUX_RESET\nPPUX_RAM_WRITE VRAM;1;0;$2000\n'; (echo -ne 'CORE_READ CARTROM;$80000;$2000\n' | socat stdio tcp:localhost:65400); echo -ne 'PPUX_SPR_WRITE 0;1;$40;$40;0;0;1;$0000;0;$F0;1;5;0;4;128;128\n') > .tmpcmd
