@@ -11,6 +11,7 @@ public:
   #include "memory/memory.hpp"
   #include "mmio/mmio.hpp"
   #include "render/render.hpp"
+  #include "render/ppux.hpp"
 
   uint16 *surface;
   uint16 *output;
