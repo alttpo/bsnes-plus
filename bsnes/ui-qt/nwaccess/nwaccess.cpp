@@ -592,15 +592,6 @@ QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
 
         arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
         if (!arg.isEmpty()) {
-            uint8_t space;
-            space = toInt(arg);
-            if (space < 0 || space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
-            t->space = space;
-        }
-        reply += QString("\nspace:%1").arg(t->space);
-
-        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-        if (!arg.isEmpty()) {
             //uint16 x;
             t->x = toInt(arg);
         }
@@ -629,10 +620,28 @@ QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
 
         arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
         if (!arg.isEmpty()) {
+            uint8_t vram_space;
+            vram_space = toInt(arg);
+            if (vram_space < 0 || vram_space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("vram_space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+            t->vram_space = vram_space;
+        }
+        reply += QString("\nvram_space:%1").arg(t->vram_space);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
             //uint16 vram_addr;
             t->vram_addr = toInt(arg);
         }
         reply += QString("\nvram_addr:%1").arg(t->vram_addr);
+
+        arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
+        if (!arg.isEmpty()) {
+            uint8_t cgram_space;
+            cgram_space = toInt(arg);
+            if (cgram_space < 0 || cgram_space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("cgram_space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+            t->cgram_space = cgram_space;
+        }
+        reply += QString("\ncgram_space:%1").arg(t->cgram_space);
 
         arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
         if (!arg.isEmpty()) {
@@ -714,10 +723,10 @@ QByteArray NWAccess::cmdPpuxRamWrite(QByteArray args, QByteArray data)
         unsigned maxSize = 0;
         uint8_t *t = nullptr;
         if (memory == "VRAM") {
-            t = SNES::ppu.get_extra_vram(space);
+            t = SNES::ppu.get_vram_space(space);
             maxSize = 0x10000;
         } else if (memory == "CGRAM") {
-            t = SNES::ppu.get_extra_cgram(space);
+            t = SNES::ppu.get_cgram_space(space);
             maxSize = 0x200;
         } else {
             return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
@@ -771,10 +780,10 @@ QByteArray NWAccess::cmdPpuxRamRead(QByteArray args)
         unsigned maxSize = 0;
         uint8_t *t = nullptr;
         if (memory == "VRAM") {
-            t = SNES::ppu.get_extra_vram(space);
+            t = SNES::ppu.get_vram_space(space);
             maxSize = 0x10000;
         } else if (memory == "CGRAM") {
-            t = SNES::ppu.get_extra_cgram(space);
+            t = SNES::ppu.get_cgram_space(space);
             maxSize = 0x200;
         } else {
             return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
