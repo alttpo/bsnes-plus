@@ -7,6 +7,7 @@
 #include "mode7.cpp"
 #include "addsub.cpp"
 #include "line.cpp"
+#include "ppux.cpp"
 
 //Mode 0: ->
 //     1,    2,    3,    4,    5,    6,    7,    8,    9,   10,   11,   12
@@ -123,6 +124,7 @@ void PPU::render_line() {
     case 7: render_line_mode7(); break;
   }
 
+  // ppux:
   render_line_extra();
 
   render_line_output();
