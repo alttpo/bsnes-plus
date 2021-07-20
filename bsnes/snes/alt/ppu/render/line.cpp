@@ -84,14 +84,14 @@ inline uint16 PPU::get_pixel_swap(uint32 x) {
   return src_main;
 }
 
-uint8* PPU::get_extra_vram(uint8 extra) {
-  if (extra == 0) {
+uint8* PPU::get_extra_vram(uint8 space) {
+  if (space == 0) {
     return memory::vram.data();
-  } else if (extra < 128) {
-    StaticRAM *ram = extra_vram[extra-1];
+  } else if (space < extra_spaces) {
+    StaticRAM *ram = extra_vram[space-1];
     if (!ram) {
       // allocate on demand:
-      extra_vram[extra-1] = ram = new StaticRAM(0x10000);
+      extra_vram[space-1] = ram = new StaticRAM(0x10000);
     }
     return ram->data();
   } else {
@@ -99,14 +99,14 @@ uint8* PPU::get_extra_vram(uint8 extra) {
   }
 }
 
-uint8* PPU::get_extra_cgram(uint8 extra) {
-  if (extra == 0) {
+uint8* PPU::get_extra_cgram(uint8 space) {
+  if (space == 0) {
     return memory::cgram.data();
-  } else if (extra < 128) {
-    StaticRAM *ram = extra_cgram[extra-1];
+  } else if (space < extra_spaces) {
+    StaticRAM *ram = extra_cgram[space-1];
     if (!ram) {
       // allocate on demand:
-      extra_cgram[extra-1] = ram = new StaticRAM(0x200);
+      extra_cgram[space-1] = ram = new StaticRAM(0x200);
     }
     return ram->data();
   } else {
@@ -115,7 +115,7 @@ uint8* PPU::get_extra_cgram(uint8 extra) {
 }
 
 void PPU::render_line_extra() {
-  for(int s = 0; s < 128; s++) {
+  for(int s = 0; s < extra_count; s++) {
     struct extra_item *t = &extra_list[s];
 
     if(!t->enabled) continue;
@@ -126,9 +126,6 @@ void PPU::render_line_extra() {
     bool bgsub_enabled = regs.bgsub_enabled[t->layer];
     if (bg_enabled == false && bgsub_enabled == false) continue;
 
-    uint8 *wt_main = window[t->layer].main;
-    uint8 *wt_sub  = window[t->layer].sub;
-
     if(t->x > 256 && (t->x + t->width - 1) < 512) continue;
     if(line < t->y) continue;
     if(line >= t->y + t->height) continue;
@@ -136,13 +133,16 @@ void PPU::render_line_extra() {
     unsigned sx = t->x;
     unsigned y = (t->vflip == false) ? (line - t->y) : (t->height-1 - (line - t->y));
 
-    uint8 *vram = get_extra_vram(t->extra);
+    uint8 *vram = get_extra_vram(t->space);
     if (!vram) continue;
 
-    uint8 *cgram = get_extra_cgram(t->extra);
+    uint8 *cgram = get_extra_cgram(t->space);
     if(!cgram) continue;
 
-    vram += t->vram_addr << 1;
+    uint8 *wt_main = window[t->layer].main;
+    uint8 *wt_sub  = window[t->layer].sub;
+
+    vram += t->vram_addr;
     for(unsigned tx = 0; tx < t->width; tx++, sx++) {
       sx &= 511;
       if(sx >= 256) continue;
