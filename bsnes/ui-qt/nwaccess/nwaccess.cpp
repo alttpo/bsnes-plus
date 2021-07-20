@@ -579,10 +579,13 @@ QByteArray NWAccess::cmdPpuxReset(QByteArray args)
 
 QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
 {
-    QStringList sargs = QString::fromUtf8(args).split(';');
+    QStringList sprs = QString::fromUtf8(args).split('|');
 
     QString reply;
-    while (!sargs.isEmpty()) {
+    while (!sprs.isEmpty()) {
+        QStringList sargs = sprs.takeFirst().split(';');
+        if (sargs.isEmpty()) continue;
+
         QString arg = sargs.takeFirst();
         auto index = toInt(arg);
         if (index < 0 || index >= SNES::PPU::extra_count)
