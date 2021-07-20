@@ -356,6 +356,20 @@ void PPU::reset() {
   memset(sprite_list, 0, sizeof(sprite_list));
   sprite_list_valid = false;
 
+  ppuxReset();
+
+  //open bus support
+  regs.ppu1_mdr = 0xff;
+  regs.ppu2_mdr = 0xff;
+
+  //bg line counters
+  regs.bg_y[0] = 0;
+  regs.bg_y[1] = 0;
+  regs.bg_y[2] = 0;
+  regs.bg_y[3] = 0;
+}
+
+void PPU::ppuxReset() {
   memset(extra_list, 0, sizeof(extra_list));
   for (unsigned i = 0; i < extra_spaces; i++) {
     if (extra_vram[i]) {
@@ -367,16 +381,6 @@ void PPU::reset() {
       extra_cgram[i] = nullptr;
     }
   }
-
-  //open bus support
-  regs.ppu1_mdr = 0xff;
-  regs.ppu2_mdr = 0xff;
-
-  //bg line counters
-  regs.bg_y[0] = 0;
-  regs.bg_y[1] = 0;
-  regs.bg_y[2] = 0;
-  regs.bg_y[3] = 0;
 }
 
 void PPU::layer_enable(unsigned layer, unsigned priority, bool enable) {
