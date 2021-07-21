@@ -5,21 +5,28 @@ namespace WASM {
 Host host(1024);
 
 void Host::reset() {
-  runtimes.clear();
+  m_runtimes.clear();
 }
 
 void Host::add_module(const uint8_t *data, size_t size) {
-  wasm3::module mod = env.parse_module(data, size);
+  IM3Module module;
+  M3Result err = m3_ParseModule(m_env.get(), &module, data, size);
 
-  auto runtime = env.new_runtime(default_stack_size);
-  runtime.load(mod);
+  std::shared_ptr<M3Runtime> runtime;
+  runtime.reset(m3_NewRuntime(m_env.get(), default_stack_size_bytes, nullptr), &m3_FreeRuntime);
+  if (runtime == nullptr) {
+      throw std::bad_alloc();
+  }
 
-  runtimes.push_back(runtime);
+  err = m3_LoadModule(runtime.get(), module);
+
+  m_runtimes.push_back(runtime);
 }
 
-void Host::invoke_all(const char *name, std::function<void(wasm3::function&)> cb) {
-  for (auto &runtime: runtimes) {
-    auto func = runtime.find_function(name);
+void Host::invoke_all(const char *name, std::function<void(M3Function*)> cb) {
+  for (auto &runtime: m_runtimes) {
+    M3Function *func;
+    M3Result err = m3_FindFunction(&func, runtime.get(), name);
     cb(func);
   }
 }

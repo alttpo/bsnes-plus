@@ -1,3 +1,4 @@
+#include <wasm/host.hpp>
 #include "nwaccess.moc"
 #include <QTcpSocket>
 #include <QMap>
@@ -187,6 +188,10 @@ void NWAccess::clientDataReady()
                 socket->write(cmdDebugContinue());
             }
 #endif
+            else if (cmd == "WASM_RESET")
+            {
+                WASM::host.reset();
+            }
             else if (cmd == "PPUX_RESET")
             {
                 socket->write(cmdPpuxReset(args));
