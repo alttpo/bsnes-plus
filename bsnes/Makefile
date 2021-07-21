@@ -2,6 +2,7 @@ common := ../common
 nall   := $(common)/nall
 include $(nall)/Makefile
 snes := snes
+wasm := wasm
 ifeq ($(ui),)
   ui := ui-qt
 endif
@@ -84,6 +85,7 @@ compile = \
 all: build plugins;
 
 include $(snes)/Makefile
+include $(wasm)/Makefile
 include $(ui)/Makefile
 
 objects := $(patsubst %,$(objdir)/%.o,$(objects))
