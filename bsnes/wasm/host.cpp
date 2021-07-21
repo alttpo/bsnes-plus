@@ -40,8 +40,10 @@ void Host::add_module(const uint8_t *data, size_t size) {
 }
 
 void Host::link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall) {
+  M3Result res;
   for (auto &module: m_modules) {
-    m3_LinkRawFunction(module.get(), module_name, function_name, signature, rawcall);
+    res = m3_LinkRawFunction(module.get(), module_name, function_name, signature, rawcall);
+    check_error(res);
   }
 }
 
