@@ -55,9 +55,13 @@ protected:
     QByteArray cmdPpuxRamRead(QByteArray args);
 
     // wasm bindings:
+    static const char *wasmsig_ppux_reset;
     m3ApiRawFunction(wasm_ppux_reset);
+    static const char *wasmsig_ppux_sprite_write;
     m3ApiRawFunction(wasm_ppux_sprite_write);
+    static const char *wasmsig_ppux_ram_write;
     m3ApiRawFunction(wasm_ppux_ram_write);
+    static const char *wasmsig_ppux_ram_read;
     m3ApiRawFunction(wasm_ppux_ram_read);
 
 public slots:
