@@ -21,6 +21,11 @@ struct ppux_sprite {
   uint16_t height;            // number of pixels high
 };
 
+enum memory_type : uint32_t {
+  VRAM,
+  CGRAM
+};
+
 const char *NWAccess::wasmsig_ppux_reset = "v()";
 m3ApiRawFunction(NWAccess::wasm_ppux_reset)
 {
@@ -73,7 +78,7 @@ m3ApiRawFunction(NWAccess::wasm_ppux_sprite_write) {
   t.width = i_spr->width;
   t.height = i_spr->height;
 
-  m3ApiSuccess();
+  m3ApiReturn(0);
 }
 
 const char *NWAccess::wasmsig_ppux_ram_write = "v(ii*i)";
@@ -81,7 +86,53 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_write) {
   m3ApiSuccess();
 }
 
-const char *NWAccess::wasmsig_ppux_ram_read = "v(ii*i)";
+const char *NWAccess::wasmsig_ppux_ram_read = "i(iii*i)";
 m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
+  m3ApiReturnType(int32_t)
+
+  m3ApiGetArg   (memory_type, i_memory)
+  m3ApiGetArg   (uint32_t,    i_space)
+  m3ApiGetArg   (uint32_t,    i_offset)
+  m3ApiGetArgMem(uint8_t*,    o_data)
+  m3ApiGetArg   (uint32_t,    i_size)
+
+  if (i_space >= SNES::PPU::extra_spaces) {
+    //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+    m3ApiReturn(-2);
+  }
+
+  unsigned maxSize = 0;
+  uint8_t *t = nullptr;
+  if (i_memory == memory_type::VRAM) {
+    t = SNES::ppu.get_vram_space(i_space);
+    maxSize = 0x10000;
+  } else if (i_memory == memory_type::CGRAM) {
+    t = SNES::ppu.get_cgram_space(i_space);
+    maxSize = 0x200;
+  } else {
+    //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
+    m3ApiReturn(-1);
+  }
+  if (!t) {
+    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    m3ApiReturn(-1);
+  }
+
+  if (i_offset >= maxSize) {
+    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
+    m3ApiReturn(-3);
+  }
+  if (i_offset & 1) {
+    //return makeErrorReply("offset must be multiple of 2");
+    m3ApiReturn(-4);
+  }
+
+  if (i_offset + i_size > maxSize) {
+    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
+    m3ApiReturn(-5);
+  }
+
+  memcpy(o_data, t + i_offset, i_size);
+
   m3ApiSuccess();
 }
