@@ -47,6 +47,14 @@ void Host::link(const char *module_name, const char *function_name, const char *
   }
 }
 
+void Host::linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata) {
+  M3Result res;
+  for (auto &module: m_modules) {
+    res = m3_LinkRawFunctionEx(module.get(), module_name, function_name, signature, rawcall, userdata);
+    check_error(res);
+  }
+}
+
 void Host::invoke_all(const char *name, int argc, const char* argv[]) {
   M3Result res;
   for (auto &runtime: m_runtimes) {
