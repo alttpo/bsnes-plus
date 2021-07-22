@@ -23,10 +23,9 @@ struct RawCall {
 };
 
 struct Module {
-  Module(const std::shared_ptr<struct M3Environment>& env, const uint8_t *data, size_t size);
+  Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
   Module(Module&&);
 
-  void load_into(const std::shared_ptr<struct M3Runtime>& runtime);
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
   void linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata);
 
@@ -35,6 +34,7 @@ struct Module {
   size_t m_size;
   std::shared_ptr<struct M3Module> m_module;
   bool m_loaded;
+  std::shared_ptr<struct M3Runtime> m_runtime;
 };
 
 struct Host {
@@ -46,9 +46,8 @@ struct Host {
   }
 
   void reset();
-  void add_module(const uint8_t *data, size_t size);
-  void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
-  void linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata);
+  Module parse_module(const uint8_t *data, size_t size);
+  void add_module(Module& module);
   void invoke_all(const char *name, int argc, const char* argv[]);
 
 public:
