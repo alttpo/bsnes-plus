@@ -1,4 +1,3 @@
-#include <wasm/host.hpp>
 #include "nwaccess.moc"
 #include <QTcpSocket>
 #include <QMap>
@@ -191,6 +190,60 @@ void NWAccess::clientDataReady()
             else if (cmd == "WASM_RESET")
             {
                 WASM::host.reset();
+                socket->write(makeOkReply());
+            }
+            else if (cmd == "WASM_ADD")
+            {
+                if (data.length()-p-1 < 1) break; // did not receive binary start
+                if (data[p+1] != '\0') { // no binary data
+                    socket->write(makeErrorReply("no data"));
+                } else {
+                    if (data.length() - p - 1 < 5) break; // did not receive binary header yet
+                    quint32 len = qFromBigEndian<quint32>(data.constData() + p + 1 + 1);
+                    if ((unsigned) data.length() - p - 1 - 5 < len) break; // did not receive complete binary data yet
+
+                    QByteArray wr = data.mid(p + 1 + 5, len);
+                    try {
+                        WASM::host.add_module(reinterpret_cast<const uint8_t *>(wr.constData()), wr.size());
+                        WASM::host.linkEx("*", "ppux_reset", "v()", &WASM::RawCall<decltype(&NWAccess::wasm_ppux_reset)>::adapter<&NWAccess::wasm_ppux_reset>, (const void *)this);
+                        socket->write(makeOkReply());
+                    } catch (WASM::error& err) {
+                        socket->write(makeErrorReply(err.what()));
+                    }
+
+                    data = data.mid(p+1+5+len); // remove wr data from buffer
+                    continue;
+                }
+            }
+            else if (cmd == "WASM_INVOKE")
+            {
+                try {
+                    QStringList items = QString::fromUtf8(args).split(';');
+
+                    const char *function_name = items[0].toUtf8().constData();
+                    QString reply = "name:";
+                    reply += items[0];
+
+                    const char **argv = nullptr;
+                    size_t count = items.size() - 1;
+                    if (count > 0) {
+                        argv = new const char *[count];
+                        for (unsigned i = 0; i < count; i++) {
+                            QString item = items.at(i + 1);
+                            reply += QString("\np%1:%2").arg(i).arg(item);
+
+                            argv[i] = item.toUtf8().constData();
+                        }
+                    }
+
+                    WASM::host.invoke_all(function_name, count, argv);
+
+                    if (argv) delete[] argv;
+
+                    socket->write(makeHashReply(reply));
+                } catch (WASM::error& err) {
+                    socket->write(makeErrorReply(err.what()));
+                }
             }
             else if (cmd == "PPUX_RESET")
             {
@@ -567,6 +620,12 @@ QByteArray NWAccess::cmdPpuxReset(QByteArray args)
 {
     SNES::ppu.ppuxReset();
     return makeOkReply();
+}
+
+m3ApiRawFunction(NWAccess::wasm_ppux_reset)
+{
+    SNES::ppu.ppuxReset();
+    m3ApiSuccess();
 }
 
 QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)

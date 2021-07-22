@@ -1,6 +1,7 @@
 #include <QTcpServer>
 #include <QObject>
 #include <QMap>
+#include <wasm/host.hpp>
 
 class NWAccess : public QObject
 {
@@ -47,6 +48,9 @@ protected:
     QByteArray cmdPpuxSpriteRead(QByteArray args);
     QByteArray cmdPpuxRamWrite(QByteArray args, QByteArray data);
     QByteArray cmdPpuxRamRead(QByteArray args);
+
+    // wasm bindings:
+    m3ApiRawFunction(wasm_ppux_reset);
 
 public slots:
     void newConnection();
