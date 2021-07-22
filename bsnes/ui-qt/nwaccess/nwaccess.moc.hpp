@@ -51,6 +51,9 @@ protected:
 
     // wasm bindings:
     m3ApiRawFunction(wasm_ppux_reset);
+    m3ApiRawFunction(wasm_ppux_sprite_write);
+    m3ApiRawFunction(wasm_ppux_ram_write);
+    m3ApiRawFunction(wasm_ppux_ram_read);
 
 public slots:
     void newConnection();
