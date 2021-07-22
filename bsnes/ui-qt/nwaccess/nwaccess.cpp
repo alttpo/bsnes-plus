@@ -205,7 +205,7 @@ void NWAccess::clientDataReady()
                     QByteArray wr = data.mid(p + 1 + 5, len);
                     try {
                         WASM::host.add_module(reinterpret_cast<const uint8_t *>(wr.constData()), wr.size());
-                        WASM::host.linkEx("*", "ppux_reset", "v()", &WASM::RawCall<decltype(&NWAccess::wasm_ppux_reset)>::adapter<&NWAccess::wasm_ppux_reset>, (const void *)this);
+                        WASM::host.linkEx("*", "ppux_reset", "v()", &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_ppux_reset>, (const void *)this);
 
                         socket->write(makeOkReply());
                     } catch (WASM::error& err) {
