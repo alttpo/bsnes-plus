@@ -10,8 +10,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __APPLE__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wavailability"
+#  define GL_SILENCE_DEPRECATION
+#endif
+
 #define QT_CORE_LIB
 #include <QtWidgets>
+
+#ifdef __APPLE__
+#  pragma clang diagnostic pop
+#endif
 
 #include <nall/config.hpp>
 #include <nall/detect.hpp>

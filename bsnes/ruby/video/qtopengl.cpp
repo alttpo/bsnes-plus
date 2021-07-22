@@ -1,5 +1,9 @@
 #ifdef __APPLE__
-  #include <OpenGL/OpenGL.h>
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wavailability"
+#  define GL_SILENCE_DEPRECATION
+#  include <OpenGL/OpenGL.h>
+#  pragma clang diagnostic pop
 #endif
 
 namespace ruby {
