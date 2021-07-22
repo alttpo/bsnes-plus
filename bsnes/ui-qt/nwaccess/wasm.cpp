@@ -20,6 +20,8 @@ QByteArray NWAccess::cmdWasmAdd(QByteArray args, QByteArray data)
     wasm_link(ppux_sprite_write);
     wasm_link(ppux_ram_read);
 
+#undef wasm_link
+
     WASM::host.add_module(module);
 
     reply = makeOkReply();
