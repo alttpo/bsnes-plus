@@ -43,6 +43,11 @@ protected:
     QByteArray cmdDebugBreak();
     QByteArray cmdDebugContinue();
 #endif
+
+    QByteArray cmdWasmReset(QByteArray args);
+    QByteArray cmdWasmAdd(QByteArray args, QByteArray data);
+    QByteArray cmdWasmInvoke(QByteArray args);
+
     QByteArray cmdPpuxReset(QByteArray args);
     QByteArray cmdPpuxSpriteWrite(QByteArray args);
     QByteArray cmdPpuxSpriteRead(QByteArray args);
