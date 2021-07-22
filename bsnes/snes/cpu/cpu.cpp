@@ -66,6 +66,9 @@ void CPU::enter() {
         status.nmi_pending = false;
         status.interrupt_vector = (regs.e == false ? 0xffea : 0xfffa);
         op_irq();
+
+        // wasm: call on_nmi() function in all modules and runtimes:
+        WASM::host.invoke_all("on_nmi", 0, nullptr);
       } else if(status.irq_pending) {
         status.irq_pending = false;
         status.interrupt_vector = (regs.e == false ? 0xffee : 0xfffe);
