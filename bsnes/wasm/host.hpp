@@ -1,7 +1,8 @@
 #pragma once
 
 #include <optional>
-#include <vector>
+#include <map>
+#include <string>
 
 #include "wasm3.h"
 
@@ -47,15 +48,15 @@ struct Host {
 
   void reset();
   Module parse_module(const uint8_t *data, size_t size);
-  void add_module(Module& module);
+  void load_module(const std::string& key, Module& module);
+  void unload_module(const std::string& key);
   void invoke_all(const char *name, int argc, const char* argv[]);
 
 public:
   size_t default_stack_size_bytes;
 
-  std::shared_ptr<struct M3Environment>           m_env;
-  std::vector<std::shared_ptr<struct M3Runtime>>  m_runtimes;
-  std::vector<Module>                             m_modules;
+  std::shared_ptr<struct M3Environment> m_env;
+  std::map<std::string, Module>         m_modules;
 };
 
 extern Host host;

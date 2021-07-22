@@ -45,7 +45,8 @@ protected:
 #endif
 
     QByteArray cmdWasmReset(QByteArray args);
-    QByteArray cmdWasmAdd(QByteArray args, QByteArray data);
+    QByteArray cmdWasmLoad(QByteArray args, QByteArray data);
+    QByteArray cmdWasmUnload(QByteArray args);
     QByteArray cmdWasmInvoke(QByteArray args);
 
     QByteArray cmdPpuxReset(QByteArray args);
