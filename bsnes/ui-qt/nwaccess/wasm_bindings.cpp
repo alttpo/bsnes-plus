@@ -241,8 +241,6 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
 
 const char *NWAccess::wasmsig_snes_bus_read = "v(i*i)";
 m3ApiRawFunction(NWAccess::wasm_snes_bus_read) {
-  m3ApiReturnType(int32_t)
-
   m3ApiGetArg   (uint32_t, i_address)
   m3ApiGetArgMem(uint8_t*, o_data)
   m3ApiGetArg   (uint32_t, i_size)
@@ -258,8 +256,6 @@ m3ApiRawFunction(NWAccess::wasm_snes_bus_read) {
 
 const char *NWAccess::wasmsig_snes_bus_write = "v(i*i)";
 m3ApiRawFunction(NWAccess::wasm_snes_bus_write) {
-  m3ApiReturnType(int32_t)
-
   m3ApiGetArg   (uint32_t, i_address)
   m3ApiGetArgMem(uint8_t*, i_data)
   m3ApiGetArg   (uint32_t, i_size)
