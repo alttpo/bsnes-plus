@@ -21,7 +21,7 @@ struct ppux_sprite {
   uint16_t height;            // number of pixels high
 };
 
-enum memory_type : uint32_t {
+enum ppux_memory_type : uint32_t {
   VRAM,
   CGRAM
 };
@@ -139,11 +139,11 @@ const char *NWAccess::wasmsig_ppux_ram_write = "i(iii*i)";
 m3ApiRawFunction(NWAccess::wasm_ppux_ram_write) {
   m3ApiReturnType(int32_t)
 
-  m3ApiGetArg   (memory_type, i_memory)
-  m3ApiGetArg   (uint32_t,    i_space)
-  m3ApiGetArg   (uint32_t,    i_offset)
-  m3ApiGetArgMem(uint8_t*,    i_data)
-  m3ApiGetArg   (uint32_t,    i_size)
+  m3ApiGetArg   (ppux_memory_type,  i_memory)
+  m3ApiGetArg   (uint32_t,          i_space)
+  m3ApiGetArg   (uint32_t,          i_offset)
+  m3ApiGetArgMem(uint8_t*,          i_data)
+  m3ApiGetArg   (uint32_t,          i_size)
 
   if (i_space >= SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
@@ -152,10 +152,10 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_write) {
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  if (i_memory == memory_type::VRAM) {
+  if (i_memory == ppux_memory_type::VRAM) {
     t = SNES::ppu.get_vram_space(i_space);
     maxSize = 0x10000;
-  } else if (i_memory == memory_type::CGRAM) {
+  } else if (i_memory == ppux_memory_type::CGRAM) {
     t = SNES::ppu.get_cgram_space(i_space);
     maxSize = 0x200;
   } else {
@@ -190,11 +190,11 @@ const char *NWAccess::wasmsig_ppux_ram_read = "i(iii*i)";
 m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
   m3ApiReturnType(int32_t)
 
-  m3ApiGetArg   (memory_type, i_memory)
-  m3ApiGetArg   (uint32_t,    i_space)
-  m3ApiGetArg   (uint32_t,    i_offset)
-  m3ApiGetArgMem(uint8_t*,    o_data)
-  m3ApiGetArg   (uint32_t,    i_size)
+  m3ApiGetArg   (ppux_memory_type,  i_memory)
+  m3ApiGetArg   (uint32_t,          i_space)
+  m3ApiGetArg   (uint32_t,          i_offset)
+  m3ApiGetArgMem(uint8_t*,          o_data)
+  m3ApiGetArg   (uint32_t,          i_size)
 
   if (i_space >= SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
@@ -203,10 +203,10 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  if (i_memory == memory_type::VRAM) {
+  if (i_memory == ppux_memory_type::VRAM) {
     t = SNES::ppu.get_vram_space(i_space);
     maxSize = 0x10000;
-  } else if (i_memory == memory_type::CGRAM) {
+  } else if (i_memory == ppux_memory_type::CGRAM) {
     t = SNES::ppu.get_cgram_space(i_space);
     maxSize = 0x200;
   } else {
