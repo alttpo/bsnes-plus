@@ -58,16 +58,20 @@ protected:
     void wasm_link(WASM::Module& module);
 
     // wasm bindings:
-    static const char *wasmsig_ppux_reset;
-    m3ApiRawFunction(wasm_ppux_reset);
-    static const char *wasmsig_ppux_sprite_read;
-    m3ApiRawFunction(wasm_ppux_sprite_read);
-    static const char *wasmsig_ppux_sprite_write;
-    m3ApiRawFunction(wasm_ppux_sprite_write);
-    static const char *wasmsig_ppux_ram_write;
-    m3ApiRawFunction(wasm_ppux_ram_write);
-    static const char *wasmsig_ppux_ram_read;
-    m3ApiRawFunction(wasm_ppux_ram_read);
+#define decl_binding(name) \
+    static const char *wasmsig_##name; \
+    m3ApiRawFunction(wasm_##name)
+
+    decl_binding(ppux_reset);
+    decl_binding(ppux_sprite_read);
+    decl_binding(ppux_sprite_write);
+    decl_binding(ppux_ram_write);
+    decl_binding(ppux_ram_read);
+
+    decl_binding(snes_bus_read);
+    decl_binding(snes_bus_write);
+
+#undef decl_binding
 
 public slots:
     void newConnection();

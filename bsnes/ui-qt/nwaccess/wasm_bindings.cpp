@@ -14,7 +14,7 @@ struct ppux_sprite {
 
   uint8_t  layer;             // 0.. 4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
   uint8_t  priority;          // 1..12
-  uint8_t  color_exemption;     // true = ignore color math, false = obey color math
+  uint8_t  color_exemption;   // true = ignore color math, false = obey color math
 
   uint8_t  bpp;               // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
   uint16_t width;             // number of pixels width
@@ -37,12 +37,14 @@ void NWAccess::wasm_link(WASM::Module& module) {
   link(ppux_ram_read);
   link(ppux_ram_write);
 
+  link(snes_bus_read);
+  link(snes_bus_write);
+
 #undef link
 }
 
 const char *NWAccess::wasmsig_ppux_reset = "v()";
-m3ApiRawFunction(NWAccess::wasm_ppux_reset)
-{
+m3ApiRawFunction(NWAccess::wasm_ppux_reset) {
   SNES::ppu.ppuxReset();
   m3ApiSuccess();
 }
@@ -235,4 +237,37 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
   memcpy(o_data, t + i_offset, i_size);
 
   m3ApiReturn(0);
+}
+
+const char *NWAccess::wasmsig_snes_bus_read = "v(i*i)";
+m3ApiRawFunction(NWAccess::wasm_snes_bus_read) {
+  m3ApiReturnType(int32_t)
+
+  m3ApiGetArg   (uint32_t, i_address)
+  m3ApiGetArgMem(uint8_t*, o_data)
+  m3ApiGetArg   (uint32_t, i_size)
+
+  for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
+    uint8_t b;
+    b = SNES::bus.read(a);
+    o_data[o] = b;
+  }
+
+  m3ApiSuccess();
+}
+
+const char *NWAccess::wasmsig_snes_bus_write = "v(i*i)";
+m3ApiRawFunction(NWAccess::wasm_snes_bus_write) {
+  m3ApiReturnType(int32_t)
+
+  m3ApiGetArg   (uint32_t, i_address)
+  m3ApiGetArgMem(uint8_t*, i_data)
+  m3ApiGetArg   (uint32_t, i_size)
+
+  for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
+    uint8_t b = i_data[o];
+    SNES::bus.write(a, b);
+  }
+
+  m3ApiSuccess();
 }

@@ -1,4 +1,4 @@
-clang \
+/usr/local/opt/llvm/bin/clang \
   --target=wasm32 \
   -O3 \
   -flto \
