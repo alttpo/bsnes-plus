@@ -13,9 +13,12 @@ QByteArray NWAccess::cmdWasmAdd(QByteArray args, QByteArray data)
     WASM::Module module = WASM::host.parse_module(reinterpret_cast<const uint8_t *>(data.constData()), data.size());
 
     // link wasm_bindings.cpp member functions:
-    module.linkEx("*", "ppux_reset", wasmsig_ppux_reset, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_ppux_reset>, (const void *)this);
-    module.linkEx("*", "ppux_sprite_write", wasmsig_ppux_sprite_write, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_ppux_sprite_write>, (const void *)this);
-    module.linkEx("*", "ppux_ram_read", wasmsig_ppux_ram_read, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_ppux_ram_read>, (const void *)this);
+#define wasm_link(name) \
+    module.linkEx("*", #name, wasmsig_##name, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_##name>, (const void *)this)
+
+    wasm_link(ppux_reset);
+    wasm_link(ppux_sprite_write);
+    wasm_link(ppux_ram_read);
 
     WASM::host.add_module(module);
 
