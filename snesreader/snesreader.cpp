@@ -10,8 +10,18 @@
 #include "libjma/jma.h"
 extern "C" char* uncompressStream(int, int);  //micro-bunzip
 
+#ifdef __APPLE__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wavailability"
+#  define GL_SILENCE_DEPRECATION
+#endif
+
 #define QT_CORE_LIB
 #include <QtWidgets>
+
+#ifdef __APPLE__
+#  pragma clang diagnostic pop
+#endif
 
 #include <nall/file.hpp>
 #include <nall/string.hpp>

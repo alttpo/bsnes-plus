@@ -4,10 +4,20 @@
 #define QT_THREAD_SUPPORT
 #endif
 
+#ifdef __APPLE__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wavailability"
+#  define GL_SILENCE_DEPRECATION
+#endif
+
 #include <QApplication>
 #include <QtWidgets>
 //Q_IMPORT_PLUGIN(QJpegPlugin)
 //Q_IMPORT_PLUGIN(QMngPlugin)
+
+#ifdef __APPLE__
+#  pragma clang diagnostic pop
+#endif
 
 #include <snes.hpp>
 

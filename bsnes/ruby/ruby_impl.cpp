@@ -1,5 +1,11 @@
 /* Global Headers */
 
+#ifdef __APPLE__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wavailability"
+#  define GL_SILENCE_DEPRECATION
+#endif
+
 #if defined(VIDEO_QTOPENGL) || defined(VIDEO_QTRASTER)
   #include <QApplication>
   #include <QtWidgets>
@@ -24,6 +30,10 @@
 #elif defined(PLATFORM_WIN)
   #define _WIN32_WINNT 0x0501
   #include <windows.h>
+#endif
+
+#ifdef __APPLE__
+#  pragma clang diagnostic pop
 #endif
 
 /* Video */
