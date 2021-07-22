@@ -95,7 +95,6 @@ void Module::linkEx(const char *module_name, const char *function_name, const ch
 
 
 void Host::reset() {
-  m_runtimes.clear();
   m_modules.clear();
 }
 
@@ -103,21 +102,25 @@ Module Host::parse_module(const uint8_t *data, size_t size) {
   return Module(m_env, default_stack_size_bytes, data, size);
 }
 
-void Host::add_module(Module& module) {
-  //printf("add_module()\n");
-  m_runtimes.push_back(module.m_runtime);
-  m_modules.push_back(std::move(module));
+void Host::load_module(const std::string &key, Module &module) {
+  //printf("load_module()\n");
+  m_modules.emplace(key, std::move(module));
+}
+
+void Host::unload_module(const std::string &key) {
+  //printf("load_module()\n");
+  m_modules.erase(key);
 }
 
 void Host::invoke_all(const char *name, int argc, const char**argv) {
   M3Result res;
   //printf("invoke_all('%s', %d, %p)\n", name, argc, argv);
 
-  for (auto &runtime: m_runtimes) {
+  for(std::map<std::string, Module>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
     M3Function *func;
 
     //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime.get(), name);
-    res = m3_FindFunction(&func, runtime.get(), name);
+    res = m3_FindFunction(&func, it->second.m_runtime.get(), name);
     check_error(res);
 
     //printf("  m3_CallArgv(%p, %d, %p)\n", func, argc, argv);

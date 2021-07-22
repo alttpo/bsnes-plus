@@ -5,17 +5,44 @@ QByteArray NWAccess::cmdWasmReset(QByteArray args)
   return makeOkReply();
 }
 
-QByteArray NWAccess::cmdWasmAdd(QByteArray args, QByteArray data)
+QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
 {
-  QByteArray reply;
+  QStringList items = QString::fromUtf8(args).split(';');
 
+  if (items.isEmpty()) {
+    return makeErrorReply("missing module name");
+  }
+  std::string module_name = items.takeFirst().toStdString();
+
+  QByteArray reply;
   try {
+
     WASM::Module module = WASM::host.parse_module(reinterpret_cast<const uint8_t *>(data.constData()), data.size());
 
     // link wasm functions:
     wasm_link(module);
 
-    WASM::host.add_module(module);
+    WASM::host.load_module(module_name, module);
+
+    reply = makeOkReply();
+  } catch (WASM::error& err) {
+    reply = makeErrorReply(err.what());
+  }
+
+  return reply;
+}
+
+QByteArray NWAccess::cmdWasmUnload(QByteArray args)
+{
+  QStringList items = QString::fromUtf8(args).split(';');
+  if (items.isEmpty()) {
+    return makeErrorReply("missing module name");
+  }
+  std::string module_name = items.takeFirst().toStdString();
+
+  QByteArray reply;
+  try {
+    WASM::host.unload_module(module_name);
 
     reply = makeOkReply();
   } catch (WASM::error& err) {

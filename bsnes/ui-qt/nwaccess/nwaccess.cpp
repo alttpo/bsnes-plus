@@ -191,7 +191,11 @@ void NWAccess::clientDataReady()
             {
                 socket->write(cmdWasmReset(args));
             }
-            else if (cmd == "WASM_ADD")
+            else if (cmd == "WASM_UNLOAD")
+            {
+                socket->write(cmdWasmUnload(args));
+            }
+            else if (cmd == "WASM_LOAD")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
@@ -202,7 +206,7 @@ void NWAccess::clientDataReady()
                     if ((unsigned) data.length() - p - 1 - 5 < len) break; // did not receive complete binary data yet
 
                     QByteArray wr = data.mid(p + 1 + 5, len);
-                    socket->write(cmdWasmAdd(args, wr));
+                    socket->write(cmdWasmLoad(args, wr));
 
                     data = data.mid(p+1+5+len); // remove wr data from buffer
                     continue;
