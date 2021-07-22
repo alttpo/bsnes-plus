@@ -15,7 +15,7 @@ template <class T>
 struct RawCall;
 
 template <class T>
-struct RawCall<const void * (T::*) (IM3Runtime runtime, IM3ImportContext _ctx, uint64_t * _sp, void * _mem)> {
+struct RawCall {
   template <const void * (T::*Func) (IM3Runtime runtime, IM3ImportContext _ctx, uint64_t * _sp, void * _mem)>
   static const void * adapter(IM3Runtime runtime, IM3ImportContext _ctx, uint64_t * _sp, void * _mem) {
     return (reinterpret_cast<T*>(_ctx->userdata)->*Func)(runtime, _ctx, _sp, _mem);
