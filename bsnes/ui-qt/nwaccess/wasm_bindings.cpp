@@ -26,11 +26,65 @@ enum memory_type : uint32_t {
   CGRAM
 };
 
+void NWAccess::wasm_link(WASM::Module& module) {
+// link wasm_bindings.cpp member functions:
+#define link(name) \
+  module.linkEx("*", #name, wasmsig_##name, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_##name>, (const void *)this)
+
+  link(ppux_reset);
+  link(ppux_sprite_read);
+  link(ppux_sprite_write);
+  link(ppux_ram_read);
+  link(ppux_ram_write);
+
+#undef link
+}
+
 const char *NWAccess::wasmsig_ppux_reset = "v()";
 m3ApiRawFunction(NWAccess::wasm_ppux_reset)
 {
   SNES::ppu.ppuxReset();
   m3ApiSuccess();
+}
+
+const char *NWAccess::wasmsig_ppux_sprite_read = "i(i*)";
+m3ApiRawFunction(NWAccess::wasm_ppux_sprite_read) {
+  m3ApiReturnType(int32_t)
+
+  m3ApiGetArg   (uint32_t,             i_index)
+  m3ApiGetArgMem(struct ppux_sprite *, o_spr)
+
+  if (i_index >= SNES::PPU::extra_count) {
+    m3ApiReturn(-1);
+  }
+
+  if (!o_spr) {
+    m3ApiReturn(-2);
+  }
+
+  auto &t = SNES::ppu.extra_list[i_index];
+
+  o_spr->enabled = t.enabled;
+
+  o_spr->x = t.x;
+  o_spr->y = t.y;
+  o_spr->hflip = t.hflip;
+  o_spr->vflip = t.vflip;
+
+  o_spr->vram_space = t.vram_space;
+  o_spr->vram_addr = t.vram_addr;
+  o_spr->cgram_space = t.cgram_space;
+  o_spr->palette = t.palette;
+
+  o_spr->layer = t.layer;
+  o_spr->priority = t.priority;
+  o_spr->color_exemption = t.color_exemption;
+
+  o_spr->bpp = t.bpp;
+  o_spr->width = t.width;
+  o_spr->height = t.height;
+
+  m3ApiReturn(0);
 }
 
 const char *NWAccess::wasmsig_ppux_sprite_write = "i(i*)";
