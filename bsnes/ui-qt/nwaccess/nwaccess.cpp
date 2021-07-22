@@ -206,6 +206,7 @@ void NWAccess::clientDataReady()
                     try {
                         WASM::host.add_module(reinterpret_cast<const uint8_t *>(wr.constData()), wr.size());
                         WASM::host.linkEx("*", "ppux_reset", "v()", &WASM::RawCall<decltype(&NWAccess::wasm_ppux_reset)>::adapter<&NWAccess::wasm_ppux_reset>, (const void *)this);
+
                         socket->write(makeOkReply());
                     } catch (WASM::error& err) {
                         socket->write(makeErrorReply(err.what()));
@@ -217,13 +218,12 @@ void NWAccess::clientDataReady()
             }
             else if (cmd == "WASM_INVOKE")
             {
+                QStringList items = QString::fromUtf8(args).split(';');
+
+                QString reply = "name:";
+                reply += items[0];
+
                 try {
-                    QStringList items = QString::fromUtf8(args).split(';');
-
-                    const char *function_name = items[0].toUtf8().constData();
-                    QString reply = "name:";
-                    reply += items[0];
-
                     const char **argv = nullptr;
                     size_t count = items.size() - 1;
                     if (count > 0) {
@@ -236,14 +236,20 @@ void NWAccess::clientDataReady()
                         }
                     }
 
+                    QString function_name_qs = items[0];
+                    QByteArray function_name_qba = function_name_qs.toUtf8();
+                    const char *function_name = function_name_qba.constData();
+
                     WASM::host.invoke_all(function_name, count, argv);
 
                     if (argv) delete[] argv;
 
-                    socket->write(makeHashReply(reply));
                 } catch (WASM::error& err) {
-                    socket->write(makeErrorReply(err.what()));
+                    if (!reply.isEmpty()) reply.append('\n');
+                    reply += "error:";
+                    reply += err.what();
                 }
+                socket->write(makeHashReply(reply));
             }
             else if (cmd == "PPUX_RESET")
             {
