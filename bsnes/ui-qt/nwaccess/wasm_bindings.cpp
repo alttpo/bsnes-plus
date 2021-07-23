@@ -32,6 +32,7 @@ void NWAccess::wasm_link(WASM::Module& module) {
   module.linkEx("*", #name, wasmsig_##name, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_##name>, (const void *)this)
 
   link(ppux_reset);
+  link(ppux_sprite_reset);
   link(ppux_sprite_read);
   link(ppux_sprite_write);
   link(ppux_ram_read);
@@ -45,7 +46,13 @@ void NWAccess::wasm_link(WASM::Module& module) {
 
 const char *NWAccess::wasmsig_ppux_reset = "v()";
 m3ApiRawFunction(NWAccess::wasm_ppux_reset) {
-  SNES::ppu.ppuxReset();
+  SNES::ppu.ppux_reset();
+  m3ApiSuccess();
+}
+
+const char *NWAccess::wasmsig_ppux_sprite_reset = "v()";
+m3ApiRawFunction(NWAccess::wasm_ppux_sprite_reset) {
+  SNES::ppu.ppux_sprite_reset();
   m3ApiSuccess();
 }
 

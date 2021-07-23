@@ -359,7 +359,7 @@ void PPU::reset() {
   memset(sprite_list, 0, sizeof(sprite_list));
   sprite_list_valid = false;
 
-  ppuxReset();
+  ppux_reset();
 
   //open bus support
   regs.ppu1_mdr = 0xff;
@@ -370,20 +370,6 @@ void PPU::reset() {
   regs.bg_y[1] = 0;
   regs.bg_y[2] = 0;
   regs.bg_y[3] = 0;
-}
-
-void PPU::ppuxReset() {
-  memset(extra_list, 0, sizeof(extra_list));
-  for (unsigned i = 0; i < extra_spaces; i++) {
-    if (vram_space[i]) {
-      delete vram_space[i];
-      vram_space[i] = nullptr;
-    }
-    if (cgram_space[i]) {
-      delete cgram_space[i];
-      cgram_space[i] = nullptr;
-    }
-  }
 }
 
 void PPU::layer_enable(unsigned layer, unsigned priority, bool enable) {

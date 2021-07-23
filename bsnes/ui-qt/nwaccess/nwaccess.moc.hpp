@@ -50,6 +50,7 @@ protected:
     QByteArray cmdWasmInvoke(QByteArray args);
 
     QByteArray cmdPpuxReset(QByteArray args);
+    QByteArray cmdPpuxSpriteReset(QByteArray args);
     QByteArray cmdPpuxSpriteWrite(QByteArray args);
     QByteArray cmdPpuxSpriteRead(QByteArray args);
     QByteArray cmdPpuxRamWrite(QByteArray args, QByteArray data);
@@ -64,6 +65,7 @@ protected:
     m3ApiRawFunction(wasm_##name)
 
     decl_binding(ppux_reset);
+    decl_binding(ppux_sprite_reset);
     decl_binding(ppux_sprite_read);
     decl_binding(ppux_sprite_write);
     decl_binding(ppux_ram_write);

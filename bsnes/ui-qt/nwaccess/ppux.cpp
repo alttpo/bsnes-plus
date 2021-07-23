@@ -1,7 +1,13 @@
 
 QByteArray NWAccess::cmdPpuxReset(QByteArray args)
 {
-  SNES::ppu.ppuxReset();
+  SNES::ppu.ppux_reset();
+  return makeOkReply();
+}
+
+QByteArray NWAccess::cmdPpuxSpriteReset(QByteArray args)
+{
+  SNES::ppu.ppux_sprite_reset();
   return makeOkReply();
 }
 

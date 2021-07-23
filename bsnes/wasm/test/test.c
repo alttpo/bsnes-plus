@@ -25,6 +25,9 @@ struct ppux_sprite {
 __attribute__((import_module("env"), import_name("ppux_reset")))
 void ppux_reset();
 
+__attribute__((import_module("env"), import_name("ppux_sprite_reset")))
+void ppux_sprite_reset();
+
 __attribute__((import_module("env"), import_name("ppux_sprite_read")))
 int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
 
@@ -42,7 +45,7 @@ void on_nmi() {
   uint8_t  oam[0x200];
   uint16_t link_index = 0;
 
-  ppux_reset();
+  ppux_sprite_reset();
 
   snes_bus_read(0x7E0352, (uint8_t *)&link_index, 2);
   snes_bus_read(0x7E0800, oam, 0x200);

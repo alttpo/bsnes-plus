@@ -220,6 +220,10 @@ void NWAccess::clientDataReady()
             {
                 socket->write(cmdPpuxReset(args));
             }
+            else if (cmd == "PPUX_SPR_RESET")
+            {
+                socket->write(cmdPpuxSpriteReset(args));
+            }
             else if (cmd == "PPUX_SPR_WRITE")
             {
                 socket->write(cmdPpuxSpriteWrite(args));

@@ -37,3 +37,6 @@ void   ppux_render_frame_pre();
 void   ppux_render_line_pre();
 void   ppux_render_line_post();
 void   ppux_mode7_fetch(int32 px, int32 py, int32 tile, unsigned layer, int32 &palette, unsigned &cgramspace);
+
+void ppux_sprite_reset();
+void ppux_reset();
