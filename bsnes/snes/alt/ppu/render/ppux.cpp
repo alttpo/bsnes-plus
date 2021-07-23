@@ -1,5 +1,23 @@
 #ifdef PPU_CPP
 
+void PPU::ppux_sprite_reset() {
+  memset(extra_list, 0, sizeof(extra_list));
+}
+
+void PPU::ppux_reset() {
+  ppux_sprite_reset();
+  for (unsigned i = 0; i < extra_spaces; i++) {
+    if (vram_space[i]) {
+      delete vram_space[i];
+      vram_space[i] = nullptr;
+    }
+    if (cgram_space[i]) {
+      delete cgram_space[i];
+      cgram_space[i] = nullptr;
+    }
+  }
+}
+
 inline uint16 PPU::get_palette_space(uint8 space, uint8 index) {
   const unsigned addr = index << 1;
   uint8 *cgram = get_cgram_space(space);
