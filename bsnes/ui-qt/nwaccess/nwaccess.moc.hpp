@@ -57,7 +57,7 @@ protected:
     QByteArray cmdPpuxRamRead(QByteArray args);
 
     // link functions:
-    void wasm_link(WASM::Module& module);
+    void wasm_link(const std::shared_ptr<WASM::Module>& module);
 
     // wasm bindings:
 #define decl_binding(name) \
