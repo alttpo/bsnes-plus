@@ -97,8 +97,31 @@ bool Module::get_global(const char * const i_globalName, IM3TaggedValue o_value)
   return true;
 }
 
+M3Result Module::invoke(const char *function_name, int argc, const char *argv[]) {
+  M3Result res;
+  M3Function *func;
+
+  //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime, name);
+  res = m3_FindFunction(&func, m_runtime, function_name);
+  if (res != m3Err_none) {
+    return res;
+  }
+
+  //printf("  m3_CallArgv(%p, %d, %p)\n", func, argc, argv);
+  res = m3_CallArgv(func, argc, argv);
+  if (res != m3Err_none) {
+    return res;
+  }
+
+  return m3Err_none;
+}
+
 void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
   m_msgs.push(msg);
+
+  M3Result res = invoke("on_msg_recv", 0, nullptr);
+  if (res == m3Err_functionLookupFailed) { res = nullptr; }
+  check_error(res);
 }
 
 std::shared_ptr<Message> Module::msg_dequeue() {
@@ -146,14 +169,7 @@ void Host::invoke_all(const char *name, int argc, const char**argv) {
   //printf("invoke_all('%s', %d, %p)\n", name, argc, argv);
 
   for(std::map<std::string, std::shared_ptr<Module>>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
-    M3Function *func;
-
-    //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime, name);
-    res = m3_FindFunction(&func, it->second->m_runtime, name);
-    check_error(res);
-
-    //printf("  m3_CallArgv(%p, %d, %p)\n", func, argc, argv);
-    res = m3_CallArgv(func, argc, argv);
+    res = it->second->invoke(name, argc, argv);
     check_error(res);
   }
 }
