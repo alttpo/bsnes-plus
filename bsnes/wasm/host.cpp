@@ -44,19 +44,6 @@ Module::Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_si
   }
 }
 
-Module::Module(Module&& other) {
-  //printf("Module::move %p -> %p\n", &other, this);
-  m_env = other.m_env;
-  m_size = other.m_size;
-  m_data = other.m_data;
-  m_module = other.m_module;
-  m_runtime = other.m_runtime;
-
-  other.m_data = nullptr;
-  other.m_module = nullptr;
-  other.m_runtime = nullptr;
-}
-
 Module::~Module() {
   if (m_runtime) {
     m3_FreeRuntime(m_runtime);
@@ -94,11 +81,13 @@ void Host::reset() {
   m_modules.clear();
 }
 
-Module Host::parse_module(const uint8_t *data, size_t size) {
-  return Module(m_env, default_stack_size_bytes, data, size);
+std::shared_ptr<Module> Host::parse_module(const uint8_t *data, size_t size) {
+  std::shared_ptr<Module> m_module;
+  m_module.reset(new Module(m_env, default_stack_size_bytes, data, size));
+  return m_module;
 }
 
-void Host::load_module(const std::string &key, Module &module) {
+void Host::load_module(const std::string &key, const std::shared_ptr<Module>& module) {
   m_modules.erase(key);
   //printf("load_module()\n");
   m_modules.emplace(key, std::move(module));
@@ -113,11 +102,11 @@ void Host::invoke_all(const char *name, int argc, const char**argv) {
   M3Result res;
   //printf("invoke_all('%s', %d, %p)\n", name, argc, argv);
 
-  for(std::map<std::string, Module>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
+  for(std::map<std::string, std::shared_ptr<Module>>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
     M3Function *func;
 
     //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime, name);
-    res = m3_FindFunction(&func, it->second.m_runtime, name);
+    res = m3_FindFunction(&func, it->second->m_runtime, name);
     check_error(res);
 
     //printf("  m3_CallArgv(%p, %d, %p)\n", func, argc, argv);

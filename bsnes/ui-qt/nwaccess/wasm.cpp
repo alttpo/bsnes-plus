@@ -17,7 +17,7 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
   QByteArray reply;
   try {
 
-    WASM::Module module = WASM::host.parse_module(reinterpret_cast<const uint8_t *>(data.constData()), data.size());
+    std::shared_ptr<WASM::Module> module = WASM::host.parse_module(reinterpret_cast<const uint8_t *>(data.constData()), data.size());
 
     // link wasm functions:
     wasm_link(module);

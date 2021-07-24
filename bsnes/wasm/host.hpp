@@ -25,7 +25,6 @@ struct RawCall {
 
 struct Module {
   Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
-  Module(Module&&);
   ~Module();
 
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
@@ -47,16 +46,16 @@ struct Host {
   }
 
   void reset();
-  Module parse_module(const uint8_t *data, size_t size);
-  void load_module(const std::string& key, Module& module);
+  std::shared_ptr<Module> parse_module(const uint8_t *data, size_t size);
+  void load_module(const std::string& key, const std::shared_ptr<Module>& module);
   void unload_module(const std::string& key);
   void invoke_all(const char *name, int argc, const char* argv[]);
 
 public:
   size_t default_stack_size_bytes;
 
-  std::shared_ptr<struct M3Environment> m_env;
-  std::map<std::string, Module>         m_modules;
+  std::shared_ptr<struct M3Environment>           m_env;
+  std::map<std::string, std::shared_ptr<Module>>  m_modules;
 };
 
 extern Host host;
