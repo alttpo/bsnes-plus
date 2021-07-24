@@ -48,6 +48,7 @@ protected:
     QByteArray cmdWasmLoad(QByteArray args, QByteArray data);
     QByteArray cmdWasmUnload(QByteArray args);
     QByteArray cmdWasmInvoke(QByteArray args);
+    QByteArray cmdWasmMsgEnqueue(QByteArray args, QByteArray data);
 
     QByteArray cmdPpuxReset(QByteArray args);
     QByteArray cmdPpuxSpriteReset(QByteArray args);
@@ -63,6 +64,9 @@ protected:
 #define decl_binding(name) \
     static const char *wasmsig_##name; \
     m3ApiRawFunction(wasm_##name)
+
+    decl_binding(msg_recv);
+    decl_binding(msg_size);
 
     decl_binding(ppux_reset);
     decl_binding(ppux_sprite_reset);

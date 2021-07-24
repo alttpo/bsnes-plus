@@ -25,10 +25,10 @@ struct RawCall {
 };
 
 struct Message {
-  Message(const uint8_t * const data, uint16_t size);
+  Message(const uint8_t *data, uint16_t size);
   ~Message();
 
-  const uint8_t * const m_data;
+  const uint8_t *m_data;
   uint16_t m_size;
 };
 
@@ -43,7 +43,7 @@ struct Module {
 
   void msg_enqueue(const std::shared_ptr<Message>& msg);
   std::shared_ptr<Message> msg_dequeue();
-  bool msg_available();
+  bool msg_size(uint16_t *o_size);
 
   std::shared_ptr<struct M3Environment> m_env;
   size_t m_size;
@@ -67,12 +67,15 @@ struct Host {
   void load_module(const std::string& key, const std::shared_ptr<Module>& module);
   void unload_module(const std::string& key);
   void invoke_all(const char *name, int argc, const char* argv[]);
+  std::shared_ptr<Module> get_module(const std::string& key);
+  std::shared_ptr<Module> get_module(IM3Module module);
 
 public:
   size_t default_stack_size_bytes;
 
   std::shared_ptr<struct M3Environment>           m_env;
   std::map<std::string, std::shared_ptr<Module>>  m_modules;
+  std::map<IM3Module, std::shared_ptr<Module>>    m_modules_by_ptr;
 };
 
 extern Host host;
