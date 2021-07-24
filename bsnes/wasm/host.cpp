@@ -76,6 +76,19 @@ void Module::linkEx(const char *module_name, const char *function_name, const ch
   check_error(res);
 }
 
+bool Module::get_global(const char * const i_globalName, IM3TaggedValue o_value) {
+  IM3Module io_module = m_module;
+  IM3Global global = m3_FindGlobal(io_module, i_globalName);
+  if (!global) {
+    return false;
+  }
+  M3Result err = m3_GetGlobal(global, o_value);
+  if (err != m3Err_none) {
+    return false;
+  }
+  return true;
+}
+
 
 void Host::reset() {
   m_modules.clear();

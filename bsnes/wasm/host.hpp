@@ -30,6 +30,8 @@ struct Module {
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
   void linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata);
 
+  bool get_global(const char * const i_globalName, IM3TaggedValue o_value);
+
   std::shared_ptr<struct M3Environment> m_env;
   size_t m_size;
   const uint8_t *m_data;
