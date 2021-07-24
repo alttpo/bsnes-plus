@@ -54,6 +54,11 @@ int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
 __attribute__((import_module("env"), import_name("msg_size")))
 int32_t msg_size(uint16_t *o_size);
 
+uint16_t bus_read_u16(uint32_t i_address) {
+  uint16_t d;
+  snes_bus_read(i_address, (uint8_t *)&d, sizeof(uint16_t));
+  return d;
+}
 
 uint32_t msgs = 0, last_msgs = 0;
 uint8_t  msg[65536];
@@ -137,6 +142,16 @@ void draw_message() {
   }
 }
 
+struct loc {
+  uint8_t  enabled;
+  uint16_t x;
+  uint16_t y;
+  uint8_t  hflip;
+  uint8_t  vflip;
+  uint16_t vram_addr;
+} locs[60][2];
+uint8_t loc_tail = 0;
+
 // called on NMI:
 void on_nmi() {
   uint32_t spr_index = 0;
@@ -196,20 +211,54 @@ void on_nmi() {
   spr.bpp = 4;
   spr.width = 16;
   spr.height = 16;
+
+  // move all previous recorded frames down by one:
+  for (int i = 59; i >= 1; i--) {
+    locs[i][0] = locs[i-1][0];
+    locs[i][1] = locs[i-1][1];
+  }
+
+  // get screen x,y offset by reading BG2 scroll registers:
+  uint16_t xoffs = bus_read_u16(0x7E00E2) - (int16_t)bus_read_u16(0x7E011A);
+  uint16_t yoffs = bus_read_u16(0x7E00E8) - (int16_t)bus_read_u16(0x7E011C);
+
   for (unsigned i = 0; i < 2; i++) {
     unsigned o = link_index[i];
-    if (o == 0x200) continue;
+    locs[0][i].enabled = 0;
+    if (o == 0x200) {
+      continue;
+    }
 
     uint8_t ex = oam[0x220 + (o>>2)];
+    uint16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
+    uint16_t y = (uint8_t)(oam[o + 1]);
 
-    spr.x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
-    spr.y = (uint8_t)(oam[o + 1] - 0x18);
-    spr.hflip = oam[o + 3] & 0x40;
-    spr.vflip = oam[o + 3] & 0x80;
+    locs[0][i].enabled = 1;
 
-    spr.vram_addr = 0;
-    snes_bus_read(link_addr[i], (uint8_t *)&spr.vram_addr, sizeof(uint16_t));
-    spr.vram_addr = (spr.vram_addr - 0x8000);
+    locs[0][i].x = xoffs + x;
+    locs[0][i].y = yoffs + y;
+    //spr.x = bus_read_u16(0x7E0022);
+    //spr.y = bus_read_u16(0x7E0020);
+
+    locs[0][i].hflip = oam[o + 3] & 0x40;
+    locs[0][i].vflip = oam[o + 3] & 0x80;
+
+    locs[0][i].vram_addr = 0;
+    snes_bus_read(link_addr[i], (uint8_t *)&locs[0][i].vram_addr, sizeof(uint16_t));
+    locs[0][i].vram_addr = (locs[0][i].vram_addr - 0x8000);
+  }
+
+  for (unsigned i = 0; i < 2; i++) {
+    spr.enabled = locs[59][i].enabled;
+
+    int32_t x = locs[59][i].x - xoffs;
+    int32_t y = locs[59][i].y+1 - yoffs;
+
+    spr.x = x & 511;
+    spr.y = y & 255;
+    spr.hflip = locs[59][i].hflip;
+    spr.vflip = locs[59][i].vflip;
+    spr.vram_addr = locs[59][i].vram_addr;
 
     ppux_sprite_write(spr_index++, &spr);
   }
