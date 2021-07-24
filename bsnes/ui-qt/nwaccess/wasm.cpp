@@ -105,7 +105,8 @@ QByteArray NWAccess::cmdWasmMsgEnqueue(QByteArray args, QByteArray data) {
   reply += name;
 
   try {
-    auto module = WASM::host.get_module(name.toStdString());
+    std::string module_name = name.toStdString();
+    auto module = WASM::host.get_module(module_name);
     module->msg_enqueue(std::shared_ptr<WASM::Message>(new WASM::Message((const uint8_t *)data.constData(), data.size())));
   } catch (std::out_of_range& err) {
     reply += "\nerror:";

@@ -101,7 +101,7 @@ M3Result Module::invoke(const char *function_name, int argc, const char *argv[])
   M3Result res;
   M3Function *func;
 
-  //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime, name);
+  //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, m_runtime, function_name);
   res = m3_FindFunction(&func, m_runtime, function_name);
   if (res == m3Err_functionLookupFailed) {
     const std::string key(function_name);
@@ -125,6 +125,7 @@ M3Result Module::invoke(const char *function_name, int argc, const char *argv[])
 }
 
 void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
+  //printf("msg_enqueue(%p, %u)\n", msg->m_data, msg->m_size);
   m_msgs.push(msg);
 
   const char *function_name = "on_msg_recv";
@@ -136,14 +137,20 @@ void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
 }
 
 std::shared_ptr<Message> Module::msg_dequeue() {
-  auto item = m_msgs.front();
+  auto msg = m_msgs.front();
+  //printf("msg_dequeue() -> {%p, %u}\n", msg->m_data, msg->m_size);
   m_msgs.pop();
-  return item;
+  return msg;
 }
 
 bool Module::msg_size(uint16_t *o_size) {
-  if (m_msgs.empty()) return false;
+  if (m_msgs.empty()) {
+    //printf("msg_size() -> false\n");
+    return false;
+  }
+
   *o_size = m_msgs.front()->m_size;
+  //printf("msg_size() -> true, %u\n", *o_size);
   return true;
 }
 
