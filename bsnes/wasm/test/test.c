@@ -55,20 +55,31 @@ __attribute__((import_module("env"), import_name("msg_size")))
 int32_t msg_size(uint16_t *o_size);
 
 
+uint32_t msgs = 0;
+
 void on_msg_recv() {
   uint8_t msg[65536];
   uint16_t size;
 
-  if (!msg_size(&size)) return;
-  if (!msg_recv(msg, sizeof(msg))) return;
+  if (msg_size(&size) != 0) {
+    msgs = 0xFF;
+    return;
+  }
+  if (msg_recv(msg, sizeof(msg)) != 0) {
+    msgs = 0xFE;
+    return;
+  }
 
-
+  msgs++;
 }
 
 int copied = 0;
 
 // called on NMI:
 void on_nmi() {
+  uint32_t spr_index = 0;
+  struct ppux_sprite spr;
+
   uint16_t link_oam_start;
   uint16_t link_index[2] = { 0x200, 0x200 };
   uint32_t link_addr[2]  = { 0x7E0ACC, 0x7E0AD0 };
@@ -86,6 +97,33 @@ void on_nmi() {
     ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
     copied = 1;
     ppux_sprite_reset();
+  }
+
+  spr.enabled = 1;
+  spr.vram_space = 0;
+  spr.cgram_space = 0;
+  spr.palette = 0x0C;
+  spr.layer = 1;
+  spr.priority = 7;
+  spr.color_exemption = 0;
+  spr.bpp = 2;
+  spr.width = 8;
+  spr.height = 8;
+  spr.x = 0xE0;
+  spr.y = 0xD0;
+  spr.hflip = 0;
+  spr.vflip = 0;
+
+  {
+    // draw number of messages received in lower-right corner:
+    uint32_t n = msgs;
+    do {
+      spr.vram_addr = 0xE900 + ((n % 10) << 4);
+      ppux_sprite_write(spr_index++, &spr);
+
+      spr.x -= 0x08;
+      n /= 10;
+    } while (n > 0);
   }
 
   snes_bus_read(0x7E0352, (uint8_t *)&link_oam_start, 2);
@@ -106,14 +144,10 @@ void on_nmi() {
     }
   }
 
-  struct ppux_sprite spr;
-  spr.enabled = 1;
   spr.vram_space = 1;
-  spr.cgram_space = 0;
   spr.palette = 0xF0;
   spr.layer = 1;
   spr.priority = 6;
-  spr.color_exemption = 0;
   spr.bpp = 4;
   spr.width = 16;
   spr.height = 16;
@@ -132,6 +166,6 @@ void on_nmi() {
     snes_bus_read(link_addr[i], (uint8_t *)&spr.vram_addr, sizeof(uint16_t));
     spr.vram_addr = (spr.vram_addr - 0x8000);
 
-    ppux_sprite_write(i, &spr);
+    ppux_sprite_write(spr_index++, &spr);
   }
 }
