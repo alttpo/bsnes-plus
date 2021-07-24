@@ -56,8 +56,13 @@ QByteArray NWAccess::cmdWasmInvoke(QByteArray args)
 {
   QStringList items = QString::fromUtf8(args).split(';');
 
+  if (items.isEmpty()) {
+    return makeErrorReply("missing function name");
+  }
+  QString name = items.takeFirst();
+
   QString reply = "name:";
-  reply += items[0];
+  reply += name;
 
   try {
     const char **argv = nullptr;
@@ -82,6 +87,28 @@ QByteArray NWAccess::cmdWasmInvoke(QByteArray args)
   } catch (WASM::error& err) {
     if (!reply.isEmpty()) reply.append('\n');
     reply += "error:";
+    reply += err.what();
+  }
+
+  return makeHashReply(reply);
+}
+
+QByteArray NWAccess::cmdWasmMsgEnqueue(QByteArray args, QByteArray data) {
+  QStringList items = QString::fromUtf8(args).split(';');
+
+  if (items.isEmpty()) {
+    return makeErrorReply("missing module name");
+  }
+  QString name = items.takeFirst();
+
+  QString reply = "name:";
+  reply += name;
+
+  try {
+    auto module = WASM::host.get_module(name.toStdString());
+    module->msg_enqueue(std::shared_ptr<WASM::Message>(new WASM::Message((const uint8_t *)data.constData(), data.size())));
+  } catch (std::out_of_range& err) {
+    reply += "\nerror:";
     reply += err.what();
   }
 

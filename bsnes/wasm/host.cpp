@@ -107,8 +107,10 @@ std::shared_ptr<Message> Module::msg_dequeue() {
   return item;
 }
 
-bool Module::msg_available() {
-  return !m_msgs.empty();
+bool Module::msg_size(uint16_t *o_size) {
+  if (m_msgs.empty()) return false;
+  *o_size = m_msgs.front()->m_size;
+  return true;
 }
 
 
@@ -123,14 +125,20 @@ std::shared_ptr<Module> Host::parse_module(const uint8_t *data, size_t size) {
 }
 
 void Host::load_module(const std::string &key, const std::shared_ptr<Module>& module) {
-  m_modules.erase(key);
+  unload_module(key);
+
   //printf("load_module()\n");
-  m_modules.emplace(key, std::move(module));
+  m_modules.emplace(key, module);
+  m_modules_by_ptr.emplace(module->m_module, module);
 }
 
 void Host::unload_module(const std::string &key) {
   //printf("load_module()\n");
-  m_modules.erase(key);
+  auto it = m_modules.find(key);
+  if (it == m_modules.end()) return;
+
+  m_modules_by_ptr.erase(it->second->m_module);
+  m_modules.erase(it);
 }
 
 void Host::invoke_all(const char *name, int argc, const char**argv) {
@@ -148,6 +156,14 @@ void Host::invoke_all(const char *name, int argc, const char**argv) {
     res = m3_CallArgv(func, argc, argv);
     check_error(res);
   }
+}
+
+std::shared_ptr<Module> Host::get_module(const std::string& key) {
+  return m_modules.at(key);
+}
+
+std::shared_ptr<Module> Host::get_module(IM3Module module) {
+  return m_modules_by_ptr.at(module);
 }
 
 }

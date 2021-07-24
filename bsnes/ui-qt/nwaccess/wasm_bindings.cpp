@@ -31,6 +31,9 @@ void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
 #define link(name) \
   module->linkEx("*", #name, wasmsig_##name, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_##name>, (const void *)this)
 
+  link(msg_recv);
+  link(msg_size);
+
   link(ppux_reset);
   link(ppux_sprite_reset);
   link(ppux_sprite_read);
@@ -42,6 +45,41 @@ void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
   link(snes_bus_write);
 
 #undef link
+}
+
+//int32_t msg_size(uint16_t *o_size);
+const char *NWAccess::wasmsig_msg_size = "i(*)";
+m3ApiRawFunction(NWAccess::wasm_msg_size) {
+  m3ApiReturnType(int32_t)
+
+  m3ApiGetArgMem(uint16_t *, o_size)
+
+  auto module = WASM::host.get_module(m3_GetFunctionModule(_ctx->function));
+
+  if (!module->msg_size(o_size)) {
+    m3ApiReturn(-1)
+  }
+
+  m3ApiReturn(0)
+}
+
+const char *NWAccess::wasmsig_msg_recv = "i(*i)";
+m3ApiRawFunction(NWAccess::wasm_msg_recv) {
+  m3ApiReturnType(int32_t)
+
+  m3ApiGetArgMem(uint8_t *, o_data)
+  m3ApiGetArg   (uint32_t,  i_size)
+
+  auto module = WASM::host.get_module(m3_GetFunctionModule(_ctx->function));
+
+  auto msg = module->msg_dequeue();
+  if (msg->m_size > i_size) {
+    m3ApiReturn(-1)
+  }
+
+  memcpy((void *)o_data, (const void *)msg->m_data, msg->m_size);
+
+  m3ApiReturn(0)
 }
 
 const char *NWAccess::wasmsig_ppux_reset = "v()";
