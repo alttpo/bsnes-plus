@@ -33,7 +33,7 @@ struct Message {
 };
 
 struct Module {
-  Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
+  Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
   ~Module();
 
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
@@ -48,13 +48,17 @@ struct Module {
   M3Result invoke(const char *function_name, int argc, const char *argv[]);
 
 public:
+  const std::string m_key;
   std::shared_ptr<struct M3Environment> m_env;
+
   size_t m_size;
   const uint8_t *m_data;
+
   IM3Module  m_module;
   IM3Runtime m_runtime;
 
   std::queue<std::shared_ptr<Message>> m_msgs;
+  std::map<std::string, bool> m_function_warned;
 };
 
 struct Host {
@@ -66,8 +70,8 @@ struct Host {
   }
 
   void reset();
-  std::shared_ptr<Module> parse_module(const uint8_t *data, size_t size);
-  void load_module(const std::string& key, const std::shared_ptr<Module>& module);
+  std::shared_ptr<Module> parse_module(const std::string& key, const uint8_t *data, size_t size);
+  void load_module(const std::shared_ptr<Module>& module);
   void unload_module(const std::string& key);
   void invoke_all(const char *function_name, int argc, const char* argv[]);
   std::shared_ptr<Module> get_module(const std::string& key);

@@ -17,12 +17,12 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
   QByteArray reply;
   try {
 
-    std::shared_ptr<WASM::Module> module = WASM::host.parse_module(reinterpret_cast<const uint8_t *>(data.constData()), data.size());
+    std::shared_ptr<WASM::Module> module = WASM::host.parse_module(module_name, reinterpret_cast<const uint8_t *>(data.constData()), data.size());
 
     // link wasm functions:
     wasm_link(module);
 
-    WASM::host.load_module(module_name, module);
+    WASM::host.load_module(module);
 
     reply = makeOkReply();
   } catch (WASM::error& err) {

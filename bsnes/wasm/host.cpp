@@ -18,9 +18,9 @@ static void check_error(M3Result err) {
   }
 }
 
-Module::Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size) {
-  m_env = env;
-
+Module::Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size)
+  : m_key(key), m_env(env)
+{
   // own the wasm bytes ourselves:
   m_size = size;
   m_data = new uint8_t[m_size];
@@ -68,7 +68,7 @@ void Module::link(const char *module_name, const char *function_name, const char
   //printf("m3_LinkRawFunction(%p, '%s', '%s', '%s', %p)\n", m_module, module_name, function_name, signature, rawcall);
   M3Result res = m3_LinkRawFunction(m_module, module_name, function_name, signature, rawcall);
   if (res == m3Err_functionLookupFailed) {
-    fprintf(stderr, "wasm: error while linking '%s': %s\n", function_name, res);
+    fprintf(stderr, "wasm: module '%s': error while linking '%s': %s\n", m_key.c_str(), function_name, res);
     res = NULL;
   }
   check_error(res);
@@ -78,7 +78,7 @@ void Module::linkEx(const char *module_name, const char *function_name, const ch
   //printf("m3_LinkRawFunctionEx(%p, '%s', '%s', '%s', %p, %p)\n", m_module, module_name, function_name, signature, rawcall, userdata);
   M3Result res = m3_LinkRawFunctionEx(m_module, module_name, function_name, signature, rawcall, userdata);
   if (res == m3Err_functionLookupFailed) {
-    fprintf(stderr, "wasm: error while linking '%s': %s\n", function_name, res);
+    fprintf(stderr, "wasm: module '%s': error while linking '%s': %s\n", m_key.c_str(), function_name, res);
     res = NULL;
   }
   check_error(res);
@@ -103,6 +103,14 @@ M3Result Module::invoke(const char *function_name, int argc, const char *argv[])
 
   //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime, name);
   res = m3_FindFunction(&func, m_runtime, function_name);
+  if (res == m3Err_functionLookupFailed) {
+    const std::string key(function_name);
+    auto it = m_function_warned.find(key);
+    if (it == m_function_warned.end()) {
+      fprintf(stderr, "wasm: module '%s': failed to find function '%s'\n", m_key.c_str(), function_name);
+      m_function_warned.emplace_hint(it, key, true);
+    }
+  }
   if (res != m3Err_none) {
     return res;
   }
@@ -119,8 +127,11 @@ M3Result Module::invoke(const char *function_name, int argc, const char *argv[])
 void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
   m_msgs.push(msg);
 
-  M3Result res = invoke("on_msg_recv", 0, nullptr);
-  if (res == m3Err_functionLookupFailed) { res = nullptr; }
+  const char *function_name = "on_msg_recv";
+  M3Result res = invoke(function_name, 0, nullptr);
+  if (res == m3Err_functionLookupFailed) {
+    res = nullptr;
+  }
   check_error(res);
 }
 
@@ -141,17 +152,17 @@ void Host::reset() {
   m_modules.clear();
 }
 
-std::shared_ptr<Module> Host::parse_module(const uint8_t *data, size_t size) {
+std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t *data, size_t size) {
   std::shared_ptr<Module> m_module;
-  m_module.reset(new Module(m_env, default_stack_size_bytes, data, size));
+  m_module.reset(new Module(key, m_env, default_stack_size_bytes, data, size));
   return m_module;
 }
 
-void Host::load_module(const std::string &key, const std::shared_ptr<Module>& module) {
-  unload_module(key);
+void Host::load_module(const std::shared_ptr<Module>& module) {
+  unload_module(module->m_key);
 
   //printf("load_module()\n");
-  m_modules.emplace(key, module);
+  m_modules.emplace(module->m_key, module);
   m_modules_by_ptr.emplace(module->m_module, module);
 }
 
