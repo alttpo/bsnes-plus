@@ -55,7 +55,7 @@ void on_nmi() {
   uint16_t link_oam_start;
   uint16_t link_index[2] = { 0x200, 0x200 };
   uint32_t link_addr[2]  = { 0x7E0ACC, 0x7E0AD0 };
-  uint8_t  oam[0x200];
+  uint8_t  oam[0x2A0];
 
   if (!copied) {
     uint8_t sprites[0x2000];
@@ -74,13 +74,13 @@ void on_nmi() {
   snes_bus_read(0x7E0352, (uint8_t *)&link_oam_start, 2);
   if (link_oam_start >= 0x200) return;
 
-  snes_bus_read(0x7E0800, oam, 0x200);
+  snes_bus_read(0x7E0800, oam, 0x2A0);
 
   for (unsigned i = 0; i < 0xC; i++) {
     unsigned o = link_oam_start + (i<<2);
     if (oam[o+1] == 0xF0) continue;
 
-    uint8_t chr = oam[o+2];
+    uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
 
     if (chr == 0x00) {
       link_index[0] = o;
@@ -104,8 +104,10 @@ void on_nmi() {
     unsigned o = link_index[i];
     if (o == 0x200) continue;
 
-    spr.x = oam[o + 0];
-    spr.y = (uint8_t)(oam[o + 1] - 0x20);
+    uint8_t ex = oam[0x220 + (o>>2)];
+
+    spr.x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
+    spr.y = (uint8_t)(oam[o + 1] - 0x18);
     spr.hflip = oam[o + 3] & 0x40;
     spr.vflip = oam[o + 3] & 0x80;
 
