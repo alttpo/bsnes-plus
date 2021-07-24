@@ -3,6 +3,7 @@
 #include <optional>
 #include <map>
 #include <string>
+#include <queue>
 
 #include "wasm3.h"
 
@@ -23,6 +24,14 @@ struct RawCall {
   }
 };
 
+struct Message {
+  Message(const uint8_t * const data, uint16_t size);
+  ~Message();
+
+  const uint8_t * const m_data;
+  uint16_t m_size;
+};
+
 struct Module {
   Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
   ~Module();
@@ -32,11 +41,17 @@ struct Module {
 
   bool get_global(const char * const i_globalName, IM3TaggedValue o_value);
 
+  void msg_enqueue(const std::shared_ptr<Message>& msg);
+  std::shared_ptr<Message> msg_dequeue();
+  bool msg_available();
+
   std::shared_ptr<struct M3Environment> m_env;
   size_t m_size;
   const uint8_t *m_data;
   IM3Module  m_module;
   IM3Runtime m_runtime;
+
+  std::queue<std::shared_ptr<Message>> m_msgs;
 };
 
 struct Host {

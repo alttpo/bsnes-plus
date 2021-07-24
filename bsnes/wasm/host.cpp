@@ -4,6 +4,14 @@ namespace WASM {
 
 Host host(1024 * 1024);
 
+Message::Message(const uint8_t * const data, uint16_t size) : m_data(new uint8_t[size]), m_size(size) {
+  memcpy((void *)m_data, (const void *)data, size);
+}
+
+Message::~Message() {
+  delete[] m_data;
+}
+
 static void check_error(M3Result err) {
   if (err != m3Err_none) {
     throw error(err);
@@ -87,6 +95,20 @@ bool Module::get_global(const char * const i_globalName, IM3TaggedValue o_value)
     return false;
   }
   return true;
+}
+
+void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
+  m_msgs.push(msg);
+}
+
+std::shared_ptr<Message> Module::msg_dequeue() {
+  auto item = m_msgs.front();
+  m_msgs.pop();
+  return item;
+}
+
+bool Module::msg_available() {
+  return !m_msgs.empty();
 }
 
 
