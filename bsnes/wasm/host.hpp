@@ -45,6 +45,9 @@ struct Module {
   std::shared_ptr<Message> msg_dequeue();
   bool msg_size(uint16_t *o_size);
 
+  M3Result invoke(const char *function_name, int argc, const char *argv[]);
+
+public:
   std::shared_ptr<struct M3Environment> m_env;
   size_t m_size;
   const uint8_t *m_data;
@@ -66,7 +69,7 @@ struct Host {
   std::shared_ptr<Module> parse_module(const uint8_t *data, size_t size);
   void load_module(const std::string& key, const std::shared_ptr<Module>& module);
   void unload_module(const std::string& key);
-  void invoke_all(const char *name, int argc, const char* argv[]);
+  void invoke_all(const char *function_name, int argc, const char* argv[]);
   std::shared_ptr<Module> get_module(const std::string& key);
   std::shared_ptr<Module> get_module(IM3Module module);
 

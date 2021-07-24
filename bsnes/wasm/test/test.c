@@ -48,6 +48,23 @@ void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
 __attribute__((import_module("env"), import_name("snes_bus_write")))
 void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
 
+__attribute__((import_module("env"), import_name("msg_recv")))
+int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("msg_size")))
+int32_t msg_size(uint16_t *o_size);
+
+
+void on_msg_recv() {
+  uint8_t msg[65536];
+  uint16_t size;
+
+  if (!msg_size(&size)) return;
+  if (!msg_recv(msg, sizeof(msg))) return;
+
+
+}
+
 int copied = 0;
 
 // called on NMI:
