@@ -57,8 +57,6 @@ void on_nmi() {
   uint32_t link_addr[2]  = { 0x7E0ACC, 0x7E0AD0 };
   uint8_t  oam[0x200];
 
-  ppux_sprite_reset();
-
   if (!copied) {
     uint8_t sprites[0x2000];
     snes_bus_read(0x108000, sprites, 0x2000);
@@ -70,6 +68,7 @@ void on_nmi() {
     snes_bus_read(0x10E000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
     copied = 1;
+    ppux_sprite_reset();
   }
 
   snes_bus_read(0x7E0352, (uint8_t *)&link_oam_start, 2);
@@ -106,7 +105,7 @@ void on_nmi() {
     if (o == 0x200) continue;
 
     spr.x = oam[o + 0];
-    spr.y = oam[o + 1] - 0x20;
+    spr.y = (uint8_t)(oam[o + 1] - 0x20);
     spr.hflip = oam[o + 3] & 0x40;
     spr.vflip = oam[o + 3] & 0x80;
 

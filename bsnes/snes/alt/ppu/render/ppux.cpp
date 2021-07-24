@@ -24,6 +24,17 @@ inline uint16 PPU::get_palette_space(uint8 space, uint8 index) {
   return cgram[addr] + (cgram[addr + 1] << 8);
 }
 
+bool PPU::ppux_is_sprite_on_scanline(struct extra_item *spr) {
+  //if sprite is entirely offscreen and doesn't wrap around to the left side of the screen,
+  //then it is not counted. this *should* be 256, and not 255, even though dot 256 is offscreen.
+  if(spr->x > 256 && (spr->x + spr->width - 1) < 512) return false;
+
+  int spr_height = (spr->height);
+  if(line >= spr->y && line < (spr->y + spr_height)) return true;
+  if((spr->y + spr_height) >= 256 && line < ((spr->y + spr_height) & 255)) return true;
+  return false;
+}
+
 void PPU::ppux_render_frame_pre() {
   memset(ppux_mode7_pal, 0, sizeof(ppux_mode7_pal));
   memset(ppux_mode7_space, 0, sizeof(ppux_mode7_space));
@@ -146,12 +157,11 @@ void PPU::ppux_render_line_post() {
     bool bgsub_enabled = regs.bgsub_enabled[t->layer];
     if (bg_enabled == false && bgsub_enabled == false) continue;
 
-    if(t->x > 256 && (t->x + t->width - 1) < 512) continue;
-    if(line < t->y) continue;
-    if(line >= t->y + t->height) continue;
+    if(!ppux_is_sprite_on_scanline(t)) continue;
 
     unsigned sx = t->x;
-    unsigned y = (t->vflip == false) ? (line - t->y) : (t->height-1 - (line - t->y));
+    unsigned ty = (line - t->y) & 0xff;
+    unsigned y = (t->vflip == false) ? (ty) : (t->height-1 - ty);
 
     uint8 *vram = get_vram_space(t->vram_space);
     if (!vram) continue;
