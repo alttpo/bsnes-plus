@@ -2,7 +2,7 @@
 
 namespace WASM {
 
-Host host(1024);
+Host host(1024 * 1024);
 
 static void check_error(M3Result err) {
   if (err != m3Err_none) {
@@ -18,64 +18,60 @@ Module::Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_si
   m_data = new uint8_t[m_size];
   memcpy((void *)m_data, (const void *)data, size);
 
-  IM3Module p;
   //printf("m3_ParseModule(%p, %p, %p, %zu)\n", env.get(), &p, m_data, m_size);
-  M3Result err = m3_ParseModule(env.get(), &p, m_data, m_size);
-  check_error(err);
-
-  // create module:
-  m_module.reset(p, [this](IM3Module p) {
-    //printf("free module:  %p\n", p);
-    if (m_loaded) {
-      /* do nothing; module is freed by runtime */
-      return;
-    }
-
-    //printf("m3_FreeModule(%p)\n", p);
-    m3_FreeModule(p);
-    if (m_data) {
-      //printf("m3_FreeModule(%p): delete[] m_data\n", p);
-      delete[] m_data;
-    }
+  M3Result err = m3_ParseModule(env.get(), &m_module, m_data, m_size);
+  if (err != m3Err_none) {
+    m3_FreeModule(m_module);
+    m_module = nullptr;
+    delete[] m_data;
     m_data = nullptr;
-  });
-
-  if (m_module == nullptr) {
-    throw std::bad_alloc();
+    throw error(err);
   }
 
   // create runtime for the module:
-  m_runtime.reset(m3_NewRuntime(m_env.get(), stack_size_bytes, nullptr), [](IM3Runtime runtime){
-    //printf("free runtime: %p\n", runtime);
+  m_runtime = m3_NewRuntime(m_env.get(), stack_size_bytes, nullptr);
 
-    m3_FreeRuntime(runtime);
-
-    // TODO: delete[] m_data
-  });
-  if (m_runtime == nullptr) {
-    throw std::bad_alloc();
+  //printf("m3_LoadModule(%p, %p)\n", m_runtime, m_module);
+  err = m3_LoadModule(m_runtime, m_module);
+  if (err != m3Err_none) {
+    m3_FreeRuntime(m_runtime);
+    m_runtime = nullptr;
+    m3_FreeModule(m_module);
+    m_module = nullptr;
+    delete[] m_data;
+    m_data = nullptr;
+    throw error(err);
   }
-
-  //printf("m3_LoadModule(%p, %p)\n", m_runtime.get(), m_module.get());
-  err = m3_LoadModule(m_runtime.get(), m_module.get());
-  check_error(err);
-
-  m_loaded = true;
 }
 
 Module::Module(Module&& other) {
   //printf("Module::move %p -> %p\n", &other, this);
-  m_env = (other.m_env);
+  m_env = other.m_env;
   m_size = other.m_size;
-  m_data = (other.m_data);
-  m_module = (other.m_module);
-  m_runtime = (other.m_runtime);
-  m_loaded = other.m_loaded;
+  m_data = other.m_data;
+  m_module = other.m_module;
+  m_runtime = other.m_runtime;
+
+  other.m_data = nullptr;
+  other.m_module = nullptr;
+  other.m_runtime = nullptr;
+}
+
+Module::~Module() {
+  if (m_runtime) {
+    m3_FreeRuntime(m_runtime);
+    m_runtime = nullptr;
+
+    m_module = nullptr;
+
+    delete[] m_data;
+    m_data = nullptr;
+  }
 }
 
 void Module::link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall) {
-  //printf("m3_LinkRawFunction(%p, '%s', '%s', '%s', %p)\n", m_module.get(), module_name, function_name, signature, rawcall);
-  M3Result res = m3_LinkRawFunction(m_module.get(), module_name, function_name, signature, rawcall);
+  //printf("m3_LinkRawFunction(%p, '%s', '%s', '%s', %p)\n", m_module, module_name, function_name, signature, rawcall);
+  M3Result res = m3_LinkRawFunction(m_module, module_name, function_name, signature, rawcall);
   if (res == m3Err_functionLookupFailed) {
     fprintf(stderr, "wasm: error while linking '%s': %s\n", function_name, res);
     res = NULL;
@@ -84,8 +80,8 @@ void Module::link(const char *module_name, const char *function_name, const char
 }
 
 void Module::linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata) {
-  //printf("m3_LinkRawFunctionEx(%p, '%s', '%s', '%s', %p, %p)\n", m_module.get(), module_name, function_name, signature, rawcall, userdata);
-  M3Result res = m3_LinkRawFunctionEx(m_module.get(), module_name, function_name, signature, rawcall, userdata);
+  //printf("m3_LinkRawFunctionEx(%p, '%s', '%s', '%s', %p, %p)\n", m_module, module_name, function_name, signature, rawcall, userdata);
+  M3Result res = m3_LinkRawFunctionEx(m_module, module_name, function_name, signature, rawcall, userdata);
   if (res == m3Err_functionLookupFailed) {
     fprintf(stderr, "wasm: error while linking '%s': %s\n", function_name, res);
     res = NULL;
@@ -103,6 +99,7 @@ Module Host::parse_module(const uint8_t *data, size_t size) {
 }
 
 void Host::load_module(const std::string &key, Module &module) {
+  m_modules.erase(key);
   //printf("load_module()\n");
   m_modules.emplace(key, std::move(module));
 }
@@ -119,8 +116,8 @@ void Host::invoke_all(const char *name, int argc, const char**argv) {
   for(std::map<std::string, Module>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
     M3Function *func;
 
-    //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime.get(), name);
-    res = m3_FindFunction(&func, it->second.m_runtime.get(), name);
+    //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, runtime, name);
+    res = m3_FindFunction(&func, it->second.m_runtime, name);
     check_error(res);
 
     //printf("  m3_CallArgv(%p, %d, %p)\n", func, argc, argv);

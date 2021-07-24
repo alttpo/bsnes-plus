@@ -26,16 +26,16 @@ struct RawCall {
 struct Module {
   Module(const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
   Module(Module&&);
+  ~Module();
 
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
   void linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata);
 
   std::shared_ptr<struct M3Environment> m_env;
-  const uint8_t *m_data;
   size_t m_size;
-  std::shared_ptr<struct M3Module> m_module;
-  bool m_loaded;
-  std::shared_ptr<struct M3Runtime> m_runtime;
+  const uint8_t *m_data;
+  IM3Module  m_module;
+  IM3Runtime m_runtime;
 };
 
 struct Host {
