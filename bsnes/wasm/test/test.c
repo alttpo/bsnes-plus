@@ -149,7 +149,7 @@ struct loc {
   uint8_t  hflip;
   uint8_t  vflip;
   uint16_t vram_addr;
-} locs[60][2];
+} locs[80][2];
 uint8_t loc_tail = 0;
 
 // called on NMI:
@@ -213,7 +213,7 @@ void on_nmi() {
   spr.height = 16;
 
   // move all previous recorded frames down by one:
-  for (int i = 59; i >= 1; i--) {
+  for (int i = 79; i >= 1; i--) {
     locs[i][0] = locs[i-1][0];
     locs[i][1] = locs[i-1][1];
   }
@@ -230,8 +230,10 @@ void on_nmi() {
     }
 
     uint8_t ex = oam[0x220 + (o>>2)];
-    uint16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
-    uint16_t y = (uint8_t)(oam[o + 1]);
+    int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
+    int16_t y = (uint8_t)(oam[o + 1]);
+    if (x >= 256) x -= 512;
+    if (y >= 240) y -= 256;
 
     locs[0][i].enabled = 1;
 
@@ -249,16 +251,24 @@ void on_nmi() {
   }
 
   for (unsigned i = 0; i < 2; i++) {
-    spr.enabled = locs[59][i].enabled;
+    spr.enabled = locs[79][i].enabled;
 
-    int32_t x = locs[59][i].x - xoffs;
-    int32_t y = locs[59][i].y+1 - yoffs;
+    int32_t x = locs[79][i].x - xoffs;
+    int32_t y = locs[79][i].y+1 - yoffs;
+
+    // visible bounds check:
+    if (y <= -16 || y >= 240) {
+      spr.enabled = 0;
+    }
+    if (x <= -16 || x >= 256) {
+      spr.enabled = 0;
+    }
 
     spr.x = x & 511;
     spr.y = y & 255;
-    spr.hflip = locs[59][i].hflip;
-    spr.vflip = locs[59][i].vflip;
-    spr.vram_addr = locs[59][i].vram_addr;
+    spr.hflip = locs[79][i].hflip;
+    spr.vflip = locs[79][i].vflip;
+    spr.vram_addr = locs[79][i].vram_addr;
 
     ppux_sprite_write(spr_index++, &spr);
   }
