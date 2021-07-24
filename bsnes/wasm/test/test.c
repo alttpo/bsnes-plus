@@ -55,13 +55,16 @@ __attribute__((import_module("env"), import_name("msg_size")))
 int32_t msg_size(uint16_t *o_size);
 
 
-uint32_t msgs = 0;
+uint32_t msgs = 0, last_msgs = 0;
+uint8_t  msg[65536];
+uint16_t last_msg_size = 0;
+
+int copied = 0;
 
 void on_msg_recv() {
-  uint8_t msg[65536];
   uint16_t size;
 
-  if (msg_size(&size) != 0) {
+  if (msg_size(&last_msg_size) != 0) {
     msgs = 0xFF;
     return;
   }
@@ -73,7 +76,66 @@ void on_msg_recv() {
   msgs++;
 }
 
-int copied = 0;
+void draw_message() {
+  uint32_t spr_index = 1024 - 32;
+  struct ppux_sprite spr;
+
+  spr.enabled = 1;
+  spr.vram_space = 0;
+  spr.cgram_space = 0;
+  spr.palette = 0x0C;
+  spr.layer = 1;
+  spr.priority = 7;
+  spr.color_exemption = 0;
+  spr.bpp = 2;
+  spr.width = 8;
+  spr.height = 8;
+  spr.hflip = 0;
+  spr.vflip = 0;
+
+  spr.x = 0xF0;
+  spr.y = 0xD8;
+  {
+    // draw number of messages received in lower-right corner:
+    uint32_t n = msgs;
+    do {
+      spr.vram_addr = 0xE900 + ((n % 10) << 4);
+      ppux_sprite_write(spr_index++, &spr);
+
+      spr.x -= 0x08;
+      n /= 10;
+    } while (n > 0);
+  }
+
+  // draw message text:
+  spr.x = 0;
+  uint16_t i;
+  for (i = 0; i < last_msg_size; i++) {
+    uint8_t c = msg[i];
+    if (c >= 'A' && c <= 'Z') {
+      spr.vram_addr = 0xF500 + ((c - 'A') << 4);
+    } else if (c >= 'a' && c <= 'z') {
+      spr.vram_addr = 0xF500 + ((c - 'a') << 4);
+    } else if (c >= '0' && c <= '9') {
+      spr.vram_addr = 0xE900 + ((c - '0') << 4);
+    } else if (c == ' ' || c == '\n') {
+      spr.x += 4;
+      continue;
+    } else {
+      spr.vram_addr = 0xF500 + (26 << 4);
+    }
+
+    if (spr_index >= 1024) {
+      break;
+    }
+    ppux_sprite_write(spr_index++, &spr);
+    spr.x += 8;
+  }
+  for (; spr_index < 1024; spr_index++) {
+    spr.enabled = 0;
+    ppux_sprite_write(spr_index, &spr);
+  }
+}
 
 // called on NMI:
 void on_nmi() {
@@ -99,31 +161,9 @@ void on_nmi() {
     ppux_sprite_reset();
   }
 
-  spr.enabled = 1;
-  spr.vram_space = 0;
-  spr.cgram_space = 0;
-  spr.palette = 0x0C;
-  spr.layer = 1;
-  spr.priority = 7;
-  spr.color_exemption = 0;
-  spr.bpp = 2;
-  spr.width = 8;
-  spr.height = 8;
-  spr.x = 0xE0;
-  spr.y = 0xD0;
-  spr.hflip = 0;
-  spr.vflip = 0;
-
-  {
-    // draw number of messages received in lower-right corner:
-    uint32_t n = msgs;
-    do {
-      spr.vram_addr = 0xE900 + ((n % 10) << 4);
-      ppux_sprite_write(spr_index++, &spr);
-
-      spr.x -= 0x08;
-      n /= 10;
-    } while (n > 0);
+  if (msgs != last_msgs) {
+    draw_message();
+    last_msgs = msgs;
   }
 
   snes_bus_read(0x7E0352, (uint8_t *)&link_oam_start, 2);
@@ -144,6 +184,11 @@ void on_nmi() {
     }
   }
 
+  spr.enabled = 1;
+  spr.cgram_space = 0;
+  spr.color_exemption = 0;
+  spr.hflip = 0;
+  spr.vflip = 0;
   spr.vram_space = 1;
   spr.palette = 0xF0;
   spr.layer = 1;
