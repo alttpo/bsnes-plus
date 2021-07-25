@@ -148,8 +148,10 @@ struct loc {
   uint16_t y;
   uint8_t  hflip;
   uint8_t  vflip;
-  uint16_t offs;
+  uint16_t offs_top;
+  uint16_t offs_bot;
   uint8_t  palette;
+  uint8_t  priority;
   uint8_t  bpp;
   uint8_t  width;
   uint8_t  height;
@@ -252,22 +254,34 @@ void on_nmi() {
     //spr.x = bus_read_u16(0x7E0022);
     //spr.y = bus_read_u16(0x7E0020);
 
-    locs[0][i].hflip = oam[o + 3] & 0x40;
-    locs[0][i].vflip = oam[o + 3] & 0x80;
+    locs[0][i].hflip = (oam[o + 3] & 0x40) >> 6;
+    locs[0][i].vflip = (oam[o + 3] & 0x80) >> 7;
 
     locs[0][i].palette = (((oam[o + 3] >> 1) & 7) << 4) + 0x80;
+    locs[0][i].priority = ((oam[o + 3] >> 4) & 3);
 
-    locs[0][i].offs = 0;
-    snes_bus_read(sp_addr[chr], (uint8_t *)&locs[0][i].offs, sizeof(uint16_t));
+    locs[0][i].width = 8 << ((ex & 0x02) >> 1);
+    locs[0][i].height = 8 << ((ex & 0x02) >> 1);
+
+    // TODO: capturing at wrong time during frame?
+    locs[0][i].offs_top = 0;
+    snes_bus_read(sp_addr[chr], (uint8_t *)&locs[0][i].offs_top, sizeof(uint16_t));
+    locs[0][i].offs_bot = locs[0][i].offs_top;
+    if (chr < 0x10) {
+      snes_bus_read(sp_addr[chr+0x10], (uint8_t *)&locs[0][i].offs_bot, sizeof(uint16_t));
+    }
 
     if (sp_bpp[chr] == 4) {
-      locs[0][i].offs = (locs[0][i].offs - 0x8000);
+      locs[0][i].offs_top = (locs[0][i].offs_top - 0x8000);
+      locs[0][i].offs_bot = (locs[0][i].offs_bot - 0x8000);
     }
 
     locs[0][i].bpp = sp_bpp[chr];
-    locs[0][i].width = sp_size[chr];
-    locs[0][i].height = sp_size[chr];
+    //locs[0][i].width = sp_size[chr];
+    //locs[0][i].height = sp_size[chr];
   }
+
+  uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
 
   for (unsigned i = 0; i < 12; i++) {
     spr.enabled = locs[79][i].enabled;
@@ -288,12 +302,20 @@ void on_nmi() {
     spr.hflip = locs[79][i].hflip;
     spr.vflip = locs[79][i].vflip;
     spr.palette = locs[79][i].palette;
+    spr.priority = pri_lkup[locs[79][i].priority];
 
     spr.bpp = 4;
     spr.width = locs[79][i].width;
     spr.height = locs[79][i].height;
 
-    spr.vram_addr = locs[79][i].offs;
+    spr.vram_addr = locs[79][i].offs_top;
+    if (locs[79][i].bpp == 3 && spr.height == 16) {
+      spr.height = 8 + (spr.vflip * 8);
+      ppux_sprite_write(spr_index++, &spr);
+
+      spr.y += 8 + (spr.vflip * -16);
+      spr.vram_addr = locs[79][i].offs_bot;
+    }
 
     ppux_sprite_write(spr_index++, &spr);
   }
