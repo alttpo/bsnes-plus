@@ -148,8 +148,12 @@ struct loc {
   uint16_t y;
   uint8_t  hflip;
   uint8_t  vflip;
-  uint16_t vram_addr;
-} locs[80][2];
+  uint16_t offs;
+  uint8_t  palette;
+  uint8_t  bpp;
+  uint8_t  width;
+  uint8_t  height;
+} locs[80][12];
 uint8_t loc_tail = 0;
 
 // called on NMI:
@@ -157,13 +161,19 @@ void on_nmi() {
   uint32_t spr_index = 0;
   struct ppux_sprite spr;
 
-  uint16_t link_oam_start;
-  uint16_t link_index[2] = { 0x200, 0x200 };
-  uint32_t link_addr[2]  = { 0x7E0ACC, 0x7E0AD0 };
+  uint16_t sp_addr[32] = { 0x0ACC, 0x0ACC, 0x0AD0, 0x0AD0, 0x0AD4, 0x0AC0, 0x0AC0, 0x0AC4, 0x0AC4, 0x0AC8, 0x0AC8, 0x0AE0, 0x0AD8, 0x0AD8, 0x0AF6, 0x0AF6,
+                           0x0ACE, 0x0ACE, 0x0AD2, 0x0AD2, 0x0AD6, 0x0AC2, 0x0AC2, 0x0AC6, 0x0AC6, 0x0ACA, 0x0ACA, 0x0AE2, 0x0ADA, 0x0ADA, 0x0AF8, 0x0AF8 };
+  uint8_t  sp_bpp[32]  = {      4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,
+                                4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3 };
+  uint8_t  sp_size[32] = {     16,     16,     16,     16,      8,     16,     16,     16,     16,     16,     16,      8,     16,     16,     16,     16,
+                               16,     16,     16,     16,      8,     16,     16,     16,     16,     16,     16,      8,     16,     16,     16,     16 };
+
   uint8_t  oam[0x2A0];
+  uint16_t link_oam_start;
 
   if (!copied) {
     uint8_t sprites[0x2000];
+
     snes_bus_read(0x108000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x0000, sprites, 0x2000);
     snes_bus_read(0x10A000, sprites, 0x2000);
@@ -172,6 +182,16 @@ void on_nmi() {
     ppux_ram_write(VRAM, 1, 0x4000, sprites, 0x2000);
     snes_bus_read(0x10E000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
+
+    // TODO: determine WHEN to copy here
+    // copy 3bpp->4bpp decompressed sprites from WRAM:
+    // keep the same bank offset ($9000) in VRAM as it is in WRAM, cuz why not?
+    snes_bus_read(0x7E9000, sprites, 0x2000);
+    ppux_ram_write(VRAM, 1, 0x9000, sprites, 0x2000);
+    snes_bus_read(0x7EB000, sprites, 0x1000);
+    ppux_ram_write(VRAM, 1, 0xB000, sprites, 0x1000);
+    // TODO: decompress 3bpp to 4bpp ourselves and identify ROM source of 3bpp graphics depending on sword type, shield type, etc.
+
     copied = 1;
     ppux_sprite_reset();
   }
@@ -185,19 +205,6 @@ void on_nmi() {
   if (link_oam_start >= 0x200) return;
 
   snes_bus_read(0x7E0800, oam, 0x2A0);
-
-  for (unsigned i = 0; i < 0xC; i++) {
-    unsigned o = link_oam_start + (i<<2);
-    if (oam[o+1] == 0xF0) continue;
-
-    uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
-
-    if (chr == 0x00) {
-      link_index[0] = o;
-    } else if (chr == 0x02) {
-      link_index[1] = o;
-    }
-  }
 
   spr.enabled = 1;
   spr.cgram_space = 0;
@@ -213,21 +220,24 @@ void on_nmi() {
   spr.height = 16;
 
   // move all previous recorded frames down by one:
-  for (int i = 79; i >= 1; i--) {
-    locs[i][0] = locs[i-1][0];
-    locs[i][1] = locs[i-1][1];
+  for (int j = 79; j >= 1; j--) {
+    for (int i = 0; i < 12; i++) {
+      locs[j][i] = locs[j - 1][i];
+    }
   }
 
   // get screen x,y offset by reading BG2 scroll registers:
   uint16_t xoffs = bus_read_u16(0x7E00E2) - (int16_t)bus_read_u16(0x7E011A);
   uint16_t yoffs = bus_read_u16(0x7E00E8) - (int16_t)bus_read_u16(0x7E011C);
 
-  for (unsigned i = 0; i < 2; i++) {
-    unsigned o = link_index[i];
+  for (unsigned i = 0; i < 12; i++) {
+    unsigned o = link_oam_start + (i<<2);
     locs[0][i].enabled = 0;
-    if (o == 0x200) {
-      continue;
-    }
+
+    if (oam[o+1] == 0xF0) continue;
+
+    uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
+    if (chr >= 0x20) continue;
 
     uint8_t ex = oam[0x220 + (o>>2)];
     int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
@@ -245,12 +255,21 @@ void on_nmi() {
     locs[0][i].hflip = oam[o + 3] & 0x40;
     locs[0][i].vflip = oam[o + 3] & 0x80;
 
-    locs[0][i].vram_addr = 0;
-    snes_bus_read(link_addr[i], (uint8_t *)&locs[0][i].vram_addr, sizeof(uint16_t));
-    locs[0][i].vram_addr = (locs[0][i].vram_addr - 0x8000);
+    locs[0][i].palette = (((oam[o + 3] >> 1) & 7) << 4) + 0x80;
+
+    locs[0][i].offs = 0;
+    snes_bus_read(sp_addr[chr], (uint8_t *)&locs[0][i].offs, sizeof(uint16_t));
+
+    if (sp_bpp[chr] == 4) {
+      locs[0][i].offs = (locs[0][i].offs - 0x8000);
+    }
+
+    locs[0][i].bpp = sp_bpp[chr];
+    locs[0][i].width = sp_size[chr];
+    locs[0][i].height = sp_size[chr];
   }
 
-  for (unsigned i = 0; i < 2; i++) {
+  for (unsigned i = 0; i < 12; i++) {
     spr.enabled = locs[79][i].enabled;
 
     int32_t x = locs[79][i].x - xoffs;
@@ -268,7 +287,13 @@ void on_nmi() {
     spr.y = y & 255;
     spr.hflip = locs[79][i].hflip;
     spr.vflip = locs[79][i].vflip;
-    spr.vram_addr = locs[79][i].vram_addr;
+    spr.palette = locs[79][i].palette;
+
+    spr.bpp = 4;
+    spr.width = locs[79][i].width;
+    spr.height = locs[79][i].height;
+
+    spr.vram_addr = locs[79][i].offs;
 
     ppux_sprite_write(spr_index++, &spr);
   }
