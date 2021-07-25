@@ -169,8 +169,8 @@ void on_nmi() {
                            0x0ACE, 0x0ACE, 0x0AD2, 0x0AD2, 0x0AD6, 0x0AC2, 0x0AC2, 0x0AC6, 0x0AC6, 0x0ACA, 0x0ACA, 0x0AE2, 0x0ADA, 0x0ADA, 0x0AF8, 0x0AF8 };
   uint8_t  sp_bpp[32]  = {      4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,
                                 4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3 };
-  uint8_t  sp_size[32] = {     16,     16,     16,     16,      8,     16,     16,     16,     16,     16,     16,      8,     16,     16,     16,     16,
-                               16,     16,     16,     16,      8,     16,     16,     16,     16,     16,     16,      8,     16,     16,     16,     16 };
+  uint8_t  sp_offs[32] = {      0,     16,      0,     16,      0,      0,     16,      0,     16,      0,     16,      0,      0,     16,      0,     16,
+                                0,     16,      0,     16,      0,      0,     16,      0,     16,      0,     16,      0,      0,     16,      0,     16 };
 
   uint8_t  oam[0x2A0];
   uint16_t link_oam_start;
@@ -264,8 +264,10 @@ void on_nmi() {
     locs[0][i].height = 8 << ((ex & 0x02) >> 1);
 
     snes_bus_read(0x7E0000 + sp_addr[chr], (uint8_t *)&locs[0][i].offs_top, sizeof(uint16_t));
+    locs[0][i].offs_top += sp_offs[chr];
     if (chr < 0x10) {
       snes_bus_read(0x7E0000 + sp_addr[chr+0x10], (uint8_t *)&locs[0][i].offs_bot, sizeof(uint16_t));
+      locs[0][i].offs_bot += sp_offs[chr+0x10];
     }
 
     if (sp_bpp[chr] == 4) {
@@ -307,7 +309,6 @@ void on_nmi() {
 
     spr.vram_addr = locs[79][i].offs_top;
     if (locs[79][i].bpp == 3 && spr.height == 16) {
-      spr.width = 16;
       spr.height = 8;
       if (spr.vflip) {
         spr.y += 8;
@@ -315,7 +316,7 @@ void on_nmi() {
       ppux_sprite_write(spr_index++, &spr);
 
       if (spr.vflip) {
-        spr.y -= 16;
+        spr.y -= 8;
       } else {
         spr.y += 8;
       }
