@@ -146,7 +146,14 @@ void PPU::ppux_render_line_pre() {
 }
 
 void PPU::ppux_render_line_post() {
-  for(int s = 0; s < extra_count; s++) {
+  uint8_t ex_pri[256];
+  uint8_t ex_lyr[256];
+  uint8_t ex_ce[256];
+  uint16_t ex_bgr[256];
+
+  memset(ex_pri, OAM_PRI_NONE, 256);
+
+  for(int s = extra_count-1; s >= 0; s--) {
     struct extra_item *t = &extra_list[s];
 
     if(!t->enabled) continue;
@@ -168,9 +175,6 @@ void PPU::ppux_render_line_post() {
 
     uint8 *cgram = get_cgram_space(t->cgram_space);
     if(!cgram) continue;
-
-    uint8 *wt_main = window[t->layer].main;
-    uint8 *wt_sub  = window[t->layer].sub;
 
     vram += t->vram_addr;
     for(unsigned tx = 0; tx < t->width; tx++, sx++) {
@@ -240,21 +244,39 @@ void PPU::ppux_render_line_post() {
       // look up color in cgram:
       uint16 bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
 
-      if(bg_enabled    == true && !wt_main[sx]) {
-        if(pixel_cache[sx].pri_main < t->priority) {
-          pixel_cache[sx].pri_main = t->priority;
-          pixel_cache[sx].bg_main  = t->layer;
-          pixel_cache[sx].src_main = bgr;
-          pixel_cache[sx].ce_main  = t->color_exemption;
-        }
+      ex_pri[sx] = t->priority;
+      ex_lyr[sx] = t->layer;
+      ex_bgr[sx] = bgr;
+      ex_ce[sx] = t->color_exemption;
+    }
+  }
+
+  for (int sx = 0; sx < 256; sx++) {
+    uint8_t priority = ex_pri[sx];
+    if (priority == OAM_PRI_NONE) continue;
+
+    uint8_t layer = ex_lyr[sx];
+
+    bool bg_enabled    = regs.bg_enabled[layer];
+    bool bgsub_enabled = regs.bgsub_enabled[layer];
+
+    uint8 *wt_main = window[layer].main;
+    uint8 *wt_sub  = window[layer].sub;
+
+    if(bg_enabled    == true && !wt_main[sx]) {
+      if(pixel_cache[sx].pri_main < priority) {
+        pixel_cache[sx].pri_main = priority;
+        pixel_cache[sx].bg_main  = layer;
+        pixel_cache[sx].src_main = ex_bgr[sx];
+        pixel_cache[sx].ce_main  = ex_ce[sx];
       }
-      if(bgsub_enabled == true && !wt_sub[sx]) {
-        if(pixel_cache[sx].pri_sub < t->priority) {
-          pixel_cache[sx].pri_sub = t->priority;
-          pixel_cache[sx].bg_sub  = t->layer;
-          pixel_cache[sx].src_sub = bgr;
-          pixel_cache[sx].ce_sub  = t->color_exemption;
-        }
+    }
+    if(bgsub_enabled == true && !wt_sub[sx]) {
+      if(pixel_cache[sx].pri_sub < priority) {
+        pixel_cache[sx].pri_sub = priority;
+        pixel_cache[sx].bg_sub  = layer;
+        pixel_cache[sx].src_sub = ex_bgr[sx];
+        pixel_cache[sx].ce_sub  = ex_ce[sx];
       }
     }
   }
