@@ -158,6 +158,8 @@ struct loc {
 } locs[80][12];
 uint8_t loc_tail = 0;
 
+uint8_t sprites[0x2000];
+
 // called on NMI:
 void on_nmi() {
   uint32_t spr_index = 0;
@@ -174,8 +176,6 @@ void on_nmi() {
   uint16_t link_oam_start;
 
   if (!copied) {
-    uint8_t sprites[0x2000];
-
     snes_bus_read(0x108000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x0000, sprites, 0x2000);
     snes_bus_read(0x10A000, sprites, 0x2000);
@@ -215,7 +215,7 @@ void on_nmi() {
   spr.vflip = 0;
   spr.vram_space = 1;
   spr.palette = 0xF0;
-  spr.layer = 1;
+  spr.layer = 4;
   spr.priority = 6;
   spr.bpp = 4;
   spr.width = 16;
@@ -263,12 +263,9 @@ void on_nmi() {
     locs[0][i].width = 8 << ((ex & 0x02) >> 1);
     locs[0][i].height = 8 << ((ex & 0x02) >> 1);
 
-    // TODO: capturing at wrong time during frame?
-    locs[0][i].offs_top = 0;
-    snes_bus_read(sp_addr[chr], (uint8_t *)&locs[0][i].offs_top, sizeof(uint16_t));
-    locs[0][i].offs_bot = locs[0][i].offs_top;
+    snes_bus_read(0x7E0000 + sp_addr[chr], (uint8_t *)&locs[0][i].offs_top, sizeof(uint16_t));
     if (chr < 0x10) {
-      snes_bus_read(sp_addr[chr+0x10], (uint8_t *)&locs[0][i].offs_bot, sizeof(uint16_t));
+      snes_bus_read(0x7E0000 + sp_addr[chr+0x10], (uint8_t *)&locs[0][i].offs_bot, sizeof(uint16_t));
     }
 
     if (sp_bpp[chr] == 4) {
@@ -310,10 +307,18 @@ void on_nmi() {
 
     spr.vram_addr = locs[79][i].offs_top;
     if (locs[79][i].bpp == 3 && spr.height == 16) {
-      spr.height = 8 + (spr.vflip * 8);
+      spr.width = 16;
+      spr.height = 8;
+      if (spr.vflip) {
+        spr.y += 8;
+      }
       ppux_sprite_write(spr_index++, &spr);
 
-      spr.y += 8 + (spr.vflip * -16);
+      if (spr.vflip) {
+        spr.y -= 16;
+      } else {
+        spr.y += 8;
+      }
       spr.vram_addr = locs[79][i].offs_bot;
     }
 
