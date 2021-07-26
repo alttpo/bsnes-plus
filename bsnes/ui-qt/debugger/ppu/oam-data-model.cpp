@@ -159,6 +159,18 @@ QVariant OamDataModel::headerData(int section, Qt::Orientation orientation, int 
   return COLUMN_STRINGS.at(section);
 }
 
+static QString signedHex(signed n) {
+  if (n < 0) {
+    return QString::number(-n, 16).toUpper().prepend(QChar('-'));
+  } else {
+    return QString::number(n, 16).toUpper();
+  }
+}
+
+static QString unsignedHex(signed n) {
+  return QString::number(n, 16).toUpper();
+}
+
 QVariant OamDataModel::data(const QModelIndex& index, int role) const {
   if(isIndexValid(index) == false) return QVariant();
 
@@ -166,13 +178,13 @@ QVariant OamDataModel::data(const QModelIndex& index, int role) const {
     const OamObject& obj = oamObject(index.row());
 
     switch(static_cast<Columns>(index.column())) {
-      case ID:        return index.row();
+      case ID:        return unsignedHex(index.row());
       case SIZE:      return sizeStringOfObject(obj);
-      case XPOS:      return obj.xpos;
-      case YPOS:      return obj.ypos;
-      case CHAR:      return obj.character + (obj.table << 8);
-      case PRIORITY:  return obj.priority;
-      case PALETTE:   return obj.palette;
+      case XPOS:      return signedHex(obj.xpos);
+      case YPOS:      return unsignedHex(obj.ypos);
+      case CHAR:      return unsignedHex(obj.character + (obj.table << 8));
+      case PRIORITY:  return unsignedHex(obj.priority);
+      case PALETTE:   return unsignedHex(obj.palette);
       case FLIP:      return FLIP_STRINGS.at(obj.hFlip | (obj.vFlip << 1));
     }
   }
@@ -205,6 +217,24 @@ QVariant OamDataModel::data(const QModelIndex& index, int role) const {
       case PRIORITY:  return Qt::AlignRight;
       case PALETTE:   return Qt::AlignRight;
       case FLIP:      return Qt::AlignLeft;
+    }
+  }
+  else if(role == Qt::FontRole) {
+    // set a monospace font:
+    QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    // match default font size:
+    auto pointSizeF = QGuiApplication::font().pointSizeF();
+    if (pointSizeF != -1) {
+      f.setPointSizeF(pointSizeF);
+    } else {
+      f.setPixelSize(QGuiApplication::font().pixelSize());
+    }
+    return f;
+  }
+  else if(role == Qt::ForegroundRole) {
+    const OamObject& obj = oamObject(index.row());
+    if (obj.ypos == 0xF0) {
+      return QColor(Qt::darkRed);
     }
   }
 
