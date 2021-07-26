@@ -169,8 +169,8 @@ void on_nmi() {
                            0x0ACE, 0x0ACE, 0x0AD2, 0x0AD2, 0x0AD6, 0x0AC2, 0x0AC2, 0x0AC6, 0x0AC6, 0x0ACA, 0x0ACA, 0x0AE2, 0x0ADA, 0x0ADA, 0x0AF8, 0x0AF8 };
   uint8_t  sp_bpp[32]  = {      4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,
                                 4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3 };
-  uint8_t  sp_offs[32] = {      0,     16,      0,     16,      0,      0,     16,      0,     16,      0,     16,      0,      0,     16,      0,     16,
-                                0,     16,      0,     16,      0,      0,     16,      0,     16,      0,     16,      0,      0,     16,      0,     16 };
+  uint8_t  sp_offs[32] = {      0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32,
+                                0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32 };
 
   uint8_t  oam[0x2A0];
   uint16_t link_oam_start;
@@ -203,7 +203,7 @@ void on_nmi() {
     last_msgs = msgs;
   }
 
-  snes_bus_read(0x7E0352, (uint8_t *)&link_oam_start, 2);
+  link_oam_start = bus_read_u16(0x7E0352);
   if (link_oam_start >= 0x200) return;
 
   snes_bus_read(0x7E0800, oam, 0x2A0);
@@ -263,10 +263,10 @@ void on_nmi() {
     locs[0][i].width = 8 << ((ex & 0x02) >> 1);
     locs[0][i].height = 8 << ((ex & 0x02) >> 1);
 
-    snes_bus_read(0x7E0000 + sp_addr[chr], (uint8_t *)&locs[0][i].offs_top, sizeof(uint16_t));
+    locs[0][i].offs_top = bus_read_u16(0x7E0000 + sp_addr[chr]);
     locs[0][i].offs_top += sp_offs[chr];
     if (chr < 0x10) {
-      snes_bus_read(0x7E0000 + sp_addr[chr+0x10], (uint8_t *)&locs[0][i].offs_bot, sizeof(uint16_t));
+      locs[0][i].offs_bot = bus_read_u16(0x7E0000 + sp_addr[chr+0x10]);
       locs[0][i].offs_bot += sp_offs[chr+0x10];
     }
 
