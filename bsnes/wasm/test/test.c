@@ -144,6 +144,7 @@ void draw_message() {
 
 struct loc {
   uint8_t  enabled;
+  uint16_t chr;
   uint16_t x;
   uint16_t y;
   uint8_t  hflip;
@@ -159,6 +160,8 @@ struct loc {
 uint8_t loc_tail = 0;
 
 uint8_t sprites[0x2000];
+
+uint32_t last_spr_index = 0;
 
 // called on NMI:
 void on_nmi() {
@@ -239,7 +242,6 @@ void on_nmi() {
     if (oam[o+1] == 0xF0) continue;
 
     uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
-    if (chr >= 0x20) continue;
 
     uint8_t ex = oam[0x220 + (o>>2)];
     int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
@@ -248,6 +250,7 @@ void on_nmi() {
     if (y >= 240) y -= 256;
 
     locs[0][i].enabled = 1;
+    locs[0][i].chr = chr;
 
     locs[0][i].x = xoffs + x;
     locs[0][i].y = yoffs + y;
@@ -263,21 +266,25 @@ void on_nmi() {
     locs[0][i].width = 8 << ((ex & 0x02) >> 1);
     locs[0][i].height = 8 << ((ex & 0x02) >> 1);
 
-    locs[0][i].offs_top = bus_read_u16(0x7E0000 + sp_addr[chr]);
-    locs[0][i].offs_top += sp_offs[chr];
-    if (chr < 0x10) {
-      locs[0][i].offs_bot = bus_read_u16(0x7E0000 + sp_addr[chr+0x10]);
-      locs[0][i].offs_bot += sp_offs[chr+0x10];
-    }
+    if (chr < 0x20) {
+      locs[0][i].offs_top = bus_read_u16(0x7E0000 + sp_addr[chr]);
+      locs[0][i].offs_top += sp_offs[chr];
+      if (chr < 0x10) {
+        locs[0][i].offs_bot = bus_read_u16(0x7E0000 + sp_addr[chr + 0x10]);
+        locs[0][i].offs_bot += sp_offs[chr + 0x10];
+      }
 
-    if (sp_bpp[chr] == 4) {
-      locs[0][i].offs_top = (locs[0][i].offs_top - 0x8000);
-      locs[0][i].offs_bot = (locs[0][i].offs_bot - 0x8000);
-    }
+      if (sp_bpp[chr] == 4) {
+        locs[0][i].offs_top = (locs[0][i].offs_top - 0x8000);
+        locs[0][i].offs_bot = (locs[0][i].offs_bot - 0x8000);
+      }
 
-    locs[0][i].bpp = sp_bpp[chr];
-    //locs[0][i].width = sp_size[chr];
-    //locs[0][i].height = sp_size[chr];
+      locs[0][i].bpp = sp_bpp[chr];
+      //locs[0][i].width = sp_size[chr];
+      //locs[0][i].height = sp_size[chr];
+    } else {
+      locs[0][i].bpp = 4;
+    }
   }
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
@@ -307,22 +314,35 @@ void on_nmi() {
     spr.width = locs[79][i].width;
     spr.height = locs[79][i].height;
 
-    spr.vram_addr = locs[79][i].offs_top;
-    if (locs[79][i].bpp == 3 && spr.height == 16) {
-      spr.height = 8;
-      if (spr.vflip) {
-        spr.y += 8;
-      }
-      ppux_sprite_write(spr_index++, &spr);
+    if (locs[79][i].chr < 0x20) {
+      spr.vram_space = 1;
+      spr.vram_addr = locs[79][i].offs_top;
+      if (locs[79][i].bpp == 3 && spr.height == 16) {
+        spr.height = 8;
+        if (spr.vflip) {
+          spr.y += 8;
+        }
+        ppux_sprite_write(spr_index++, &spr);
 
-      if (spr.vflip) {
-        spr.y -= 8;
-      } else {
-        spr.y += 8;
+        if (spr.vflip) {
+          spr.y -= 8;
+        } else {
+          spr.y += 8;
+        }
+        spr.vram_addr = locs[79][i].offs_bot;
       }
-      spr.vram_addr = locs[79][i].offs_bot;
+    } else {
+      spr.vram_space = 0;
+      spr.vram_addr = 0x8000 + (locs[79][i].chr << 5);
     }
 
     ppux_sprite_write(spr_index++, &spr);
   }
+
+  for (unsigned i = spr_index; i < last_spr_index; i++) {
+    spr.enabled = 0;
+    ppux_sprite_write(i, &spr);
+  }
+
+  last_spr_index = spr_index;
 }
