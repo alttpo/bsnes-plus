@@ -10,6 +10,9 @@ void *memcpy(void *data, const void *src, unsigned long len);
 __attribute__((import_module("env"), import_name("printf")))
 int32_t m3printf(const char *i_fmt, uint32_t *i_args);
 
+__attribute__((import_module("env"), import_name("hexdump")))
+void hexdump(const uint8_t *i_data, uint32_t i_size);
+
 
 // ppux:
 

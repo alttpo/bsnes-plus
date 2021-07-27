@@ -7,6 +7,12 @@ uint16_t bus_read_u16(uint32_t i_address) {
   return d;
 }
 
+uint8_t bus_read_u8(uint32_t i_address) {
+  uint8_t d;
+  snes_bus_read(i_address, (uint8_t *)&d, sizeof(uint8_t));
+  return d;
+}
+
 int copied = 0;
 
 struct loc {
@@ -33,6 +39,10 @@ uint32_t msgs = 0, last_msgs = 0;
 uint8_t  msg[65536];
 
 uint8_t sprites[0x2000];
+uint8_t spr3bpp[0x1000];
+
+uint8_t last_sword = 0xFF;
+uint8_t last_shield = 0xFF;
 
 void on_msg_recv() {
   uint16_t size;
@@ -110,9 +120,7 @@ void draw_message() {
   }
 }
 
-uint32_t decomp3bpp(uint8_t index, uint8_t *dest) {
-  uint32_t _pargs[2];
-
+uint32_t decomp3bpp(uint8_t index, uint8_t *buf, uint8_t *dest) {
   const int D_CMD_COPY = 0;
   const int D_CMD_BYTE_REPEAT = 1;
   const int D_CMD_WORD_REPEAT = 2;
@@ -120,29 +128,28 @@ uint32_t decomp3bpp(uint8_t index, uint8_t *dest) {
   const int D_CMD_COPY_EXISTING = 4;
 
   uint8_t *d = dest;
-  uint8_t  buf[0x800];
   uint32_t addr = 0;
 
   uint8_t t = 0;
   //LDA $CFF3, Y : STA $CA
-  snes_bus_read(0x00CFF3 + index, &t, 1);
+  t = bus_read_u8(0x00CFF3 + index);
   addr |= t;
   addr <<= 8;
 
   //LDA $D0D2, Y : STA $C9
-  snes_bus_read(0x00D0D2 + index, &t, 1);
+  t = bus_read_u8(0x00D0D2 + index);
   addr |= t;
   addr <<= 8;
 
   //LDA $D1B1, Y : STA $C8
-  snes_bus_read(0x00D1B1 + index, &t, 1);
+  t = bus_read_u8(0x00D1B1 + index);
   addr |= t;
 
   // read a large chunk of data to decompress:
   snes_bus_read(addr, buf, 0x800);
 
-  // decompres the data to dest:
-  uint32_t i = 0, o = 0;
+  // decompress the data to dest:
+  uint32_t i = 0;
   uint8_t header = buf[i];
   while (header != 0xFF) {
     uint8_t cmd = header >> 5;
@@ -155,12 +162,6 @@ uint32_t decomp3bpp(uint8_t index, uint8_t *dest) {
     }
 
     len++;
-
-    {
-      _pargs[0] = cmd;
-      _pargs[1] = len;
-      m3printf("cmd: %x, len: %x\n", _pargs);
-    }
 
     switch (cmd) {
       case D_CMD_COPY:
@@ -177,25 +178,27 @@ uint32_t decomp3bpp(uint8_t index, uint8_t *dest) {
         uint8_t a = buf[i+1];
         uint8_t b = buf[i+2];
         for (int j = 0; j < len; j += 2) {
-          *d++ = a;
+          d[j] = a;
           if ((j + 1) < len) {
-            *d++ = b;
+            d[j+1] = b;
           }
         }
+        d += len;
         i += 3;
       } break;
       case D_CMD_BYTE_INC:
         for (int j = 0; j < len; j++) {
-          *d++ = (uint8_t)(buf[i + 1] + j);
+          d[j] = (uint8_t)(buf[i + 1] + j);
         }
+        d += len;
         i += 2;
         break;
       case D_CMD_COPY_EXISTING: {
         uint16_t offs;
         offs = ((uint16_t)buf[i+1]) | ((uint16_t)buf[i+2] << 8);
         memcpy(d, dest+offs, len);
-        i += 3;
         d += len;
+        i += 3;
       } break;
       default:
         m3printf("bad command\n", 0);
@@ -206,6 +209,38 @@ uint32_t decomp3bpp(uint8_t index, uint8_t *dest) {
   }
 
   return d - dest;
+}
+
+uint16_t expand3to4bpp(uint8_t *src, uint8_t *dest, uint16_t count, uint16_t x, uint16_t s00) {
+  for (; count > 0; count--) {
+    uint16_t s10 = s00 + 0x10;  // = $03
+    for (int i = 7; i >= 0; i--) {
+      uint16_t c = *(uint16_t *)(&src[s00]);
+      s00 += 2;
+      *(uint16_t *)(&dest[x]) = c;
+
+      // XBA : ORA [$00] : AND.w #$00FF : STA $08 // = l
+      uint16_t l = ((c >> 8) | c) & 0x00FF;
+
+      // LDA [$03] : AND.w #$00FF : STA $BD // = t
+      uint16_t t = src[s10++];
+      // ORA $08 : XBA : ORA $BD
+      c = ((t | l) << 8) | t;
+      *(uint16_t *)(&dest[x + 0x10]) = c;
+
+      x += 2;
+    }
+
+    x += 0x10;
+
+    if ((s10 & 0x0078) == 0) {
+      s10 += 0x180;
+    }
+
+    s00 = s10;
+  }
+
+  return x;
 }
 
 // called on NMI:
@@ -235,21 +270,62 @@ void on_nmi() {
 
     m3printf("copied!\n", 0);
 
-    uint8_t spr_high[0x1000];
-    uint32_t len = decomp3bpp(0x5F, spr_high);
+    uint8_t  buf[0x1000];
+    uint32_t len = decomp3bpp(0x5F, buf, &spr3bpp[0x600]);
+    m3printf("decompressed %d bytes\n", &len);
+    len = decomp3bpp(0x5E, buf, &spr3bpp[0x000]);
     m3printf("decompressed %d bytes\n", &len);
 
-    // TODO: determine WHEN to copy here
+    //hexdump(spr3bpp, 0xC00);
+
+    memset(sprites, 0, 0x2000);
+
+    copied = 1;
+    ppux_sprite_reset();
+  }
+
+  uint8_t curr_sword = bus_read_u8(0x7EF359);
+  if (curr_sword != last_sword) {
+    // load sword graphics:
+    uint16_t sword_idx = bus_read_u16(0x00D2BE + (curr_sword << 1));
+
+    uint32_t x = 0;
+    x = expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx);
+    m3printf("expanded %d bytes\n", &x);
+    x = expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx + 0x180);
+    m3printf("expanded %d bytes\n", &x);
+
+    //hexdump(sprites, x);
+  }
+
+  uint8_t curr_shield = bus_read_u8(0x7EF35A);
+  if (curr_shield != last_shield) {
+    // load shield graphics:
+    uint16_t shield_idx = bus_read_u16(0x00D300 + (curr_shield << 1));
+
+    uint32_t x = 0x300;
+    x = expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx);
+    m3printf("expanded %d bytes\n", &x);
+    x = expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx + 0x180);
+    m3printf("expanded %d bytes\n", &x);
+
+    //hexdump(&sprites[0x300], x);
+  }
+
+  if ((curr_sword != last_sword) || (curr_shield != last_shield)) {
+#if 0
     // copy 3bpp->4bpp decompressed sprites from WRAM:
     // keep the same bank offset ($9000) in VRAM as it is in WRAM, cuz why not?
     snes_bus_read(0x7E9000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x9000, sprites, 0x2000);
     snes_bus_read(0x7EB000, sprites, 0x1000);
     ppux_ram_write(VRAM, 1, 0xB000, sprites, 0x1000);
-    // TODO: decompress 3bpp to 4bpp ourselves and identify ROM source of 3bpp graphics depending on sword type, shield type, etc.
+#endif
 
-    copied = 1;
-    ppux_sprite_reset();
+    ppux_ram_write(VRAM, 1, 0x9000, sprites, 0x2000);
+
+    last_shield = curr_shield;
+    last_sword = curr_sword;
   }
 
   if (msgs != last_msgs) {
