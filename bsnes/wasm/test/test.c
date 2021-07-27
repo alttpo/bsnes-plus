@@ -1,58 +1,5 @@
 #include <stdint.h>
-
-struct ppux_sprite {
-  uint8_t  enabled;
-
-  uint16_t x;
-  uint16_t y;
-  uint8_t  hflip;
-  uint8_t  vflip;
-
-  uint8_t  vram_space;        //     0 ..   255; 0 = local, 1..255 = extra
-  uint16_t vram_addr;         // $0000 .. $FFFF (byte address)
-  uint8_t  cgram_space;       //     0 ..   255; 0 = local, 1..255 = extra
-  uint8_t  palette;           //     0 ..   255
-
-  uint8_t  layer;             // 0.. 4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
-  uint8_t  priority;          // 1..12
-  uint8_t  color_exemption;   // true = ignore color math, false = obey color math
-
-  uint8_t  bpp;               // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
-  uint16_t width;             // number of pixels width
-  uint16_t height;            // number of pixels high
-};
-
-enum ppux_memory_type : uint32_t {
-  VRAM,
-  CGRAM
-};
-
-__attribute__((import_module("env"), import_name("ppux_reset")))
-void ppux_reset();
-
-__attribute__((import_module("env"), import_name("ppux_sprite_reset")))
-void ppux_sprite_reset();
-
-__attribute__((import_module("env"), import_name("ppux_sprite_read")))
-int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
-
-__attribute__((import_module("env"), import_name("ppux_sprite_write")))
-int32_t ppux_sprite_write(uint32_t i_index, struct ppux_sprite *i_spr);
-
-__attribute__((import_module("env"), import_name("ppux_ram_write")))
-int32_t ppux_ram_write(enum ppux_memory_type i_memorytype, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
-
-__attribute__((import_module("env"), import_name("snes_bus_read")))
-void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
-
-__attribute__((import_module("env"), import_name("snes_bus_write")))
-void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
-
-__attribute__((import_module("env"), import_name("msg_recv")))
-int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
-
-__attribute__((import_module("env"), import_name("msg_size")))
-int32_t msg_size(uint16_t *o_size);
+#include "wasm.h"
 
 uint16_t bus_read_u16(uint32_t i_address) {
   uint16_t d;
@@ -60,11 +7,32 @@ uint16_t bus_read_u16(uint32_t i_address) {
   return d;
 }
 
+int copied = 0;
+
+struct loc {
+  uint8_t  enabled;
+  uint16_t chr;
+  uint16_t x;
+  uint16_t y;
+  uint8_t  hflip;
+  uint8_t  vflip;
+  uint16_t offs_top;
+  uint16_t offs_bot;
+  uint8_t  palette;
+  uint8_t  priority;
+  uint8_t  bpp;
+  uint8_t  width;
+  uint8_t  height;
+} locs[80][12];
+uint8_t loc_tail = 0;
+
+uint32_t last_spr_index = 0;
+
+uint16_t last_msg_size = 0;
 uint32_t msgs = 0, last_msgs = 0;
 uint8_t  msg[65536];
-uint16_t last_msg_size = 0;
 
-int copied = 0;
+uint8_t sprites[0x2000];
 
 void on_msg_recv() {
   uint16_t size;
@@ -142,26 +110,103 @@ void draw_message() {
   }
 }
 
-struct loc {
-  uint8_t  enabled;
-  uint16_t chr;
-  uint16_t x;
-  uint16_t y;
-  uint8_t  hflip;
-  uint8_t  vflip;
-  uint16_t offs_top;
-  uint16_t offs_bot;
-  uint8_t  palette;
-  uint8_t  priority;
-  uint8_t  bpp;
-  uint8_t  width;
-  uint8_t  height;
-} locs[80][12];
-uint8_t loc_tail = 0;
+uint32_t decomp3bpp(uint8_t index, uint8_t *dest) {
+  uint32_t _pargs[2];
 
-uint8_t sprites[0x2000];
+  const int D_CMD_COPY = 0;
+  const int D_CMD_BYTE_REPEAT = 1;
+  const int D_CMD_WORD_REPEAT = 2;
+  const int D_CMD_BYTE_INC = 3;
+  const int D_CMD_COPY_EXISTING = 4;
 
-uint32_t last_spr_index = 0;
+  uint8_t *d = dest;
+  uint8_t  buf[0x800];
+  uint32_t addr = 0;
+
+  uint8_t t = 0;
+  //LDA $CFF3, Y : STA $CA
+  snes_bus_read(0x00CFF3 + index, &t, 1);
+  addr |= t;
+  addr <<= 8;
+
+  //LDA $D0D2, Y : STA $C9
+  snes_bus_read(0x00D0D2 + index, &t, 1);
+  addr |= t;
+  addr <<= 8;
+
+  //LDA $D1B1, Y : STA $C8
+  snes_bus_read(0x00D1B1 + index, &t, 1);
+  addr |= t;
+
+  // read a large chunk of data to decompress:
+  snes_bus_read(addr, buf, 0x800);
+
+  // decompres the data to dest:
+  uint32_t i = 0, o = 0;
+  uint8_t header = buf[i];
+  while (header != 0xFF) {
+    uint8_t cmd = header >> 5;
+    uint32_t len = header & 0x1F;
+
+    if (cmd == 7) {
+      cmd = (header >> 2) & 7;
+      len = ((uint32_t)((header & 3) << 8)) + buf[i + 1];
+      i++;
+    }
+
+    len++;
+
+    {
+      _pargs[0] = cmd;
+      _pargs[1] = len;
+      m3printf("cmd: %x, len: %x\n", _pargs);
+    }
+
+    switch (cmd) {
+      case D_CMD_COPY:
+        memcpy(d, &buf[i+1], len);
+        d += len;
+        i += len + 1;
+        break;
+      case D_CMD_BYTE_REPEAT:
+        memset(d, buf[i+1], len);
+        d += len;
+        i += 2;
+        break;
+      case D_CMD_WORD_REPEAT: {
+        uint8_t a = buf[i+1];
+        uint8_t b = buf[i+2];
+        for (int j = 0; j < len; j += 2) {
+          *d++ = a;
+          if ((j + 1) < len) {
+            *d++ = b;
+          }
+        }
+        i += 3;
+      } break;
+      case D_CMD_BYTE_INC:
+        for (int j = 0; j < len; j++) {
+          *d++ = (uint8_t)(buf[i + 1] + j);
+        }
+        i += 2;
+        break;
+      case D_CMD_COPY_EXISTING: {
+        uint16_t offs;
+        offs = ((uint16_t)buf[i+1]) | ((uint16_t)buf[i+2] << 8);
+        memcpy(d, dest+offs, len);
+        i += 3;
+        d += len;
+      } break;
+      default:
+        m3printf("bad command\n", 0);
+        break;
+    }
+
+    header = buf[i];
+  }
+
+  return d - dest;
+}
 
 // called on NMI:
 void on_nmi() {
@@ -187,6 +232,12 @@ void on_nmi() {
     ppux_ram_write(VRAM, 1, 0x4000, sprites, 0x2000);
     snes_bus_read(0x10E000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
+
+    m3printf("copied!\n", 0);
+
+    uint8_t spr_high[0x1000];
+    uint32_t len = decomp3bpp(0x5F, spr_high);
+    m3printf("decompressed %d bytes\n", &len);
 
     // TODO: determine WHEN to copy here
     // copy 3bpp->4bpp decompressed sprites from WRAM:
