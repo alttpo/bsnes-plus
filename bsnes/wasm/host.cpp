@@ -160,12 +160,34 @@ void Host::reset() {
   m_modules.clear();
 }
 
+m3ApiRawFunction(hexdump) {
+  m3ApiGetArgMem(const uint8_t*, i_data)
+  m3ApiGetArg   (uint32_t,       i_size)
+
+  for (uint32_t i = 0; i < i_size; i += 16) {
+    char line[8+2+(3*16)+2];
+    int n;
+    n = sprintf(line, "%08x ", i);
+    for (uint32_t j = 0; j < 16; j++) {
+      if (i+j >= i_size) break;
+      n += sprintf(&line[n], "%02x ", i_data[i + j]);
+    }
+    line[n-1] = 0;
+    puts(line);
+  }
+
+  m3ApiSuccess();
+}
+
 std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t *data, size_t size) {
   std::shared_ptr<Module> m_module;
   m_module.reset(new Module(key, m_env, default_stack_size_bytes, data, size));
 
   // link in libc API:
   M3Result res = m3_LinkLibC(m_module->m_module);
+  check_error(res);
+
+  res = m3_LinkRawFunction(m_module->m_module, "env", "hexdump", "v(*i)", hexdump);
   check_error(res);
 
   return m_module;
