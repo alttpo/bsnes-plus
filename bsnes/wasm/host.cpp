@@ -1,4 +1,5 @@
 #include "host.hpp"
+#include "m3_api_libc.h"
 
 namespace WASM {
 
@@ -162,6 +163,11 @@ void Host::reset() {
 std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t *data, size_t size) {
   std::shared_ptr<Module> m_module;
   m_module.reset(new Module(key, m_env, default_stack_size_bytes, data, size));
+
+  // link in libc API:
+  M3Result res = m3_LinkLibC(m_module->m_module);
+  check_error(res);
+
   return m_module;
 }
 
