@@ -43,7 +43,7 @@ uint32_t msgs = 0, last_msgs = 0;
 uint8_t  msg[65536];
 
 uint8_t sprites[0x2000];
-uint8_t spr3bpp[0x1000];
+uint8_t pak5e[0x600*2];
 
 uint8_t last_sword = 0xFF;
 uint8_t last_shield = 0xFF;
@@ -352,15 +352,17 @@ void on_nmi() {
 
     // decompress sword+shield 3bpp data:
     uint8_t  buf[0x1000];
+    uint8_t *pak5f = &pak5e[0x600];
+
     uint32_t addr = get_graphics_addr(0x5F);
-    snes_bus_read(addr, buf, 0x800);
-    decomp3bpp(buf, &spr3bpp[0x600]);
+    snes_bus_read(addr, buf, 0x1000);
+    decomp3bpp(buf, pak5f);
 
     addr = get_graphics_addr(0x5E);
-    snes_bus_read(addr, buf, 0x800);
-    decomp3bpp(buf, &spr3bpp[0x000]);
+    snes_bus_read(addr, buf, 0x1000);
+    decomp3bpp(buf, pak5e);
 
-    //hexdump(spr3bpp, 0xC00);
+    //hexdump(pak5e, 0xC00);
 
     // load uncompressed 3bpp graphics pack #00:
     addr = get_graphics_addr(0x00);
@@ -387,13 +389,13 @@ void on_nmi() {
     uint16_t s00;
 
     // ice/fire rod:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x7;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(512, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
     x = expand3to4bpp(buf, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
@@ -405,13 +407,13 @@ void on_nmi() {
     t0C += 2;
 
     // hammer:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x7;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(514, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
     x = expand3to4bpp(buf, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
@@ -423,13 +425,13 @@ void on_nmi() {
     t0C += 2;
 
     // bow:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x3;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(516, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
     x = expand3to4bpp(buf, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
@@ -440,78 +442,72 @@ void on_nmi() {
     x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
     t0C += 2;
 
-    // decompress:
-    uint8_t tmp[0x1000];
-    addr = get_graphics_addr(0x5F);
-    snes_bus_read(addr, buf, 0x800);
-    decomp3bpp(buf, tmp);
+    // switch to decompressed pak $5F
 
     // shovel:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x4;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(518, &spr);
-    x = expand3to4bpp(tmp, sprites, y, x, s00);
+    s00 = bus_read_u16(0x00D21D + t0C);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
     spr.x = 16+xx;
     spr.y = 64+8;
     ppux_sprite_write(519, &spr);
     xx += y*8;
-    x = expand3to4bpp(tmp, sprites, y, x, s00 + 0x180);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
     t0C += 2;
 
     // Zzz and music notes:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x3;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(520, &spr);
-    x = expand3to4bpp(tmp, sprites, y, x, s00);
+    s00 = bus_read_u16(0x00D21D + t0C);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
     spr.x = 16+xx;
     spr.y = 64+8;
     ppux_sprite_write(521, &spr);
     xx += y*8;
-    x = expand3to4bpp(tmp, sprites, y, x, s00 + 0x180);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
     t0C += 2;
 
     // dash dust:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x1;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(522, &spr);
-    x = expand3to4bpp(tmp, sprites, y, x, s00);
+    s00 = bus_read_u16(0x00D21D + t0C);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
     spr.x = 16+xx;
     spr.y = 64+8;
     ppux_sprite_write(523, &spr);
     xx += y*8;
-    x = expand3to4bpp(tmp, sprites, y, x, s00 + 0x180);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
     t0C += 2;
 
-    // load uncompressed 3bpp graphics pack #00:
-    addr = get_graphics_addr(0x00);
-    snes_bus_read(addr, buf, 0x1000);
+    // back to uncompressed 3bpp graphics pack #00:
 
     // hookshot:
-    s00 = bus_read_u16(0x00D21D + t0C);
     y = 0x4;
     spr.vram_addr = 0x9000 + x;
     spr.width = y * 0x08;
     spr.x = 16+xx;
     spr.y = 64;
     ppux_sprite_write(524, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
     x = expand3to4bpp(buf, sprites, y, x, s00);
 
     spr.vram_addr = 0x9000 + x;
@@ -522,8 +518,69 @@ void on_nmi() {
     x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
     t0C += 2;
 
+    // decompress pak $60:
+    uint8_t tmp[0x1000];
+    uint8_t pak60[0x1000];
+    addr = get_graphics_addr(0x60);
+    snes_bus_read(addr, tmp, 0x1000);
+    decomp3bpp(tmp, pak60);
 
-    hexdump(sprites, 0x2000);
+    // bug net:
+    xx = 0;
+    y = 0xE;
+    spr.vram_addr = 0x9000 + x;
+    spr.width = y * 0x08;
+    spr.x = 16+xx;
+    spr.y = 80;
+    ppux_sprite_write(526, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
+    x = expand3to4bpp(pak60, sprites, y, x, s00);
+
+    spr.vram_addr = 0x9000 + x;
+    spr.x = 16+xx;
+    spr.y = 80+8;
+    ppux_sprite_write(527, &spr);
+    xx += y*8;
+    x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
+    t0C += 2;
+
+    // cane:
+    y = 0x7;
+    spr.vram_addr = 0x9000 + x;
+    spr.width = y * 0x08;
+    spr.x = 16+xx;
+    spr.y = 80;
+    ppux_sprite_write(528, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
+    x = expand3to4bpp(pak60, sprites, y, x, s00);
+
+    spr.vram_addr = 0x9000 + x;
+    spr.x = 16+xx;
+    spr.y = 80+8;
+    ppux_sprite_write(529, &spr);
+    xx += y*8;
+    x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
+    t0C += 2;
+
+    // book opened:
+    y = 0x2;
+    spr.vram_addr = 0x9000 + x;
+    spr.width = y * 0x08;
+    spr.x = 16+xx;
+    spr.y = 80;
+    ppux_sprite_write(530, &spr);
+    s00 = bus_read_u16(0x00D21D + t0C);
+    x = expand3to4bpp(pak5f, sprites, y, x, s00);
+
+    spr.vram_addr = 0x9000 + x;
+    spr.x = 16+xx;
+    spr.y = 80+8;
+    ppux_sprite_write(531, &spr);
+    xx += y*8;
+    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
+    t0C += 2;
+
+    //hexdump(sprites, 0x2000);
   }
 
   uint8_t curr_sword = bus_read_u8(0x7EF359);
@@ -532,8 +589,8 @@ void on_nmi() {
     uint16_t sword_idx = bus_read_u16(0x00D2BE + (curr_sword << 1));
 
     uint32_t x = 0;
-    x = expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx);
-    expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx + 0x180);
+    x = expand3to4bpp(pak5e, sprites, 0xC, x, sword_idx);
+    expand3to4bpp(pak5e, sprites, 0xC, x, sword_idx + 0x180);
 
     //hexdump(sprites, x);
   }
@@ -544,8 +601,8 @@ void on_nmi() {
     uint16_t shield_idx = bus_read_u16(0x00D300 + (curr_shield << 1));
 
     uint32_t x = 0x300;
-    x = expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx);
-    expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx + 0x180);
+    x = expand3to4bpp(pak5e, sprites, 0x6, x, shield_idx);
+    expand3to4bpp(pak5e, sprites, 0x6, x, shield_idx + 0x180);
 
     //hexdump(&sprites[0x300], x);
   }
