@@ -580,6 +580,7 @@ void on_nmi() {
     x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
     t0C += 2;
 
+    ppux_sprite_reset();
     //hexdump(sprites, 0x2000);
   }
 
@@ -661,9 +662,10 @@ void on_nmi() {
 
     // add all oam sprites for this ancilla:
     uint8_t start = anc[(0xC86 - anc_start) + i];
-    uint8_t end   = anc[(0xC90 - anc_start) + i];
-    if (end == 0) end = 4;
-    for (uint8_t o = start; o < start+end; o += 4) {
+    uint8_t len   = anc[(0xC90 - anc_start) + i];
+    if (len == 0) len = 4;
+    if (t == 0x13) len = 3 * 4;
+    for (uint8_t o = start; o < start+len; o += 4) {
       oam_convert(oam, o, j++, xoffs, yoffs);
     }
   }
