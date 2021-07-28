@@ -36,6 +36,8 @@ struct Module {
   Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
   ~Module();
 
+  M3Result suppressFunctionLookupFailed(M3Result res, const char *function_name);
+
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
   void linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata);
 

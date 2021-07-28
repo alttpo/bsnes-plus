@@ -65,23 +65,31 @@ Module::~Module() {
   }
 }
 
+M3Result Module::suppressFunctionLookupFailed(M3Result res, const char *function_name) {
+  if (res == m3Err_functionLookupFailed) {
+    const std::string key(function_name);
+    auto it = m_function_warned.find(key);
+    if (it == m_function_warned.end()) {
+      fprintf(stderr, "wasm: module '%s': failed to find function '%s'\n", m_key.c_str(), function_name);
+      m_function_warned.emplace_hint(it, key, true);
+    }
+    return m3Err_none;
+  }
+
+  return res;
+}
+
 void Module::link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall) {
   //printf("m3_LinkRawFunction(%p, '%s', '%s', '%s', %p)\n", m_module, module_name, function_name, signature, rawcall);
   M3Result res = m3_LinkRawFunction(m_module, module_name, function_name, signature, rawcall);
-  if (res == m3Err_functionLookupFailed) {
-    fprintf(stderr, "wasm: module '%s': error while linking '%s': %s\n", m_key.c_str(), function_name, res);
-    res = NULL;
-  }
+  res = suppressFunctionLookupFailed(res, function_name);
   check_error(res);
 }
 
 void Module::linkEx(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall, const void *userdata) {
   //printf("m3_LinkRawFunctionEx(%p, '%s', '%s', '%s', %p, %p)\n", m_module, module_name, function_name, signature, rawcall, userdata);
   M3Result res = m3_LinkRawFunctionEx(m_module, module_name, function_name, signature, rawcall, userdata);
-  if (res == m3Err_functionLookupFailed) {
-    fprintf(stderr, "wasm: module '%s': error while linking '%s': %s\n", m_key.c_str(), function_name, res);
-    res = NULL;
-  }
+  res = suppressFunctionLookupFailed(res, function_name);
   check_error(res);
 }
 
@@ -104,14 +112,7 @@ M3Result Module::invoke(const char *function_name, int argc, const char *argv[])
 
   //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, m_runtime, function_name);
   res = m3_FindFunction(&func, m_runtime, function_name);
-  if (res == m3Err_functionLookupFailed) {
-    const std::string key(function_name);
-    auto it = m_function_warned.find(key);
-    if (it == m_function_warned.end()) {
-      fprintf(stderr, "wasm: module '%s': failed to find function '%s'\n", m_key.c_str(), function_name);
-      m_function_warned.emplace_hint(it, key, true);
-    }
-  }
+  suppressFunctionLookupFailed(res, function_name);
   if (res != m3Err_none) {
     return res;
   }
@@ -131,9 +132,7 @@ void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
 
   const char *function_name = "on_msg_recv";
   M3Result res = invoke(function_name, 0, nullptr);
-  if (res == m3Err_functionLookupFailed) {
-    res = nullptr;
-  }
+  res = suppressFunctionLookupFailed(res, function_name);
   check_error(res);
 }
 
@@ -187,7 +186,9 @@ std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t
   M3Result res = m3_LinkLibC(m_module->m_module);
   check_error(res);
 
+  // link hexdump function:
   res = m3_LinkRawFunction(m_module->m_module, "env", "hexdump", "v(*i)", hexdump);
+  res = m_module->suppressFunctionLookupFailed(res, "hexdump");
   check_error(res);
 
   return m_module;
