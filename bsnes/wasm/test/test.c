@@ -268,13 +268,10 @@ void on_nmi() {
     snes_bus_read(0x10E000, sprites, 0x2000);
     ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
 
-    m3printf("copied!\n", 0);
-
+    // decompress sprite data:
     uint8_t  buf[0x1000];
-    uint32_t len = decomp3bpp(0x5F, buf, &spr3bpp[0x600]);
-    m3printf("decompressed %d bytes\n", &len);
-    len = decomp3bpp(0x5E, buf, &spr3bpp[0x000]);
-    m3printf("decompressed %d bytes\n", &len);
+    decomp3bpp(0x5F, buf, &spr3bpp[0x600]);
+    decomp3bpp(0x5E, buf, &spr3bpp[0x000]);
 
     //hexdump(spr3bpp, 0xC00);
 
@@ -291,9 +288,7 @@ void on_nmi() {
 
     uint32_t x = 0;
     x = expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx);
-    m3printf("expanded %d bytes\n", &x);
-    x = expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx + 0x180);
-    m3printf("expanded %d bytes\n", &x);
+    expand3to4bpp(spr3bpp, sprites, 0xC, x, sword_idx + 0x180);
 
     //hexdump(sprites, x);
   }
@@ -305,9 +300,7 @@ void on_nmi() {
 
     uint32_t x = 0x300;
     x = expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx);
-    m3printf("expanded %d bytes\n", &x);
-    x = expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx + 0x180);
-    m3printf("expanded %d bytes\n", &x);
+    expand3to4bpp(spr3bpp, sprites, 0x6, x, shield_idx + 0x180);
 
     //hexdump(&sprites[0x300], x);
   }
