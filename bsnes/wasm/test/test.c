@@ -15,6 +15,10 @@ uint8_t bus_read_u8(uint32_t i_address) {
 
 int copied = 0;
 
+#define anc_sprites 10
+const uint32_t anc_start = 0xBF0;
+const uint32_t anc_size = 0xC9A - anc_start;
+
 struct loc {
   uint8_t  enabled;
   uint16_t chr;
@@ -29,7 +33,7 @@ struct loc {
   uint8_t  bpp;
   uint8_t  width;
   uint8_t  height;
-} locs[80][12];
+} locs[80][anc_sprites+12];
 uint8_t loc_tail = 0;
 
 uint32_t last_spr_index = 0;
@@ -43,6 +47,16 @@ uint8_t spr3bpp[0x1000];
 
 uint8_t last_sword = 0xFF;
 uint8_t last_shield = 0xFF;
+
+const uint16_t sp_addr[32] =
+  { 0x0ACC, 0x0ACC, 0x0AD0, 0x0AD0, 0x0AD4, 0x0AC0, 0x0AC0, 0x0AC4, 0x0AC4, 0x0AC8, 0x0AC8, 0x0AE0, 0x0AD8, 0x0AD8, 0x0AF6, 0x0AF6,
+    0x0ACE, 0x0ACE, 0x0AD2, 0x0AD2, 0x0AD6, 0x0AC2, 0x0AC2, 0x0AC6, 0x0AC6, 0x0ACA, 0x0ACA, 0x0AE2, 0x0ADA, 0x0ADA, 0x0AF8, 0x0AF8 };
+const uint8_t  sp_bpp[32]  =
+  {      4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,
+         4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3 };
+const uint8_t  sp_offs[32] =
+  {      0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32,
+         0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32 };
 
 void on_msg_recv() {
   uint16_t size;
@@ -243,20 +257,79 @@ uint16_t expand3to4bpp(uint8_t *src, uint8_t *dest, uint16_t count, uint16_t x, 
   return x;
 }
 
+void oam_convert(uint8_t *oam, unsigned o, unsigned i, uint16_t xoffs, uint16_t yoffs) {
+  locs[0][i].enabled = 0;
+
+  if (oam[o+1] == 0xF0) return;
+
+  uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
+
+  uint8_t ex = oam[0x220 + (o>>2)];
+  int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
+  int16_t y = (uint8_t)(oam[o + 1]);
+  if (x >= 256) x -= 512;
+  if (y >= 240) y -= 256;
+
+  locs[0][i].enabled = 1;
+  locs[0][i].chr = chr;
+
+  locs[0][i].x = xoffs + x;
+  locs[0][i].y = yoffs + y;
+  locs[0][i].hflip = (oam[o + 3] & 0x40) >> 6;
+  locs[0][i].vflip = (oam[o + 3] & 0x80) >> 7;
+
+  locs[0][i].palette = (((oam[o + 3] >> 1) & 7) << 4) + 0x80;
+  locs[0][i].priority = ((oam[o + 3] >> 4) & 3);
+
+  locs[0][i].width = 8 << ((ex & 0x02) >> 1);
+  locs[0][i].height = 8 << ((ex & 0x02) >> 1);
+
+  if (chr < 0x20) {
+    locs[0][i].offs_top = bus_read_u16(0x7E0000 + sp_addr[chr]);
+    locs[0][i].offs_top += sp_offs[chr];
+    if (chr < 0x10) {
+      locs[0][i].offs_bot = bus_read_u16(0x7E0000 + sp_addr[chr + 0x10]);
+      locs[0][i].offs_bot += sp_offs[chr + 0x10];
+    }
+
+    if (sp_bpp[chr] == 4) {
+      locs[0][i].offs_top = (locs[0][i].offs_top - 0x8000);
+      locs[0][i].offs_bot = (locs[0][i].offs_bot - 0x8000);
+    }
+
+    locs[0][i].bpp = sp_bpp[chr];
+    //locs[0][i].width = sp_size[chr];
+    //locs[0][i].height = sp_size[chr];
+  } else {
+    locs[0][i].bpp = 4;
+  }
+}
+
+int32_t sync_ancilla(uint8_t t) {
+  if (t == 0) return 0;
+
+  // 0x26 = sparkles when swinging lvl 2 or higher sword
+  //if (t == 0x26) return -1;
+  // 0x2A = sparkles starting spin attack
+  //if (t == 0x2A) return -1;
+  // 0x2B = sparkles during spin attack
+  //if (t == 0x2B) return -1;
+  // 0x3C = sparkles when charing spin attach
+  //if (t == 0x3C) return -1;
+
+  // yes:
+  return -1;
+}
+
 // called on NMI:
 void on_nmi() {
   uint32_t spr_index = 0;
   struct ppux_sprite spr;
 
-  uint16_t sp_addr[32] = { 0x0ACC, 0x0ACC, 0x0AD0, 0x0AD0, 0x0AD4, 0x0AC0, 0x0AC0, 0x0AC4, 0x0AC4, 0x0AC8, 0x0AC8, 0x0AE0, 0x0AD8, 0x0AD8, 0x0AF6, 0x0AF6,
-                           0x0ACE, 0x0ACE, 0x0AD2, 0x0AD2, 0x0AD6, 0x0AC2, 0x0AC2, 0x0AC6, 0x0AC6, 0x0ACA, 0x0ACA, 0x0AE2, 0x0ADA, 0x0ADA, 0x0AF8, 0x0AF8 };
-  uint8_t  sp_bpp[32]  = {      4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,
-                                4,      4,      4,      4,      4,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3,      3 };
-  uint8_t  sp_offs[32] = {      0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32,
-                                0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32 };
-
   uint8_t  oam[0x2A0];
   uint16_t link_oam_start;
+
+  uint8_t anc[anc_size];
 
   if (!copied) {
     snes_bus_read(0x108000, sprites, 0x2000);
@@ -331,6 +404,49 @@ void on_nmi() {
 
   snes_bus_read(0x7E0800, oam, 0x2A0);
 
+  // move all previous recorded frames down by one:
+  for (int j = 79; j >= 1; j--) {
+    for (int i = 0; i < anc_sprites+12; i++) {
+      locs[j][i] = locs[j - 1][i];
+    }
+  }
+
+  // get screen x,y offset by reading BG2 scroll registers:
+  uint16_t xoffs = bus_read_u16(0x7E00E2) - (int16_t)bus_read_u16(0x7E011A);
+  uint16_t yoffs = bus_read_u16(0x7E00E8) - (int16_t)bus_read_u16(0x7E011C);
+
+  //spr.x = bus_read_u16(0x7E0022);
+  //spr.y = bus_read_u16(0x7E0020);
+
+  // process ancillae:
+  snes_bus_read(0x7E0BF0, anc, anc_size);
+  for (unsigned i = 0; i < anc_sprites; i++) {
+    locs[0][i].enabled = 0;
+  }
+  unsigned j = 0;
+  for (unsigned i = 0; i < 10; i++) {
+    // check ancilla type:
+    uint8_t t = anc[(0xC4A - anc_start) + i];
+
+    if (!sync_ancilla(t)) continue;
+
+    // add all oam sprites for this ancilla:
+    uint8_t start = anc[(0xC86 - anc_start) + i];
+    uint8_t end   = anc[(0xC90 - anc_start) + i];
+    if (end == 0) end = 4;
+    for (uint8_t o = start; o < start+end; o += 4) {
+      oam_convert(oam, o, j++, xoffs, yoffs);
+    }
+  }
+
+  for (unsigned j = 0; j < 12; j++) {
+    unsigned o = link_oam_start + (j<<2);
+    unsigned i = anc_sprites+j;
+    oam_convert(oam, o, i, xoffs, yoffs);
+  }
+
+  uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
+
   spr.enabled = 1;
   spr.cgram_space = 0;
   spr.color_exemption = 0;
@@ -344,72 +460,7 @@ void on_nmi() {
   spr.width = 16;
   spr.height = 16;
 
-  // move all previous recorded frames down by one:
-  for (int j = 79; j >= 1; j--) {
-    for (int i = 0; i < 12; i++) {
-      locs[j][i] = locs[j - 1][i];
-    }
-  }
-
-  // get screen x,y offset by reading BG2 scroll registers:
-  uint16_t xoffs = bus_read_u16(0x7E00E2) - (int16_t)bus_read_u16(0x7E011A);
-  uint16_t yoffs = bus_read_u16(0x7E00E8) - (int16_t)bus_read_u16(0x7E011C);
-
-  for (unsigned i = 0; i < 12; i++) {
-    unsigned o = link_oam_start + (i<<2);
-    locs[0][i].enabled = 0;
-
-    if (oam[o+1] == 0xF0) continue;
-
-    uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
-
-    uint8_t ex = oam[0x220 + (o>>2)];
-    int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
-    int16_t y = (uint8_t)(oam[o + 1]);
-    if (x >= 256) x -= 512;
-    if (y >= 240) y -= 256;
-
-    locs[0][i].enabled = 1;
-    locs[0][i].chr = chr;
-
-    locs[0][i].x = xoffs + x;
-    locs[0][i].y = yoffs + y;
-    //spr.x = bus_read_u16(0x7E0022);
-    //spr.y = bus_read_u16(0x7E0020);
-
-    locs[0][i].hflip = (oam[o + 3] & 0x40) >> 6;
-    locs[0][i].vflip = (oam[o + 3] & 0x80) >> 7;
-
-    locs[0][i].palette = (((oam[o + 3] >> 1) & 7) << 4) + 0x80;
-    locs[0][i].priority = ((oam[o + 3] >> 4) & 3);
-
-    locs[0][i].width = 8 << ((ex & 0x02) >> 1);
-    locs[0][i].height = 8 << ((ex & 0x02) >> 1);
-
-    if (chr < 0x20) {
-      locs[0][i].offs_top = bus_read_u16(0x7E0000 + sp_addr[chr]);
-      locs[0][i].offs_top += sp_offs[chr];
-      if (chr < 0x10) {
-        locs[0][i].offs_bot = bus_read_u16(0x7E0000 + sp_addr[chr + 0x10]);
-        locs[0][i].offs_bot += sp_offs[chr + 0x10];
-      }
-
-      if (sp_bpp[chr] == 4) {
-        locs[0][i].offs_top = (locs[0][i].offs_top - 0x8000);
-        locs[0][i].offs_bot = (locs[0][i].offs_bot - 0x8000);
-      }
-
-      locs[0][i].bpp = sp_bpp[chr];
-      //locs[0][i].width = sp_size[chr];
-      //locs[0][i].height = sp_size[chr];
-    } else {
-      locs[0][i].bpp = 4;
-    }
-  }
-
-  uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
-
-  for (unsigned i = 0; i < 12; i++) {
+  for (unsigned i = 0; i < anc_sprites+12; i++) {
     spr.enabled = locs[79][i].enabled;
 
     int32_t x = locs[79][i].x - xoffs;
