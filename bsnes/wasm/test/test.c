@@ -1,5 +1,22 @@
 #include <stdint.h>
 #include "wasm.h"
+#include "../../../external/printf/printf.c"
+
+void _putchar(char character) {
+
+}
+
+#undef printf
+int printf(const char* format, ...) {
+  char buf[1024];
+  va_list va;
+  va_start(va, format);
+  const int ret = vsnprintf_(buf, 1024, format, va);
+  va_end(va);
+  puts(buf);
+  return ret;
+}
+
 
 uint16_t bus_read_u16(uint32_t i_address) {
   uint16_t d;
@@ -15,7 +32,7 @@ uint8_t bus_read_u8(uint32_t i_address) {
 
 int copied = 0;
 
-#define anc_sprites 10
+#define anc_sprites 24
 const uint32_t anc_start = 0xBF0;
 const uint32_t anc_size = 0xC9A - anc_start;
 
@@ -218,7 +235,7 @@ uint32_t decomp3bpp(uint8_t *buf, uint8_t *dest) {
         i += 3;
       } break;
       default:
-        m3printf("bad command\n", 0);
+        printf("bad command\n");
         break;
     }
 
@@ -663,9 +680,18 @@ void on_nmi() {
     // add all oam sprites for this ancilla:
     uint8_t start = anc[(0xC86 - anc_start) + i];
     uint8_t len   = anc[(0xC90 - anc_start) + i];
+    {
+      //uint32_t _pargs[3] = { t, start>>2, len>>2 };
+      printf("[%x] st %x, ln %x\n", t, start>>2, len>>2);
+    }
+
     if (len == 0) len = 4;
-    if (t == 0x13) len = 3 * 4;
+    if (t == 0x13) len = 4 * 4;
     for (uint8_t o = start; o < start+len; o += 4) {
+      if (j == anc_sprites) {
+        printf("anc sprite overflow!\n");
+        break;
+      }
       oam_convert(oam, o, j++, xoffs, yoffs);
     }
   }
