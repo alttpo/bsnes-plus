@@ -178,6 +178,23 @@ m3ApiRawFunction(hexdump) {
   m3ApiSuccess();
 }
 
+m3ApiRawFunction(m3puts) {
+  m3ApiReturnType (int32_t)
+
+  m3ApiGetArgMem  (const char*, i_str)
+
+  if (m3ApiIsNullPtr(i_str)) {
+    m3ApiReturn(0);
+  }
+
+  m3ApiCheckMem(i_str, 1);
+  size_t fmt_len = strnlen(i_str, ((uintptr_t)(_mem) + m3_GetMemorySize(runtime)) - (uintptr_t)(i_str));
+  m3ApiCheckMem(i_str, fmt_len+1); // include `\0`
+
+  // use fputs to avoid redundant newline
+  m3ApiReturn(fputs(i_str, stdout));
+}
+
 std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t *data, size_t size) {
   std::shared_ptr<Module> m_module;
   m_module.reset(new Module(key, m_env, default_stack_size_bytes, data, size));
@@ -185,6 +202,12 @@ std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t
   // link in libc API:
   M3Result res = m3_LinkLibC(m_module->m_module);
   check_error(res);
+
+  // link puts function:
+  res = m3_LinkRawFunction(m_module->m_module, "env", "puts", "i(*)", m3puts);
+  res = m_module->suppressFunctionLookupFailed(res, "puts");
+  check_error(res);
+
 
   // link hexdump function:
   res = m3_LinkRawFunction(m_module->m_module, "env", "hexdump", "v(*i)", hexdump);
