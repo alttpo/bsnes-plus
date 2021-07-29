@@ -65,6 +65,9 @@ protected:
     static const char *wasmsig_##name; \
     m3ApiRawFunction(wasm_##name)
 
+    decl_binding(debugger_break);
+    decl_binding(debugger_continue);
+
     decl_binding(msg_recv);
     decl_binding(msg_size);
 

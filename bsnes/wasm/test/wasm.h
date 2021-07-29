@@ -74,3 +74,11 @@ int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
 
 __attribute__((import_module("env"), import_name("msg_size")))
 int32_t msg_size(uint16_t *o_size);
+
+// debugger:
+
+__attribute__((import_module("env"), import_name("debugger_break")))
+void debugger_break();
+
+__attribute__((import_module("env"), import_name("debugger_continue")))
+void debugger_continue();
