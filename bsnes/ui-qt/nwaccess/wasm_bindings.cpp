@@ -31,6 +31,9 @@ void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
 #define link(name) \
   module->linkEx("*", #name, wasmsig_##name, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_##name>, (const void *)this)
 
+  link(debugger_break);
+  link(debugger_continue);
+
   link(msg_recv);
   link(msg_size);
 
@@ -45,6 +48,22 @@ void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
   link(snes_bus_write);
 
 #undef link
+}
+
+//void debugger_break();
+const char *NWAccess::wasmsig_debugger_break = "v()";
+m3ApiRawFunction(NWAccess::wasm_debugger_break) {
+  if (!application.debug) debugger->toggleRunStatus();
+
+  m3ApiSuccess()
+}
+
+//void debugger_continue();
+const char *NWAccess::wasmsig_debugger_continue = "v()";
+m3ApiRawFunction(NWAccess::wasm_debugger_continue) {
+  if (application.debug) debugger->toggleRunStatus();
+
+  m3ApiSuccess()
 }
 
 //int32_t msg_size(uint16_t *o_size);

@@ -208,7 +208,6 @@ std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t
   res = m_module->suppressFunctionLookupFailed(res, "puts");
   check_error(res);
 
-
   // link hexdump function:
   res = m3_LinkRawFunction(m_module->m_module, "env", "hexdump", "v(*i)", hexdump);
   res = m_module->suppressFunctionLookupFailed(res, "hexdump");
