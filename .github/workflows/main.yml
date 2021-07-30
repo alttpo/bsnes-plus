@@ -75,6 +75,7 @@ jobs:
             make
             mingw-w64-x86_64-toolchain
             mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
             p7zip
 
       - name: Inject slug/short variables
@@ -94,10 +95,8 @@ jobs:
         shell: msys2 {0}
         run: |
           cd external/wasm3
-          mkdir build
-          cd build
-          cmake -G "MinGW Makefiles" ..
-          mingw-make -j2
+          cmake -G "Ninja" -B build
+          cmake --build build
 
       - name: Build bsnes-plus
         shell: msys2 {0}
