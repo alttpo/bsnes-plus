@@ -9,6 +9,7 @@ on:
 jobs:
   mac-build:
     runs-on: macos-latest
+    if: ${{ false }}  # mac build works; need to focus on windows build
 
     steps:
       - name: Inject slug/short variables
@@ -89,6 +90,7 @@ jobs:
           echo "basename=bsnes-plus-${{env.GITHUB_REF_SLUG}}-windows" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build wasm3
+        shell: msys2 {0}
         run: |
           cd external/wasm3
           mkdir build
