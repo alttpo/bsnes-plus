@@ -96,7 +96,7 @@ jobs:
           cd external/wasm3
           mkdir build
           cd build
-          cmake ..
+          cmake -G "MinGW Makefiles" ..
           mingw-make -j2
 
       - name: Build bsnes-plus
