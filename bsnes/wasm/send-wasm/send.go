@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -45,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Print(hex.Dump(b.Bytes()))
+	//fmt.Print(hex.Dump(b.Bytes()))
 	_, err = c.Write(b.Bytes())
 	if err != nil {
 		panic(err)
