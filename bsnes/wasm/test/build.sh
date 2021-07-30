@@ -7,7 +7,6 @@ file="test.wasm"
   -nostartfiles \
   -fno-builtin \
   -Wl,--no-entry \
-  -Wl,--export-all \
   -Wl,-z,stack-size=$[1048576] \
   -o "${file}" \
   test.c
