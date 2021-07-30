@@ -17,7 +17,6 @@ int printf(const char* format, ...) {
   return ret;
 }
 
-
 uint16_t bus_read_u16(uint32_t i_address) {
   uint16_t d;
   snes_bus_read(i_address, (uint8_t *)&d, sizeof(uint16_t));
@@ -35,6 +34,7 @@ int copied = 0;
 #define anc_sprites 24
 const uint32_t anc_start = 0xBF0;
 const uint32_t anc_size = 0xC9A - anc_start;
+uint8_t anc[anc_size];
 
 struct loc {
   uint8_t  enabled;
@@ -55,15 +55,21 @@ uint8_t loc_tail = 0;
 
 uint32_t last_spr_index = 0;
 
+uint16_t xoffs;
+uint16_t yoffs;
+
+uint8_t last_sword = 0xFF;
+uint8_t last_shield = 0xFF;
+
+uint8_t oam[0x2A0];
+uint8_t oam_used[128];
+
 uint16_t last_msg_size = 0;
 uint32_t msgs = 0, last_msgs = 0;
 uint8_t  msg[65536];
 
 uint8_t sprites[0x2000];
 uint8_t pak5e[0x600*2];
-
-uint8_t last_sword = 0xFF;
-uint8_t last_shield = 0xFF;
 
 const uint16_t sp_addr[32] =
   { 0x0ACC, 0x0ACC, 0x0AD0, 0x0AD0, 0x0AD4, 0x0AC0, 0x0AC0, 0x0AC4, 0x0AC4, 0x0AC8, 0x0AC8, 0x0AE0, 0x0AD8, 0x0AD8, 0x0AF6, 0x0AF6,
@@ -75,6 +81,7 @@ const uint8_t  sp_offs[32] =
   {      0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32,
          0,     32,      0,     32,      0,      0,     32,      0,     32,      0,     32,      0,      0,     32,      0,     32 };
 
+__attribute__((export_name("on_msg_recv")))
 void on_msg_recv() {
   uint16_t size;
 
@@ -235,7 +242,7 @@ uint32_t decomp3bpp(uint8_t *buf, uint8_t *dest) {
         i += 3;
       } break;
       default:
-        printf("bad command\n");
+        puts("bad command\n");
         break;
     }
 
@@ -277,7 +284,7 @@ uint16_t expand3to4bpp(uint8_t *src, uint8_t *dest, uint16_t count, uint16_t x, 
   return x;
 }
 
-void oam_convert(uint8_t *oam, unsigned o, unsigned i, uint16_t xoffs, uint16_t yoffs) {
+void oam_convert(unsigned o, unsigned i) {
   locs[0][i].enabled = 0;
 
   if (oam[o+1] == 0xF0) return;
@@ -325,31 +332,66 @@ void oam_convert(uint8_t *oam, unsigned o, unsigned i, uint16_t xoffs, uint16_t 
   }
 }
 
-int32_t sync_ancilla(uint8_t t) {
-  if (t == 0) return 0;
+unsigned anc_capture(unsigned i, unsigned j) {
+  static uint16_t regions[6] = { 0x0030, 0x01D0, 0x0000, 0x0030, 0x0120, 0x0140 };
 
-  // 0x26 = sparkles when swinging lvl 2 or higher sword
-  //if (t == 0x26) return -1;
-  // 0x2A = sparkles starting spin attack
-  //if (t == 0x2A) return -1;
-  // 0x2B = sparkles during spin attack
-  //if (t == 0x2B) return -1;
-  // 0x3C = sparkles when charing spin attach
-  //if (t == 0x3C) return -1;
+  // check ancilla type:
+  uint8_t t = anc[(0xC4A - anc_start) + i];
+  if (t == 0) return j;
 
-  // yes:
-  return -1;
+  unsigned region = regions[3];
+  unsigned start = anc[(0xC86 - anc_start) + i];
+  unsigned len   = anc[(0xC90 - anc_start) + i];
+  if (len == 0) len = 4;
+
+  switch (t) {
+    // dash dust:
+    case 0x1E:
+      break;
+    // ice rod shot/blast:
+    case 0x11:
+    case 0x13:
+      len = 4 * 4;
+      break;
+    default:
+      break;
+  }
+
+  // OAM sprites are allocated dynamically and 0xC86/0xC90 are not updated after the fact:
+  while (start < 0x100 && oam_used[start>>2] != 0) {
+    start += 4;
+  }
+  if (start >= 0x100) {
+    return j;
+  }
+
+  //printf("[%02x] st %02x, ln %02x\n", t, start>>2, len>>2);
+
+  for (unsigned o = start; o < start+len; o += 4) {
+    if (o >= 0x200) break;
+    if (j == anc_sprites) {
+      puts("anc sprite overflow!\n");
+      break;
+    }
+    if (oam[o+1] == 0xF0) break;
+    oam_convert(o, j++);
+    oam_used[o>>2] = 1;
+    if (locs[0][j-1].chr >= 0x100) {
+      printf("BUG! anc %x; oam %02x, chr %03x\n", i, o>>2, locs[0][j-1].chr);
+      debugger_break();
+    }
+  }
+
+  return j;
 }
 
 // called on NMI:
+__attribute__((export_name("on_nmi")))
 void on_nmi() {
   uint32_t spr_index = 0;
   struct ppux_sprite spr;
 
-  uint8_t  oam[0x2A0];
   uint16_t link_oam_start;
-
-  uint8_t anc[anc_size];
 
   if (!copied) {
     copied = 1;
@@ -659,8 +701,8 @@ void on_nmi() {
   }
 
   // get screen x,y offset by reading BG2 scroll registers:
-  uint16_t xoffs = bus_read_u16(0x7E00E2) - (int16_t)bus_read_u16(0x7E011A);
-  uint16_t yoffs = bus_read_u16(0x7E00E8) - (int16_t)bus_read_u16(0x7E011C);
+  xoffs = bus_read_u16(0x7E00E2) - (int16_t)bus_read_u16(0x7E011A);
+  yoffs = bus_read_u16(0x7E00E8) - (int16_t)bus_read_u16(0x7E011C);
 
   //spr.x = bus_read_u16(0x7E0022);
   //spr.y = bus_read_u16(0x7E0020);
@@ -670,36 +712,18 @@ void on_nmi() {
   for (unsigned i = 0; i < anc_sprites; i++) {
     locs[0][i].enabled = 0;
   }
+
+  memset(oam_used, 0, 128);
+
   unsigned j = 0;
   for (unsigned i = 0; i < 10; i++) {
-    // check ancilla type:
-    uint8_t t = anc[(0xC4A - anc_start) + i];
-
-    if (!sync_ancilla(t)) continue;
-
-    // add all oam sprites for this ancilla:
-    uint8_t start = anc[(0xC86 - anc_start) + i];
-    uint8_t len   = anc[(0xC90 - anc_start) + i];
-    {
-      //uint32_t _pargs[3] = { t, start>>2, len>>2 };
-      printf("[%x] st %x, ln %x\n", t, start>>2, len>>2);
-    }
-
-    if (len == 0) len = 4;
-    if (t == 0x13) len = 4 * 4;
-    for (uint8_t o = start; o < start+len; o += 4) {
-      if (j == anc_sprites) {
-        printf("anc sprite overflow!\n");
-        break;
-      }
-      oam_convert(oam, o, j++, xoffs, yoffs);
-    }
+    j = anc_capture(i, j);
   }
 
   for (unsigned j = 0; j < 12; j++) {
     unsigned o = link_oam_start + (j<<2);
     unsigned i = anc_sprites+j;
-    oam_convert(oam, o, i, xoffs, yoffs);
+    oam_convert(o, i);
   }
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
