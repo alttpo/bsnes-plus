@@ -74,6 +74,7 @@ jobs:
             coreutils
             make
             mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
             p7zip
 
       - name: Inject slug/short variables
