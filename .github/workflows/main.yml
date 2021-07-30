@@ -26,11 +26,21 @@ jobs:
         name: Checkout
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - run: echo "basename=bsnes-plus-${{env.GITHUB_REF_SLUG}}-mac" >> $GITHUB_ENV
         name: Set variables
 
-      - run: |
+      - name: Build wasm3
+        run: |
+          cd external/wasm3
+          mkdir build
+          cd build
+          cmake ..
+          make -j2
+
+      - name: Build bsnes-plus
+        run: |
           cd bsnes
           make qtpath=/usr/local/opt/qt@5
 
@@ -78,7 +88,15 @@ jobs:
         run: |
           echo "basename=bsnes-plus-${{env.GITHUB_REF_SLUG}}-windows" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Build bsnes
+      - name: Build wasm3
+        run: |
+          cd external/wasm3
+          mkdir build
+          cd build
+          cmake ..
+          mingw-make -j2
+
+      - name: Build bsnes-plus
         shell: msys2 {0}
         run: |
           cd bsnes
