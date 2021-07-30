@@ -324,6 +324,9 @@ void oam_convert(unsigned o, unsigned i) {
       locs[0][i].offs_bot = (locs[0][i].offs_bot - 0x8000);
     }
 
+    // can compress offs_top and offs_bot together into 24 bits on the wire:
+    //printf("%02x: %032b\n", i, ((uint32_t)locs[0][i].offs_top >> 5) | ((uint32_t)locs[0][i].offs_bot << 7));
+
     locs[0][i].bpp = sp_bpp[chr];
     //locs[0][i].width = sp_size[chr];
     //locs[0][i].height = sp_size[chr];
@@ -339,8 +342,28 @@ unsigned anc_capture(unsigned i, unsigned j) {
   uint8_t t = anc[(0xC4A - anc_start) + i];
   if (t == 0) return j;
 
-  unsigned region = regions[3];
+  // determine which OAM region was allocated from:
+  unsigned region;
+  if (bus_read_u8(0x7E0FB3) == 0) {
+    // sort sprites:
+    region = regions[0];
+  } else {
+    uint8_t floor = oam[(0x0C7C - anc_start) + i];
+    if (floor == 0) {
+      // floor 1
+      region = regions[3];
+    } else {
+      // floor 2
+      region = regions[4];
+    }
+  }
+
+  // $0C86 table can only store the lower 8 bits of the full OAM index:
   unsigned start = anc[(0xC86 - anc_start) + i];
+  // since we can detect which OAM region should have been allocated from, we can
+  // reconstruct the upper 8 bits of the original OAM index:
+  start |= (region & 0xFF00);
+
   unsigned len   = anc[(0xC90 - anc_start) + i];
   if (len == 0) len = 4;
 
@@ -361,11 +384,8 @@ unsigned anc_capture(unsigned i, unsigned j) {
   while (start < 0x100 && oam_used[start>>2] != 0) {
     start += 4;
   }
-  if (start >= 0x100) {
-    return j;
-  }
 
-  //printf("[%02x] st %02x, ln %02x\n", t, start>>2, len>>2);
+  printf("[%02x] st %02x, ln %03x\n", t, start>>2, len>>2);
 
   for (unsigned o = start; o < start+len; o += 4) {
     if (o >= 0x200) break;
@@ -374,8 +394,10 @@ unsigned anc_capture(unsigned i, unsigned j) {
       break;
     }
     if (oam[o+1] == 0xF0) break;
+
     oam_convert(o, j++);
     oam_used[o>>2] = 1;
+
     if (locs[0][j-1].chr >= 0x100) {
       printf("BUG! anc %x; oam %02x, chr %03x\n", i, o>>2, locs[0][j-1].chr);
       debugger_break();
