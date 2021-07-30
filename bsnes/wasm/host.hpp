@@ -4,7 +4,8 @@
 #include <map>
 #include <string>
 #include <queue>
-
+#include <memory>
+#include <stdexcept>
 #include "wasm3.h"
 
 namespace WASM {
