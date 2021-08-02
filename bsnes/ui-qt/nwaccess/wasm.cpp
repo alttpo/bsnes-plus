@@ -16,11 +16,10 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
 
   QByteArray reply;
   try {
-
     std::shared_ptr<WASM::Module> module = WASM::host.parse_module(module_name, reinterpret_cast<const uint8_t *>(data.constData()), data.size());
 
     // link wasm functions:
-    wasm_link(module);
+    wasmInterface.link_module(module);
 
     WASM::host.load_module(module);
 
@@ -115,5 +114,3 @@ QByteArray NWAccess::cmdWasmMsgEnqueue(QByteArray args, QByteArray data) {
 
   return makeHashReply(reply);
 }
-
-#include "wasm_bindings.cpp"
