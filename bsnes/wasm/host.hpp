@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <map>
 #include <string>
@@ -79,6 +80,7 @@ struct Host {
   void invoke_all(const char *function_name, int argc, const char* argv[]);
   std::shared_ptr<Module> get_module(const std::string& key);
   std::shared_ptr<Module> get_module(IM3Module module);
+  void each_module(const std::function<void(const std::shared_ptr<Module>&)>& each);
 
 public:
   size_t default_stack_size_bytes;

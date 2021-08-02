@@ -26,10 +26,10 @@ enum ppux_memory_type : uint32_t {
   CGRAM
 };
 
-void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
+void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 // link wasm_bindings.cpp member functions:
 #define link(name) \
-  module->linkEx("*", #name, wasmsig_##name, &WASM::RawCall<NWAccess>::adapter<&NWAccess::wasm_##name>, (const void *)this)
+  module->linkEx("*", #name, wasmsig_##name, &WASM::RawCall<WASMInterface>::adapter<&WASMInterface::wasm_##name>, (const void *)this)
 
   link(debugger_break);
   link(debugger_continue);
@@ -51,8 +51,8 @@ void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
 }
 
 #define wasm_binding(name, sig) \
-  const char *NWAccess::wasmsig_##name = sig; \
-  m3ApiRawFunction(NWAccess::wasm_##name)
+  const char *WASMInterface::wasmsig_##name = sig; \
+  m3ApiRawFunction(WASMInterface::wasm_##name)
 
 //void debugger_break();
 wasm_binding(debugger_break, "v()") {

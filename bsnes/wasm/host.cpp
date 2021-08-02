@@ -251,4 +251,10 @@ std::shared_ptr<Module> Host::get_module(IM3Module module) {
   return m_modules_by_ptr.at(module);
 }
 
+void Host::each_module(const std::function<void(const std::shared_ptr<Module>&)>& each) {
+  for(std::map<std::string, std::shared_ptr<Module>>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
+    each(it->second);
+  }
+}
+
 }
