@@ -50,25 +50,26 @@ void NWAccess::wasm_link(const std::shared_ptr<WASM::Module>& module) {
 #undef link
 }
 
+#define wasm_binding(name, sig) \
+  const char *NWAccess::wasmsig_##name = sig; \
+  m3ApiRawFunction(NWAccess::wasm_##name)
+
 //void debugger_break();
-const char *NWAccess::wasmsig_debugger_break = "v()";
-m3ApiRawFunction(NWAccess::wasm_debugger_break) {
+wasm_binding(debugger_break, "v()") {
   if (!application.debug) debugger->toggleRunStatus();
 
   m3ApiSuccess()
 }
 
 //void debugger_continue();
-const char *NWAccess::wasmsig_debugger_continue = "v()";
-m3ApiRawFunction(NWAccess::wasm_debugger_continue) {
+wasm_binding(debugger_continue, "v()") {
   if (application.debug) debugger->toggleRunStatus();
 
   m3ApiSuccess()
 }
 
 //int32_t msg_size(uint16_t *o_size);
-const char *NWAccess::wasmsig_msg_size = "i(*)";
-m3ApiRawFunction(NWAccess::wasm_msg_size) {
+wasm_binding(msg_size, "i(*)") {
   m3ApiReturnType(int32_t)
 
   m3ApiGetArgMem(uint16_t *, o_size)
@@ -82,8 +83,8 @@ m3ApiRawFunction(NWAccess::wasm_msg_size) {
   m3ApiReturn(0)
 }
 
-const char *NWAccess::wasmsig_msg_recv = "i(*i)";
-m3ApiRawFunction(NWAccess::wasm_msg_recv) {
+//int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
+wasm_binding(msg_recv, "i(*i)") {
   m3ApiReturnType(int32_t)
 
   m3ApiGetArgMem(uint8_t *, o_data)
@@ -101,20 +102,20 @@ m3ApiRawFunction(NWAccess::wasm_msg_recv) {
   m3ApiReturn(0)
 }
 
-const char *NWAccess::wasmsig_ppux_reset = "v()";
-m3ApiRawFunction(NWAccess::wasm_ppux_reset) {
+//void ppux_reset();
+wasm_binding(ppux_reset, "v()") {
   SNES::ppu.ppux_reset();
   m3ApiSuccess();
 }
 
-const char *NWAccess::wasmsig_ppux_sprite_reset = "v()";
-m3ApiRawFunction(NWAccess::wasm_ppux_sprite_reset) {
+//void ppux_sprite_reset();
+wasm_binding(ppux_sprite_reset, "v()") {
   SNES::ppu.ppux_sprite_reset();
   m3ApiSuccess();
 }
 
-const char *NWAccess::wasmsig_ppux_sprite_read = "i(i*)";
-m3ApiRawFunction(NWAccess::wasm_ppux_sprite_read) {
+//int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
+wasm_binding(ppux_sprite_read, "i(i*)") {
   m3ApiReturnType(int32_t)
 
   m3ApiGetArg   (uint32_t,             i_index)
@@ -153,8 +154,8 @@ m3ApiRawFunction(NWAccess::wasm_ppux_sprite_read) {
   m3ApiReturn(0);
 }
 
-const char *NWAccess::wasmsig_ppux_sprite_write = "i(i*)";
-m3ApiRawFunction(NWAccess::wasm_ppux_sprite_write) {
+//int32_t ppux_sprite_write(uint32_t i_index, struct ppux_sprite *i_spr);
+wasm_binding(ppux_sprite_write, "i(i*)") {
   m3ApiReturnType(int32_t)
 
   m3ApiGetArg(uint32_t, i_index)
@@ -201,8 +202,8 @@ m3ApiRawFunction(NWAccess::wasm_ppux_sprite_write) {
   m3ApiReturn(0);
 }
 
-const char *NWAccess::wasmsig_ppux_ram_write = "i(iii*i)";
-m3ApiRawFunction(NWAccess::wasm_ppux_ram_write) {
+//int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+wasm_binding(ppux_ram_write, "i(iii*i)") {
   m3ApiReturnType(int32_t)
 
   m3ApiGetArg   (ppux_memory_type,  i_memory)
@@ -252,8 +253,8 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_write) {
   m3ApiReturn(0);
 }
 
-const char *NWAccess::wasmsig_ppux_ram_read = "i(iii*i)";
-m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
+//int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
+wasm_binding(ppux_ram_read, "i(iii*i)") {
   m3ApiReturnType(int32_t)
 
   m3ApiGetArg   (ppux_memory_type,  i_memory)
@@ -303,8 +304,8 @@ m3ApiRawFunction(NWAccess::wasm_ppux_ram_read) {
   m3ApiReturn(0);
 }
 
-const char *NWAccess::wasmsig_snes_bus_read = "v(i*i)";
-m3ApiRawFunction(NWAccess::wasm_snes_bus_read) {
+//void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
+wasm_binding(snes_bus_read, "v(i*i)") {
   m3ApiGetArg   (uint32_t, i_address)
   m3ApiGetArgMem(uint8_t*, o_data)
   m3ApiGetArg   (uint32_t, i_size)
@@ -318,8 +319,8 @@ m3ApiRawFunction(NWAccess::wasm_snes_bus_read) {
   m3ApiSuccess();
 }
 
-const char *NWAccess::wasmsig_snes_bus_write = "v(i*i)";
-m3ApiRawFunction(NWAccess::wasm_snes_bus_write) {
+//void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
+wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiGetArg   (uint32_t, i_address)
   m3ApiGetArgMem(uint8_t*, i_data)
   m3ApiGetArg   (uint32_t, i_size)
@@ -331,3 +332,5 @@ m3ApiRawFunction(NWAccess::wasm_snes_bus_write) {
 
   m3ApiSuccess();
 }
+
+#undef wasm_binding
