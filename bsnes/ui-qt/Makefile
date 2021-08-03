@@ -73,7 +73,7 @@ $(foreach f,$(moc_objects), \
   $(eval $f: $(__file)) \
 )
 
-$(objdir)/ui-main.o: $(ui)/main.cpp $(headers) obj/resource.rcc $(wildcard $(ui)/*.cpp) $(wildcard $(ui)/application/*.cpp) $(wildcard $(ui)/link/*.cpp) $(wildcard $(ui)/platform/*.cpp) $(wildcard $(ui)/utility/*.cpp) $(wildcard $(ui)/nwaccess/*.cpp) $(wildcard $(ui)/wasminterface/*.cpp); $(qt_compile)
+$(objdir)/ui-main.o: $(ui)/main.cpp $(headers) obj/resource.rcc $(wildcard $(ui)/*.cpp) $(wildcard $(ui)/application/*.cpp) $(wildcard $(ui)/link/*.cpp) $(wildcard $(ui)/platform/*.cpp) $(wildcard $(ui)/utility/*.cpp) $(wildcard $(ui)/nwaccess/*.cpp); $(qt_compile)
 $(objdir)/ui-base.o: $(ui)/base/base.cpp $(headers) $(wildcard $(ui)/base/*.cpp); $(qt_compile)
 $(objdir)/ui-cartridge.o: $(ui)/cartridge/cartridge.cpp $(headers) $(wildcard $(ui)/cartridge/*.cpp); $(qt_compile)
 $(objdir)/ui-debugger.o: $(ui)/debugger/debugger.cpp $(headers) $(call rwildcard,$(ui)/debugger/,%.cpp); $(qt_compile)
