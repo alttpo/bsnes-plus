@@ -45,8 +45,10 @@ M3Result Function::callargv(int argc, const char * argv[]) {
   return res;
 }
 
-Module::Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, const uint8_t *data, size_t size)
-  : m_key(key)
+//////
+
+Module::Module(const std::string& key, const Runtime& runtime, const uint8_t *data, size_t size)
+  : m_key(key), m_runtime(runtime)
 {
   // own the wasm bytes ourselves:
   m_size = size;
@@ -54,7 +56,7 @@ Module::Module(const std::string& key, const std::shared_ptr<struct M3Environmen
   memcpy((void *)m_data, (const void *)data, size);
 
   //printf("m3_ParseModule(%p, %p, %p, %zu)\n", env.get(), &p, m_data, m_size);
-  M3Result err = m3_ParseModule(env.get(), &m_module, m_data, m_size);
+  M3Result err = m3_ParseModule(runtime.m_env.get(), &m_module, m_data, m_size);
   if (err != m3Err_none) {
     m3_FreeModule(m_module);
     m_module = nullptr;
@@ -62,17 +64,15 @@ Module::Module(const std::string& key, const std::shared_ptr<struct M3Environmen
     m_data = nullptr;
     throw error(err);
   }
+
+  M3Result res = m3_LoadModule(runtime.m_runtime, m_module);
+  check_error(res);
 }
 
 Module::~Module() {
-  if (!m_runtime) {
-    m3_FreeModule(m_module);
-    m_module = nullptr;
-    m_runtime.reset();
-  }
-
-  delete[] m_data;
-  m_data = nullptr;
+  // TODO: delete this after m3_FreeRuntime()
+  //delete[] m_data;
+  //m_data = nullptr;
 }
 
 M3Result Module::warn(M3Result res, const char *function_name) {
@@ -137,6 +137,9 @@ Runtime::Runtime(const std::string& key, const std::shared_ptr<struct M3Environm
 }
 
 Runtime::~Runtime() {
+  m_modules.clear();
+  m_modules_by_ptr.clear();
+
   m3_FreeRuntime(m_runtime);
   m_runtime = nullptr;
 }
@@ -263,19 +266,14 @@ m3ApiRawFunction(m3puts) {
 }
 
 std::shared_ptr<Module> Runtime::parse_module(const std::string &key, const uint8_t *data, size_t size) {
-  std::shared_ptr<Module> m_module(new Module(key, m_env, data, size));
+  std::shared_ptr<Module> module(new Module(key, *this, data, size));
 
-  return m_module;
+  return module;
 }
 
 void Runtime::load_module(const std::shared_ptr<Module>& module) {
-  M3Result res = m3_LoadModule(m_runtime, module->m_module);
-  check_error(res);
-
-  module->m_runtime.reset(this);
-
   // link in libc API:
-  res = m3_LinkLibC(module->m_module);
+  M3Result res = m3_LinkLibC(module->m_module);
   check_error(res);
 
   // link puts function:

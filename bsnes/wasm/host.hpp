@@ -51,7 +51,7 @@ public:
 struct Runtime;
 
 struct Module {
-  Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, const uint8_t *data, size_t size);
+  Module(const std::string& key, const Runtime& runtime, const uint8_t *data, size_t size);
   ~Module();
 
 public:
@@ -66,8 +66,8 @@ public:
   bool get_global(const char * const i_globalName, IM3TaggedValue o_value);
 
 public:
-  const std::string         m_key;
-  std::shared_ptr<Runtime>  m_runtime;
+  const std::string m_key;
+  const Runtime&    m_runtime;
 
   size_t m_size;
   const uint8_t *m_data;
