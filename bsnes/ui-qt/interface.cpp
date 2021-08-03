@@ -22,7 +22,7 @@ void Interface::video_refresh(const uint16_t *data, unsigned width, unsigned hei
     if(!overscan) data -= 7 * 1024;
   }
 
-  WASM::host.invoke_all("on_frame", 0, nullptr);
+  data = wasmInterface.on_frame_present(data, pitch, width, height, interlace);
 
   if(saveScreenshot == true && config().video.unfilteredScreenshot == true) {
     captureScreenshot(filter.render_unfiltered(data, pitch, width, height));

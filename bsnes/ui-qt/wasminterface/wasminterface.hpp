@@ -3,7 +3,15 @@
 #include <wasm/host.hpp>
 
 struct WASMInterface {
+  const uint16_t *on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace);
 
+  struct {
+    const uint16_t *data;
+    unsigned pitch;
+    unsigned width;
+    unsigned height;
+    bool interlace;
+  } frame;
 
 public:
   // link functions:
@@ -30,7 +38,8 @@ public:
   decl_binding(ppux_ram_write);
   decl_binding(ppux_ram_read);
 
-
+  decl_binding(frame_acquire);
+  // TODO: frame drawing functions
 
 #undef decl_binding
 };

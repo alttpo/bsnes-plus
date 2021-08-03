@@ -37,6 +37,9 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(msg_recv);
   link(msg_size);
 
+  link(snes_bus_read);
+  link(snes_bus_write);
+
   link(ppux_reset);
   link(ppux_sprite_reset);
   link(ppux_sprite_read);
@@ -44,8 +47,7 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(ppux_ram_read);
   link(ppux_ram_write);
 
-  link(snes_bus_read);
-  link(snes_bus_write);
+  link(frame_acquire);
 
 #undef link
 }
@@ -329,6 +331,32 @@ wasm_binding(snes_bus_write, "v(i*i)") {
     uint8_t b = i_data[o];
     SNES::bus.write(a, b);
   }
+
+  m3ApiSuccess();
+}
+
+// void frame_acquire(const uint16_t *io_data, uint32_t *o_pitch, uint32_t *o_width, uint32_t *o_height, bool *o_interlace)
+wasm_binding(frame_acquire, "v(*****)") {
+  m3ApiGetArgMem(uint16_t*, io_data)
+  m3ApiGetArgMem(uint32_t*, o_pitch)
+  m3ApiGetArgMem(uint32_t*, o_width)
+  m3ApiGetArgMem(uint32_t*, o_height)
+  m3ApiGetArgMem(bool*,     o_interlace)
+
+  m3ApiCheckMem(io_data, frame.height * frame.pitch)
+
+  m3ApiCheckMem(o_pitch, sizeof(uint32_t))
+  m3ApiCheckMem(o_width, sizeof(uint32_t))
+  m3ApiCheckMem(o_height, sizeof(uint32_t))
+  m3ApiCheckMem(o_interlace, sizeof(int32_t))
+
+  *o_pitch = frame.pitch;
+  *o_width = frame.width;
+  *o_height = frame.height;
+  *o_interlace = frame.interlace;
+
+  // copy from frame.data into wasm memory:
+  memcpy(io_data, frame.data, frame.height * frame.pitch);
 
   m3ApiSuccess();
 }

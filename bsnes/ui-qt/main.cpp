@@ -15,6 +15,7 @@
 #endif
 
 #include "config.cpp"
+#include "wasminterface/wasminterface.cpp"
 #include "interface.cpp"
 
 const char defaultStylesheet[] =
@@ -34,7 +35,6 @@ const char defaultStylesheet[] =
 #include "link/music.cpp"
 #include "link/reader.cpp"
 #include "utility/utility.cpp"
-#include "wasminterface/wasminterface.cpp"
 #include "nwaccess/nwaccess.cpp"
 
 int main(int argc, char **argv) {
