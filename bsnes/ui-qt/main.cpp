@@ -15,7 +15,6 @@
 #endif
 
 #include "config.cpp"
-#include "wasminterface/wasminterface.cpp"
 #include "interface.cpp"
 
 const char defaultStylesheet[] =

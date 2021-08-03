@@ -3,8 +3,16 @@
 #include "host.hpp"
 
 struct WASMInterface {
+  void on_nmi();
   const uint16_t *on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace);
 
+public:
+  void register_debugger(const std::function<void()>& do_break, const std::function<void()>& do_continue);
+
+  std::function<void()> m_do_break;
+  std::function<void()> m_do_continue;
+
+public:
   struct {
     const uint16_t *data;
     unsigned pitch;

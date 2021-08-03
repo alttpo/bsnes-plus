@@ -1,6 +1,27 @@
+#include <snes/snes.hpp>
 #include "wasminterface.hpp"
 
 WASMInterface wasmInterface;
+
+void WASMInterface::register_debugger(const std::function<void()>& do_break, const std::function<void()>& do_continue) {
+  m_do_break = do_break;
+  m_do_continue = do_continue;
+}
+
+void WASMInterface::on_nmi() {
+  WASM::host.each_module([&](const std::shared_ptr<WASM::Module>& module) {
+    M3Result res = module->with_function("on_nmi", [&](WASM::Function &f) {
+      M3Result res = f.callv(0);
+      if (res != m3Err_none) {
+        printf("on_nmi: callv: %s\n", res);
+        return;
+      }
+    });
+
+    // warn about the result only once per module:
+    module->warn(res, "on_nmi");
+  });
+}
 
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
   frame.data = data;

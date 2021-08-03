@@ -35,10 +35,21 @@ void Application::init() {
 
   #if defined(DEBUGGER)
   debugger = new Debugger;
+  wasmInterface.register_debugger(
+    // debugger_break:
+    [this](){
+      if (!debug) debugger->toggleRunStatus();
+    },
+    // debugger_continue:
+    [this](){
+      if (debug) debugger->toggleRunStatus();
+    }
+  );
   #endif
   settingsWindow = new SettingsWindow;
   toolsWindow = new ToolsWindow;
   soundViewerWindow = new SoundViewerWindow;
+
 
   //window must be onscreen and visible before initializing video interface
   mainWindow = new MainWindow;
