@@ -58,14 +58,14 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 
 //void debugger_break();
 wasm_binding(debugger_break, "v()") {
-  if (!application.debug) debugger->toggleRunStatus();
+  m_do_break();
 
   m3ApiSuccess()
 }
 
 //void debugger_continue();
 wasm_binding(debugger_continue, "v()") {
-  if (application.debug) debugger->toggleRunStatus();
+  m_do_continue();
 
   m3ApiSuccess()
 }
