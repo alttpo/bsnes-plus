@@ -3,6 +3,11 @@
 #include "host.hpp"
 
 struct WASMInterface {
+  WASMInterface(WASM::Host &host);
+
+  WASM::Host &m_host;
+
+public:
   void on_nmi();
   const uint16_t *on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace);
 
