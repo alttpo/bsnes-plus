@@ -19,7 +19,7 @@ static void check_error(M3Result err) {
   }
 }
 
-Function::Function(const Module& module, IM3Function function) : m_module(module), m_function(function) {}
+Function::Function(IM3Function function) : m_function(function) {}
 
 M3Result Function::callv(int dummy, ...) {
   va_list va;
@@ -39,8 +39,14 @@ M3Result Function::resultsv(int dummy, ...) {
   return res;
 }
 
-Module::Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size)
-  : m_key(key), m_env(env)
+M3Result Function::callargv(int argc, const char * argv[]) {
+  M3Result res = m3_CallArgv(m_function, argc, argv);
+
+  return res;
+}
+
+Module::Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, const uint8_t *data, size_t size)
+  : m_key(key)
 {
   // own the wasm bytes ourselves:
   m_size = size;
@@ -56,33 +62,17 @@ Module::Module(const std::string& key, const std::shared_ptr<struct M3Environmen
     m_data = nullptr;
     throw error(err);
   }
-
-  // create runtime for the module:
-  m_runtime = m3_NewRuntime(m_env.get(), stack_size_bytes, nullptr);
-
-  //printf("m3_LoadModule(%p, %p)\n", m_runtime, m_module);
-  err = m3_LoadModule(m_runtime, m_module);
-  if (err != m3Err_none) {
-    m3_FreeRuntime(m_runtime);
-    m_runtime = nullptr;
-    m3_FreeModule(m_module);
-    m_module = nullptr;
-    delete[] m_data;
-    m_data = nullptr;
-    throw error(err);
-  }
 }
 
 Module::~Module() {
-  if (m_runtime) {
-    m3_FreeRuntime(m_runtime);
-    m_runtime = nullptr;
-
+  if (!m_runtime) {
+    m3_FreeModule(m_module);
     m_module = nullptr;
-
-    delete[] m_data;
-    m_data = nullptr;
+    m_runtime.reset();
   }
+
+  delete[] m_data;
+  m_data = nullptr;
 }
 
 M3Result Module::warn(M3Result res, const char *function_name) {
@@ -138,7 +128,46 @@ bool Module::get_global(const char * const i_globalName, IM3TaggedValue o_value)
   return true;
 }
 
-uint8_t *Module::memory(uint32_t i_offset, uint32_t &o_size) {
+////////////////////////
+
+Runtime::Runtime(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes)
+  : m_key(key), m_env(env)
+{
+  m_runtime = m3_NewRuntime(env.get(), stack_size_bytes, (void *)this);
+}
+
+Runtime::~Runtime() {
+  m3_FreeRuntime(m_runtime);
+  m_runtime = nullptr;
+}
+
+M3Result Runtime::warn(M3Result res, const char *function_name) {
+  if (res == m3Err_none) {
+    return res;
+  }
+
+  std::string key(function_name);
+  key.append(res);
+
+  auto it = m_function_warned.find(key);
+  if (it == m_function_warned.end()) {
+    fprintf(stderr, "wasm: runtime '%s': function '%s': %s\n", m_key.c_str(), function_name, res);
+    m_function_warned.emplace_hint(it, key, true);
+  }
+
+  return res;
+}
+
+M3Result Runtime::suppressFunctionLookupFailed(M3Result res, const char *function_name) {
+  if (res == m3Err_functionLookupFailed) {
+    warn(res, function_name);
+    return m3Err_none;
+  }
+
+  return res;
+}
+
+uint8_t *Runtime::memory(uint32_t i_offset, uint32_t &o_size) {
   if (i_offset == 0) {
     return nullptr;
   }
@@ -151,7 +180,7 @@ uint8_t *Module::memory(uint32_t i_offset, uint32_t &o_size) {
   return mem + i_offset;
 }
 
-M3Result Module::with_function(const char *function_name, const std::function<void(Function&)>& f) {
+M3Result Runtime::with_function(const char *function_name, const std::function<void(Function&)>& with) {
   M3Result res;
   M3Function *func;
 
@@ -161,50 +190,32 @@ M3Result Module::with_function(const char *function_name, const std::function<vo
     return res;
   }
 
-  Function fn(*this, func);
-  f(fn);
+  Function fn(func);
+
+  with(fn);
 
   return m3Err_none;
 }
 
-M3Result Module::invoke(const char *function_name, int argc, const char *argv[]) {
-  M3Result res;
-  M3Function *func;
-
-  //printf("  m3_FindFunction(%p, %p, '%s')\n", &func, m_runtime, function_name);
-  res = m3_FindFunction(&func, m_runtime, function_name);
-  suppressFunctionLookupFailed(res, function_name);
-  if (res != m3Err_none) {
-    return res;
-  }
-
-  //printf("  m3_CallArgv(%p, %d, %p)\n", func, argc, argv);
-  res = m3_CallArgv(func, argc, argv);
-  if (res != m3Err_none) {
-    return res;
-  }
-
-  return m3Err_none;
-}
-
-void Module::msg_enqueue(const std::shared_ptr<Message>& msg) {
+void Runtime::msg_enqueue(const std::shared_ptr<Message>& msg) {
   //printf("msg_enqueue(%p, %u)\n", msg->m_data, msg->m_size);
   m_msgs.push(msg);
 
   const char *function_name = "on_msg_recv";
-  M3Result res = invoke(function_name, 0, nullptr);
-  res = suppressFunctionLookupFailed(res, function_name);
-  check_error(res);
+  M3Result res = with_function(function_name, [](Function& f) {
+    f.callv(0);
+  });
+  warn(res, function_name);
 }
 
-std::shared_ptr<Message> Module::msg_dequeue() {
+std::shared_ptr<Message> Runtime::msg_dequeue() {
   auto msg = m_msgs.front();
   //printf("msg_dequeue() -> {%p, %u}\n", msg->m_data, msg->m_size);
   m_msgs.pop();
   return msg;
 }
 
-bool Module::msg_size(uint16_t *o_size) {
+bool Runtime::msg_size(uint16_t *o_size) {
   if (m_msgs.empty()) {
     //printf("msg_size() -> false\n");
     return false;
@@ -213,11 +224,6 @@ bool Module::msg_size(uint16_t *o_size) {
   *o_size = m_msgs.front()->m_size;
   //printf("msg_size() -> true, %u\n", *o_size);
   return true;
-}
-
-
-void Host::reset() {
-  m_modules.clear();
 }
 
 m3ApiRawFunction(hexdump) {
@@ -256,66 +262,99 @@ m3ApiRawFunction(m3puts) {
   m3ApiReturn(fputs(i_str, stdout));
 }
 
-std::shared_ptr<Module> Host::parse_module(const std::string &key, const uint8_t *data, size_t size) {
-  std::shared_ptr<Module> m_module;
-  m_module.reset(new Module(key, m_env, default_stack_size_bytes, data, size));
-
-  // link in libc API:
-  M3Result res = m3_LinkLibC(m_module->m_module);
-  check_error(res);
-
-  // link puts function:
-  res = m3_LinkRawFunction(m_module->m_module, "env", "puts", "i(*)", m3puts);
-  res = m_module->suppressFunctionLookupFailed(res, "puts");
-  check_error(res);
-
-  // link hexdump function:
-  res = m3_LinkRawFunction(m_module->m_module, "env", "hexdump", "v(*i)", hexdump);
-  res = m_module->suppressFunctionLookupFailed(res, "hexdump");
-  check_error(res);
+std::shared_ptr<Module> Runtime::parse_module(const std::string &key, const uint8_t *data, size_t size) {
+  std::shared_ptr<Module> m_module(new Module(key, m_env, data, size));
 
   return m_module;
 }
 
-void Host::load_module(const std::shared_ptr<Module>& module) {
-  unload_module(module->m_key);
+void Runtime::load_module(const std::shared_ptr<Module>& module) {
+  M3Result res = m3_LoadModule(m_runtime, module->m_module);
+  check_error(res);
+
+  module->m_runtime.reset(this);
+
+  // link in libc API:
+  res = m3_LinkLibC(module->m_module);
+  check_error(res);
+
+  // link puts function:
+  res = m3_LinkRawFunction(module->m_module, "env", "puts", "i(*)", m3puts);
+  res = suppressFunctionLookupFailed(res, "puts");
+  check_error(res);
+
+  // link hexdump function:
+  res = m3_LinkRawFunction(module->m_module, "env", "hexdump", "v(*i)", hexdump);
+  res = suppressFunctionLookupFailed(res, "hexdump");
+  check_error(res);
 
   //printf("load_module()\n");
   m_modules.emplace(module->m_key, module);
   m_modules_by_ptr.emplace(module->m_module, module);
 }
 
-void Host::unload_module(const std::string &key) {
-  //printf("load_module()\n");
-  auto it = m_modules.find(key);
-  if (it == m_modules.end()) return;
-
-  m_modules_by_ptr.erase(it->second->m_module);
-  m_modules.erase(it);
-}
-
-void Host::invoke_all(const char *name, int argc, const char**argv) {
-  M3Result res;
-  //printf("invoke_all('%s', %d, %p)\n", name, argc, argv);
-
-  for(std::map<std::string, std::shared_ptr<Module>>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
-    res = it->second->invoke(name, argc, argv);
-    check_error(res);
-  }
-}
-
-std::shared_ptr<Module> Host::get_module(const std::string& key) {
+std::shared_ptr<Module> Runtime::get_module(const std::string& key) {
   return m_modules.at(key);
 }
 
-std::shared_ptr<Module> Host::get_module(IM3Module module) {
+std::shared_ptr<Module> Runtime::get_module(IM3Module module) {
   return m_modules_by_ptr.at(module);
 }
 
-void Host::each_module(const std::function<void(const std::shared_ptr<Module>&)>& each) {
+void Runtime::each_module(const std::function<void(const std::shared_ptr<Module>&)>& each) {
   for(std::map<std::string, std::shared_ptr<Module>>::iterator it = m_modules.begin(); it != m_modules.end(); ++it) {
     each(it->second);
   }
+}
+
+//
+
+void Host::reset() {
+  m_runtimes.clear();
+  m_runtimes_by_ptr.clear();
+}
+
+std::shared_ptr<Runtime> Host::get_runtime(const std::string& key) {
+  auto it = m_runtimes.find(key);
+  if (it == m_runtimes.end()) {
+    return {};
+  } else {
+    return it->second;
+  }
+}
+
+std::shared_ptr<Runtime> Host::get_runtime(const IM3Runtime runtime) {
+  auto it = m_runtimes_by_ptr.find(runtime);
+  if (it == m_runtimes_by_ptr.end()) {
+    return {};
+  } else {
+    return it->second;
+  }
+}
+
+void Host::with_runtime(const std::string& key, const std::function<void(const std::shared_ptr<Runtime>&)>& with) {
+  auto it = m_runtimes.find(key);
+  if (it == m_runtimes.end()) {
+    std::shared_ptr<Runtime> runtime(new Runtime(key, m_env, default_stack_size_bytes));
+    m_runtimes.emplace(key, runtime);
+    with(runtime);
+  } else {
+    with(it->second);
+  }
+}
+
+void Host::each_runtime(const std::function<void(const std::shared_ptr<Runtime>&)>& each) {
+  for(std::map<std::string, std::shared_ptr<Runtime>>::iterator it = m_runtimes.begin(); it != m_runtimes.end(); ++it) {
+    each(it->second);
+  }
+}
+
+void Host::unload_runtime(const std::string& key) {
+  auto it = m_runtimes.find(key);
+  if (it == m_runtimes.end()) return;
+
+  m_runtimes_by_ptr.erase(it->second->m_runtime);
+  m_runtimes.erase(key);
 }
 
 }

@@ -31,7 +31,7 @@ func main() {
 
 	b := bytes.Buffer{}
 	b.Grow(len(fb) + 20)
-	b.WriteString("WASM_RESET\nWASM_LOAD test\n")
+	b.WriteString("WASM_RESET\nWASM_LOAD test;test\n")
 	b.WriteByte(0)
 	err = binary.Write(&b, binary.BigEndian, uint32(len(fb)))
 	if err != nil {
