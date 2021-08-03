@@ -76,9 +76,9 @@ wasm_binding(msg_size, "i(*)") {
 
   m3ApiGetArgMem(uint16_t *, o_size)
 
-  auto module = WASM::host.get_module(m3_GetFunctionModule(_ctx->function));
+  auto m_runtime = WASM::host.get_runtime(runtime);
 
-  if (!module->msg_size(o_size)) {
+  if (!m_runtime->msg_size(o_size)) {
     m3ApiReturn(-1)
   }
 
@@ -92,9 +92,9 @@ wasm_binding(msg_recv, "i(*i)") {
   m3ApiGetArgMem(uint8_t *, o_data)
   m3ApiGetArg   (uint32_t,  i_size)
 
-  auto module = WASM::host.get_module(m3_GetFunctionModule(_ctx->function));
+  auto m_runtime = WASM::host.get_runtime(runtime);
 
-  auto msg = module->msg_dequeue();
+  auto msg = m_runtime->msg_dequeue();
   if (msg->m_size > i_size) {
     m3ApiReturn(-1)
   }

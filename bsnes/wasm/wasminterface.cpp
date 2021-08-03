@@ -9,8 +9,8 @@ void WASMInterface::register_debugger(const std::function<void()>& do_break, con
 }
 
 void WASMInterface::on_nmi() {
-  WASM::host.each_module([&](const std::shared_ptr<WASM::Module>& module) {
-    M3Result res = module->with_function("on_nmi", [&](WASM::Function &f) {
+  WASM::host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
+    M3Result res = runtime->with_function("on_nmi", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
         printf("on_nmi: callv: %s\n", res);
@@ -18,8 +18,8 @@ void WASMInterface::on_nmi() {
       }
     });
 
-    // warn about the result only once per module:
-    module->warn(res, "on_nmi");
+    // warn about the result only once per runtime:
+    runtime->warn(res, "on_nmi");
   });
 }
 
@@ -30,8 +30,8 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
   frame.height = height;
   frame.interlace = interlace;
 
-  WASM::host.each_module([&](const std::shared_ptr<WASM::Module>& module) {
-    M3Result res = module->with_function("on_frame_present", [&](WASM::Function &f) {
+  WASM::host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
+    M3Result res = runtime->with_function("on_frame_present", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
         printf("on_frame_present: callv: %s\n", res);
@@ -46,7 +46,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
       }
 
       uint32_t size;
-      const uint16_t *data = (const uint16_t *)module->memory(bufOffset, size);
+      const uint16_t *data = (const uint16_t *)runtime->memory(bufOffset, size);
       if (data) {
         // frame_acquire() copies the original frame data into wasm memory, so we
         // avoid a copy here and just present the (possibly modified) frame data
@@ -56,7 +56,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
     });
 
     // warn about the result only once per module:
-    module->warn(res, "on_frame_present");
+    runtime->warn(res, "on_frame_present");
   });
 
   return frame.data;
