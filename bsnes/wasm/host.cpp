@@ -19,6 +19,26 @@ static void check_error(M3Result err) {
   }
 }
 
+Function::Function(const Module& module, IM3Function function) : m_module(module), m_function(function) {}
+
+M3Result Function::callv(int dummy, ...) {
+  va_list va;
+  va_start(va, dummy);
+  M3Result res = m3_CallVL(m_function, va);
+  va_end(va);
+
+  return res;
+}
+
+M3Result Function::resultsv(int dummy, ...) {
+  va_list va;
+  va_start(va, dummy);
+  M3Result res = m3_GetResultsVL(m_function, va);
+  va_end(va);
+
+  return res;
+}
+
 Module::Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size)
   : m_key(key), m_env(env)
 {
@@ -65,14 +85,26 @@ Module::~Module() {
   }
 }
 
+M3Result Module::warn(M3Result res, const char *function_name) {
+  if (res == m3Err_none) {
+    return res;
+  }
+
+  std::string key(function_name);
+  key.append(res);
+
+  auto it = m_function_warned.find(key);
+  if (it == m_function_warned.end()) {
+    fprintf(stderr, "wasm: module '%s': function '%s': %s\n", m_key.c_str(), function_name, res);
+    m_function_warned.emplace_hint(it, key, true);
+  }
+
+  return res;
+}
+
 M3Result Module::suppressFunctionLookupFailed(M3Result res, const char *function_name) {
   if (res == m3Err_functionLookupFailed) {
-    const std::string key(function_name);
-    auto it = m_function_warned.find(key);
-    if (it == m_function_warned.end()) {
-      fprintf(stderr, "wasm: module '%s': failed to find function '%s'\n", m_key.c_str(), function_name);
-      m_function_warned.emplace_hint(it, key, true);
-    }
+    warn(res, function_name);
     return m3Err_none;
   }
 
@@ -104,6 +136,35 @@ bool Module::get_global(const char * const i_globalName, IM3TaggedValue o_value)
     return false;
   }
   return true;
+}
+
+uint8_t *Module::memory(uint32_t i_offset, uint32_t &o_size) {
+  if (i_offset == 0) {
+    return nullptr;
+  }
+
+  uint8_t *mem = m3_GetMemory(m_runtime, &o_size, 0);
+  if (i_offset >= o_size) {
+    return nullptr;
+  }
+
+  return mem + i_offset;
+}
+
+M3Result Module::with_function(const char *function_name, const std::function<void(Function&)>& f) {
+  M3Result res;
+  M3Function *func;
+
+  printf("with_function: m3_FindFunction(%p, %p, '%s')\n", &func, m_runtime, function_name);
+  res = m3_FindFunction(&func, m_runtime, function_name);
+  if (res != m3Err_none) {
+    return res;
+  }
+
+  Function fn(*this, func);
+  f(fn);
+
+  return m3Err_none;
 }
 
 M3Result Module::invoke(const char *function_name, int argc, const char *argv[]) {
