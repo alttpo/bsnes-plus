@@ -34,10 +34,24 @@ struct Message {
   uint16_t m_size;
 };
 
+struct Module;
+
+struct Function {
+  Function(const Module& module, IM3Function function);
+
+  M3Result callv(int dummy, ...);
+  M3Result resultsv(int dummy, ...);
+
+public:
+  const Module&     m_module;
+  const IM3Function m_function;
+};
+
 struct Module {
   Module(const std::string& key, const std::shared_ptr<struct M3Environment>& env, size_t stack_size_bytes, const uint8_t *data, size_t size);
   ~Module();
 
+  M3Result warn(M3Result res, const char *function_name);
   M3Result suppressFunctionLookupFailed(M3Result res, const char *function_name);
 
   void link(const char *module_name, const char *function_name, const char *signature, M3RawCall rawcall);
@@ -48,6 +62,10 @@ struct Module {
   void msg_enqueue(const std::shared_ptr<Message>& msg);
   std::shared_ptr<Message> msg_dequeue();
   bool msg_size(uint16_t *o_size);
+
+  M3Result with_function(const char *function_name, const std::function<void(Function&)>& f);
+
+  uint8_t *memory(uint32_t i_offset, uint32_t &o_size);
 
   M3Result invoke(const char *function_name, int argc, const char *argv[]);
 
