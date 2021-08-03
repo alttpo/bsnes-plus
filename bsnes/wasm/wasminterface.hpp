@@ -1,6 +1,6 @@
 #pragma once
 
-#include <wasm/host.hpp>
+#include "host.hpp"
 
 struct WASMInterface {
   const uint16_t *on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace);

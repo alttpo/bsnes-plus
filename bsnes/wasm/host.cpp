@@ -155,7 +155,7 @@ M3Result Module::with_function(const char *function_name, const std::function<vo
   M3Result res;
   M3Function *func;
 
-  printf("with_function: m3_FindFunction(%p, %p, '%s')\n", &func, m_runtime, function_name);
+  //printf("with_function: m3_FindFunction(%p, %p, '%s')\n", &func, m_runtime, function_name);
   res = m3_FindFunction(&func, m_runtime, function_name);
   if (res != m3Err_none) {
     return res;
