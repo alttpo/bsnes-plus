@@ -31,11 +31,6 @@ uint8_t bus_read_u8(uint32_t i_address) {
 
 int copied = 0;
 
-#define anc_sprites 24
-const uint32_t anc_start = 0xBF0;
-const uint32_t anc_size = 0xC9A - anc_start;
-uint8_t anc[anc_size];
-
 struct loc {
   uint8_t  enabled;
   uint16_t chr;
@@ -50,7 +45,7 @@ struct loc {
   uint8_t  bpp;
   uint8_t  width;
   uint8_t  height;
-} locs[80][anc_sprites+12];
+} locs[80][128];
 uint8_t loc_tail = 0;
 
 uint32_t last_spr_index = 0;
@@ -290,6 +285,7 @@ void oam_convert(unsigned o, unsigned i) {
   if (oam[o+1] == 0xF0) return;
 
   uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
+  if (chr >= 0x100) return;
 
   uint8_t ex = oam[0x220 + (o>>2)];
   int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
@@ -333,78 +329,6 @@ void oam_convert(unsigned o, unsigned i) {
   } else {
     locs[0][i].bpp = 4;
   }
-}
-
-unsigned anc_capture(unsigned i, unsigned j) {
-  static uint16_t regions[6] = { 0x0030, 0x01D0, 0x0000, 0x0030, 0x0120, 0x0140 };
-
-  // check ancilla type:
-  uint8_t t = anc[(0xC4A - anc_start) + i];
-  if (t == 0) return j;
-
-  // determine which OAM region was allocated from:
-  unsigned region;
-  if (bus_read_u8(0x7E0FB3) == 0) {
-    // sort sprites:
-    region = regions[0];
-  } else {
-    uint8_t floor = oam[(0x0C7C - anc_start) + i];
-    if (floor == 0) {
-      // floor 1
-      region = regions[3];
-    } else {
-      // floor 2
-      region = regions[4];
-    }
-  }
-
-  // $0C86 table can only store the lower 8 bits of the full OAM index:
-  unsigned start = anc[(0xC86 - anc_start) + i];
-  // since we can detect which OAM region should have been allocated from, we can
-  // reconstruct the upper 8 bits of the original OAM index:
-  start |= (region & 0xFF00);
-
-  unsigned len   = anc[(0xC90 - anc_start) + i];
-  if (len == 0) len = 4;
-
-  switch (t) {
-    // dash dust:
-    case 0x1E:
-      break;
-    // ice rod shot/blast:
-    case 0x11:
-    case 0x13:
-      len = 4 * 4;
-      break;
-    default:
-      break;
-  }
-
-  // OAM sprites are allocated dynamically and 0xC86/0xC90 are not updated after the fact:
-  while (start < 0x100 && oam_used[start>>2] != 0) {
-    start += 4;
-  }
-
-  printf("[%02x] st %02x, ln %03x\n", t, start>>2, len>>2);
-
-  for (unsigned o = start; o < start+len; o += 4) {
-    if (o >= 0x200) break;
-    if (j == anc_sprites) {
-      puts("anc sprite overflow!\n");
-      break;
-    }
-    if (oam[o+1] == 0xF0) break;
-
-    oam_convert(o, j++);
-    oam_used[o>>2] = 1;
-
-    if (locs[0][j-1].chr >= 0x100) {
-      printf("BUG! anc %x; oam %02x, chr %03x\n", i, o>>2, locs[0][j-1].chr);
-      debugger_break();
-    }
-  }
-
-  return j;
 }
 
 uint16_t frame[512 * 512];
@@ -737,7 +661,7 @@ void on_nmi() {
 
   // move all previous recorded frames down by one:
   for (int j = 79; j >= 1; j--) {
-    for (int i = 0; i < anc_sprites+12; i++) {
+    for (int i = 0; i < 128; i++) {
       locs[j][i] = locs[j - 1][i];
     }
   }
@@ -749,22 +673,14 @@ void on_nmi() {
   //spr.x = bus_read_u16(0x7E0022);
   //spr.y = bus_read_u16(0x7E0020);
 
-  // process ancillae:
-  snes_bus_read(0x7E0BF0, anc, anc_size);
-  for (unsigned i = 0; i < anc_sprites; i++) {
+  for (unsigned i = 0; i < 128; i++) {
     locs[0][i].enabled = 0;
   }
 
   memset(oam_used, 0, 128);
 
-  unsigned j = 0;
-  for (unsigned i = 0; i < 10; i++) {
-    j = anc_capture(i, j);
-  }
-
-  for (unsigned j = 0; j < 12; j++) {
-    unsigned o = link_oam_start + (j<<2);
-    unsigned i = anc_sprites+j;
+  for (unsigned i = 0; i < 128; i++) {
+    unsigned o = (i<<2);
     oam_convert(o, i);
   }
 
@@ -783,7 +699,7 @@ void on_nmi() {
   spr.width = 16;
   spr.height = 16;
 
-  for (unsigned i = 0; i < anc_sprites+12; i++) {
+  for (unsigned i = 0; i < 128; i++) {
     spr.enabled = locs[79][i].enabled;
 
     int32_t x = locs[79][i].x - xoffs;
