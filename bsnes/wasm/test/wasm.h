@@ -59,6 +59,11 @@ __attribute__((import_module("env"), import_name("ppux_ram_write")))
 int32_t ppux_ram_write(enum ppux_memory_type i_memorytype, uint32_t i_space, uint32_t i_offset, uint8_t *i_data,
                        uint32_t i_size);
 
+// frame:
+
+__attribute__((import_module("env"), import_name("frame_acquire")))
+void frame_acquire(const uint16_t *io_data, uint32_t *o_pitch, uint32_t *o_width, uint32_t *o_height, int32_t *o_interlace);
+
 // snes:
 
 __attribute__((import_module("env"), import_name("snes_bus_read")))

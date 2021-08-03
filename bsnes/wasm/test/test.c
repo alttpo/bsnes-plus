@@ -407,6 +407,26 @@ unsigned anc_capture(unsigned i, unsigned j) {
   return j;
 }
 
+uint16_t frame[512 * 512];
+
+__attribute__((export_name("on_frame_present")))
+uint16_t *on_frame_present() {
+  uint32_t pitch;
+  uint32_t width;
+  uint32_t height;
+  int32_t  interlace;
+
+  frame_acquire(frame, &pitch, &width, &height, &interlace);
+
+  // divide by sizeof(uint16_t)
+  pitch >>= 1;
+
+  // poke out a white pixel:
+  frame[pitch * 16 + 16] = 0x7fff;
+
+  return frame;
+}
+
 // called on NMI:
 __attribute__((export_name("on_nmi")))
 void on_nmi() {
