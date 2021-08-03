@@ -1,7 +1,9 @@
 #include <snes/snes.hpp>
 #include "wasminterface.hpp"
 
-WASMInterface wasmInterface;
+WASMInterface wasmInterface(WASM::host);
+
+WASMInterface::WASMInterface(WASM::Host &host) : m_host(host) {}
 
 void WASMInterface::register_debugger(const std::function<void()>& do_break, const std::function<void()>& do_continue) {
   m_do_break = do_break;
@@ -9,7 +11,7 @@ void WASMInterface::register_debugger(const std::function<void()>& do_break, con
 }
 
 void WASMInterface::on_nmi() {
-  WASM::host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
+  m_host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
     M3Result res = runtime->with_function("on_nmi", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
@@ -30,7 +32,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
   frame.height = height;
   frame.interlace = interlace;
 
-  WASM::host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
+  m_host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
     M3Result res = runtime->with_function("on_frame_present", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
