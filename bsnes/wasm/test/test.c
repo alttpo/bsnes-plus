@@ -279,19 +279,281 @@ uint16_t expand3to4bpp(uint8_t *src, uint8_t *dest, uint16_t count, uint16_t x, 
   return x;
 }
 
+void decompress_sprites() {
+  struct ppux_sprite spr;
+
+  memset(sprites, 0, 0x2000);
+
+  // copy link 4bpp body sprites:
+  snes_bus_read(0x108000, sprites, 0x2000);
+  ppux_ram_write(VRAM, 1, 0x0000, sprites, 0x2000);
+  snes_bus_read(0x10A000, sprites, 0x2000);
+  ppux_ram_write(VRAM, 1, 0x2000, sprites, 0x2000);
+  snes_bus_read(0x10C000, sprites, 0x2000);
+  ppux_ram_write(VRAM, 1, 0x4000, sprites, 0x2000);
+  snes_bus_read(0x10E000, sprites, 0x2000);
+  ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
+
+  // decompress sword+shield 3bpp data:
+  uint8_t  buf[0x1000];
+  uint8_t *pak5f = &pak5e[0x600];
+
+  uint32_t addr = get_graphics_addr(0x5F);
+  snes_bus_read(addr, buf, 0x1000);
+  decomp3bpp(buf, pak5f);
+
+  addr = get_graphics_addr(0x5E);
+  snes_bus_read(addr, buf, 0x1000);
+  decomp3bpp(buf, pak5e);
+
+  //hexdump(pak5e, 0xC00);
+
+  // load uncompressed 3bpp graphics pack #00:
+  addr = get_graphics_addr(0x00);
+  snes_bus_read(addr, buf, 0x1000);
+
+  // draw our 3bpp sprites:
+  spr.enabled = 1;
+  spr.cgram_space = 0;
+  spr.palette = 0xC0;
+  spr.bpp = 4;
+  spr.height = 8;
+  spr.color_exemption = 0;
+  spr.hflip = 0;
+  spr.vflip = 0;
+  spr.layer = 4;
+  spr.priority = 6;
+  spr.vram_space = 1;
+
+  uint16_t t0C = 0;
+
+  uint32_t x = 0x0480;
+  uint16_t y;
+  uint16_t xx = 0;
+  uint16_t s00;
+
+  // ice/fire rod:
+  y = 0x7;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(512, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(buf, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(513, &spr);
+  xx += y*8;
+  x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // hammer:
+  y = 0x7;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(514, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(buf, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(515, &spr);
+  xx += y*8;
+  x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // bow:
+  y = 0x3;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(516, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(buf, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(517, &spr);
+  xx += y*8;
+  x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // switch to decompressed pak $5F
+
+  // shovel:
+  y = 0x4;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(518, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(pak5f, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(519, &spr);
+  xx += y*8;
+  x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // Zzz and music notes:
+  y = 0x3;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(520, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(pak5f, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(521, &spr);
+  xx += y*8;
+  x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // dash dust:
+  y = 0x1;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(522, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(pak5f, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(523, &spr);
+  xx += y*8;
+  x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // back to uncompressed 3bpp graphics pack #00:
+
+  // hookshot:
+  y = 0x4;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 64;
+  ppux_sprite_write(524, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(buf, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 64+8;
+  ppux_sprite_write(525, &spr);
+  xx += y*8;
+  x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // decompress pak $60:
+  uint8_t tmp[0x1000];
+  uint8_t pak60[0x1000];
+  addr = get_graphics_addr(0x60);
+  snes_bus_read(addr, tmp, 0x1000);
+  decomp3bpp(tmp, pak60);
+
+  // bug net:
+  xx = 0;
+  y = 0xE;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 80;
+  ppux_sprite_write(526, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(pak60, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 80+8;
+  ppux_sprite_write(527, &spr);
+  xx += y*8;
+  x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // cane:
+  y = 0x7;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 80;
+  ppux_sprite_write(528, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(pak60, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 80+8;
+  ppux_sprite_write(529, &spr);
+  xx += y*8;
+  x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  // book opened:
+  y = 0x2;
+  spr.vram_addr = 0x9000 + x;
+  spr.width = y * 0x08;
+  spr.x = 16+xx;
+  spr.y = 80;
+  ppux_sprite_write(530, &spr);
+  s00 = bus_read_u16(0x00D21D + t0C);
+  x = expand3to4bpp(pak5f, sprites, y, x, s00);
+
+  spr.vram_addr = 0x9000 + x;
+  spr.x = 16+xx;
+  spr.y = 80+8;
+  ppux_sprite_write(531, &spr);
+  xx += y*8;
+  x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
+  t0C += 2;
+
+  ppux_sprite_reset();
+  //hexdump(sprites, 0x2000);
+}
+
+uint16_t oam_chr(unsigned o) {
+  return (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
+}
+
+int16_t oam_x(unsigned o) {
+  uint8_t ex = oam[0x220 + (o>>2)];
+  int16_t x = (uint16_t)oam[o+0] + ((uint16_t)(ex & 0x01) << 8);
+  if (x >= 256) x -= 512;
+  return x;
+}
+
+int16_t oam_y(unsigned o) {
+  int16_t y = (uint8_t)(oam[o+1]);
+  if (y >= 240) y -= 256;
+  return y;
+}
+
 void oam_convert(unsigned o, unsigned i) {
   locs[0][i].enabled = 0;
+  if (oam_used[i] == 0) return;
 
   if (oam[o+1] == 0xF0) return;
 
-  uint16_t chr = (uint16_t)oam[o+2] + ((uint16_t)(oam[o+3] & 0x01) << 8);
-  if (chr >= 0x100) return;
-
-  uint8_t ex = oam[0x220 + (o>>2)];
-  int16_t x = (uint16_t)oam[o + 0] + ((uint16_t)(ex & 0x01) << 8);
-  int16_t y = (uint8_t)(oam[o + 1]);
-  if (x >= 256) x -= 512;
-  if (y >= 240) y -= 256;
+  uint16_t chr = oam_chr(o);
+  int16_t  x = oam_x(o);
+  int16_t  y = oam_y(o);
 
   locs[0][i].enabled = 1;
   locs[0][i].chr = chr;
@@ -304,6 +566,7 @@ void oam_convert(unsigned o, unsigned i) {
   locs[0][i].palette = (((oam[o + 3] >> 1) & 7) << 4) + 0x80;
   locs[0][i].priority = ((oam[o + 3] >> 4) & 3);
 
+  uint8_t ex = oam[0x220 + (o>>2)];
   locs[0][i].width = 8 << ((ex & 0x02) >> 1);
   locs[0][i].height = 8 << ((ex & 0x02) >> 1);
 
@@ -363,250 +626,7 @@ void on_nmi() {
     copied = 1;
     ppux_sprite_reset();
 
-    memset(sprites, 0, 0x2000);
-
-    // copy link 4bpp body sprites:
-    snes_bus_read(0x108000, sprites, 0x2000);
-    ppux_ram_write(VRAM, 1, 0x0000, sprites, 0x2000);
-    snes_bus_read(0x10A000, sprites, 0x2000);
-    ppux_ram_write(VRAM, 1, 0x2000, sprites, 0x2000);
-    snes_bus_read(0x10C000, sprites, 0x2000);
-    ppux_ram_write(VRAM, 1, 0x4000, sprites, 0x2000);
-    snes_bus_read(0x10E000, sprites, 0x2000);
-    ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
-
-    // decompress sword+shield 3bpp data:
-    uint8_t  buf[0x1000];
-    uint8_t *pak5f = &pak5e[0x600];
-
-    uint32_t addr = get_graphics_addr(0x5F);
-    snes_bus_read(addr, buf, 0x1000);
-    decomp3bpp(buf, pak5f);
-
-    addr = get_graphics_addr(0x5E);
-    snes_bus_read(addr, buf, 0x1000);
-    decomp3bpp(buf, pak5e);
-
-    //hexdump(pak5e, 0xC00);
-
-    // load uncompressed 3bpp graphics pack #00:
-    addr = get_graphics_addr(0x00);
-    snes_bus_read(addr, buf, 0x1000);
-
-    // draw our 3bpp sprites:
-    spr.enabled = 1;
-    spr.cgram_space = 0;
-    spr.palette = 0xC0;
-    spr.bpp = 4;
-    spr.height = 8;
-    spr.color_exemption = 0;
-    spr.hflip = 0;
-    spr.vflip = 0;
-    spr.layer = 4;
-    spr.priority = 6;
-    spr.vram_space = 1;
-
-    uint16_t t0C = 0;
-
-    uint32_t x = 0x0480;
-    uint16_t y;
-    uint16_t xx = 0;
-    uint16_t s00;
-
-    // ice/fire rod:
-    y = 0x7;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(512, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(buf, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(513, &spr);
-    xx += y*8;
-    x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // hammer:
-    y = 0x7;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(514, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(buf, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(515, &spr);
-    xx += y*8;
-    x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // bow:
-    y = 0x3;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(516, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(buf, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(517, &spr);
-    xx += y*8;
-    x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // switch to decompressed pak $5F
-
-    // shovel:
-    y = 0x4;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(518, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(pak5f, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(519, &spr);
-    xx += y*8;
-    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // Zzz and music notes:
-    y = 0x3;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(520, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(pak5f, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(521, &spr);
-    xx += y*8;
-    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // dash dust:
-    y = 0x1;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(522, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(pak5f, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(523, &spr);
-    xx += y*8;
-    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // back to uncompressed 3bpp graphics pack #00:
-
-    // hookshot:
-    y = 0x4;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 64;
-    ppux_sprite_write(524, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(buf, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 64+8;
-    ppux_sprite_write(525, &spr);
-    xx += y*8;
-    x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // decompress pak $60:
-    uint8_t tmp[0x1000];
-    uint8_t pak60[0x1000];
-    addr = get_graphics_addr(0x60);
-    snes_bus_read(addr, tmp, 0x1000);
-    decomp3bpp(tmp, pak60);
-
-    // bug net:
-    xx = 0;
-    y = 0xE;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 80;
-    ppux_sprite_write(526, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(pak60, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 80+8;
-    ppux_sprite_write(527, &spr);
-    xx += y*8;
-    x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // cane:
-    y = 0x7;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 80;
-    ppux_sprite_write(528, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(pak60, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 80+8;
-    ppux_sprite_write(529, &spr);
-    xx += y*8;
-    x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    // book opened:
-    y = 0x2;
-    spr.vram_addr = 0x9000 + x;
-    spr.width = y * 0x08;
-    spr.x = 16+xx;
-    spr.y = 80;
-    ppux_sprite_write(530, &spr);
-    s00 = bus_read_u16(0x00D21D + t0C);
-    x = expand3to4bpp(pak5f, sprites, y, x, s00);
-
-    spr.vram_addr = 0x9000 + x;
-    spr.x = 16+xx;
-    spr.y = 80+8;
-    ppux_sprite_write(531, &spr);
-    xx += y*8;
-    x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
-    t0C += 2;
-
-    ppux_sprite_reset();
-    //hexdump(sprites, 0x2000);
+    decompress_sprites();
   }
 
   uint8_t curr_sword = bus_read_u8(0x7EF359);
@@ -677,8 +697,129 @@ void on_nmi() {
     locs[0][i].enabled = 0;
   }
 
+  // mark all visible sprites as used:
   memset(oam_used, 0, 128);
+  for (unsigned i = 0; i < 128; i++) {
+    unsigned o = (i<<2);
+    if (oam[o+1] == 0xF0) continue;
 
+    // ignore shadows:
+    uint16_t chr = oam_chr(o);
+    if (chr == 0x6C) continue;
+    if (chr == 0x38) continue;
+    if (chr == 0x28) continue;
+
+    // enable visible sprites:
+    oam_used[i] = 1;
+  }
+
+  // unmark undesirable sprites:
+  for (unsigned i = 0; i < 128; i++) {
+    if (oam_used[i] == 0) continue;
+
+    unsigned o = (i<<2);
+    if (oam[o+1] == 0xF0) continue;
+
+    uint16_t shadow_chr = 0;
+    int16_t shadow_x = 0;
+
+    uint16_t chr = oam_chr(o);
+
+    if (chr >= 0x100) {
+      // enemy sprites:
+      oam_used[i] = 0;
+      shadow_chr = 0x6C;
+      shadow_x = oam_x(o);
+    } else if ((chr >= 0x40 && chr <= 0x4F) || (chr >= 0x50 && chr <= 0x5F) || chr == 0xE9) {
+      // throwable items:
+      oam_used[i] = 0;
+      shadow_chr = 0x6C;
+      shadow_x = oam_x(o);
+    } else if ((chr >= 0x60 && chr <= 0x6B) || (chr >= 0x70 && chr <= 0x7B) || chr == 0xE0 || chr == 0xE5) {
+      // item drop:
+      oam_used[i] = 0;
+      shadow_chr = 0x38;
+      shadow_x = oam_x(o);
+    } else if ((chr >= 0x84 && chr <= 0x8F) || (chr >= 0x94 && chr <= 0x9F) || chr == 0xAA) {
+      // explosions:
+      oam_used[i] = 0;
+      shadow_chr = 0x38;
+      shadow_x = oam_x(o);
+    } else if (chr == 0x6E) {
+      // bomb:
+      oam_used[i] = 0;
+      shadow_chr = 0x6C;
+      shadow_x = oam_x(o);
+    } else if (chr == 0xEA || chr == 0xEC) {
+      // faerie / fairy:
+      oam_used[i] = 0;
+      shadow_chr = 0x6C;
+      shadow_x = oam_x(o);
+    } else if (chr == 0xE4 || chr == 0xF4) {
+      // bee:
+      oam_used[i] = 0;
+      shadow_chr = 0x38;
+      shadow_x = oam_x(o);
+    } else if (chr == 0x44 || chr == 0x70) {
+      // skull rock enemy:
+      oam_used[i] = 0;
+      shadow_chr = 0x6C;
+      shadow_x = oam_x(o);
+    } else if (chr == 0x29 || chr == 0x39) {
+      // heart drop:
+      oam_used[i] = 0;
+      shadow_chr = 0x38;
+      shadow_x = oam_x(o);
+    } else if (chr == 0x0B || chr == 0x1B) {
+      // rupee:
+      oam_used[i] = 0;
+      shadow_chr = 0x38;
+      shadow_x = oam_x(o);
+    } else if ((chr >= 0xC8 && chr <= 0xCE) || (chr >= 0xD8 && chr <= 0xDE)) {
+      // grass/water ripples:
+      oam_used[i] = 0;
+      shadow_chr = 0x38;
+      shadow_x = oam_x(o);
+    } else if (chr == 0xB4 || chr == 0xB5 || chr == 0xB8 || chr == 0xB9 || chr == 0xA8) {
+      // enemy death:
+      oam_used[i] = 0;
+      shadow_chr = 0;
+    } else if (chr == 0xA9 || chr == 0x9B) {
+      // enemy death only if 4 copies of it all in sequence:
+      if (oam_chr(o+4) == chr && oam_chr(o+8) == chr && oam_chr(o+12) == chr) {
+        oam_used[i+0] = 0;
+        oam_used[i+1] = 0;
+        oam_used[i+2] = 0;
+        oam_used[i+3] = 0;
+        shadow_chr = 0;
+      }
+    }
+
+    //if (shadow_chr == 0) continue;
+    //
+    //// find a shadow sprite and unmark it:
+    //for (unsigned shi = i+1; shi < 128 && shi < i+0x0C; shi++) {
+    //  if (oam_used[shi] == 0) continue;
+    //
+    //  unsigned sho = shi<<2;
+    //  if (oam[sho+1] == 0xF0) continue;
+    //
+    //  if (oam_chr(sho) == shadow_chr && oam_x(sho) == shadow_x) {
+    //    oam_used[shi] = 0;
+    //    break;
+    //  }
+    //}
+  }
+
+  // mark all of Link's sprites as used:
+  for (unsigned i = 0; i < 12; i++) {
+    unsigned o = link_oam_start + (i<<2);
+    if (oam[o+1] == 0xF0) continue;
+
+    oam_used[o>>2] = 1;
+  }
+
+  // finally convert only the used sprites:
   for (unsigned i = 0; i < 128; i++) {
     unsigned o = (i<<2);
     oam_convert(o, i);
