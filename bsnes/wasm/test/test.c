@@ -720,70 +720,47 @@ void on_nmi() {
     unsigned o = (i<<2);
     if (oam[o+1] == 0xF0) continue;
 
-    uint16_t shadow_chr = 0;
-    int16_t shadow_x = 0;
-
     uint16_t chr = oam_chr(o);
 
     if (chr >= 0x100) {
       // enemy sprites:
       oam_used[i] = 0;
-      shadow_chr = 0x6C;
-      shadow_x = oam_x(o);
     } else if ((chr >= 0x40 && chr <= 0x4F) || (chr >= 0x50 && chr <= 0x5F) || chr == 0xE9) {
       // throwable items:
       oam_used[i] = 0;
-      shadow_chr = 0x6C;
-      shadow_x = oam_x(o);
     } else if ((chr >= 0x60 && chr <= 0x6B) || (chr >= 0x70 && chr <= 0x7B) || chr == 0xE0 || chr == 0xE5) {
       // item drop:
       oam_used[i] = 0;
-      shadow_chr = 0x38;
-      shadow_x = oam_x(o);
     } else if ((chr >= 0x84 && chr <= 0x8F) || (chr >= 0x94 && chr <= 0x9F) || chr == 0xAA) {
       // explosions:
       oam_used[i] = 0;
-      shadow_chr = 0x38;
-      shadow_x = oam_x(o);
     } else if (chr == 0x6E) {
       // bomb:
       oam_used[i] = 0;
-      shadow_chr = 0x6C;
-      shadow_x = oam_x(o);
     } else if (chr == 0xEA || chr == 0xEC) {
       // faerie / fairy:
       oam_used[i] = 0;
-      shadow_chr = 0x6C;
-      shadow_x = oam_x(o);
     } else if (chr == 0xE4 || chr == 0xF4) {
       // bee:
       oam_used[i] = 0;
-      shadow_chr = 0x38;
-      shadow_x = oam_x(o);
     } else if (chr == 0x44 || chr == 0x70) {
       // skull rock enemy:
       oam_used[i] = 0;
-      shadow_chr = 0x6C;
-      shadow_x = oam_x(o);
     } else if (chr == 0x29 || chr == 0x39) {
       // heart drop:
       oam_used[i] = 0;
-      shadow_chr = 0x38;
-      shadow_x = oam_x(o);
     } else if (chr == 0x0B || chr == 0x1B) {
       // rupee:
       oam_used[i] = 0;
-      shadow_chr = 0x38;
-      shadow_x = oam_x(o);
+    } else if (chr == 0x0C) {
+      // movable block:
+      oam_used[i] = 0;
     } else if ((chr >= 0xC8 && chr <= 0xCE) || (chr >= 0xD8 && chr <= 0xDE)) {
       // grass/water ripples:
       oam_used[i] = 0;
-      shadow_chr = 0x38;
-      shadow_x = oam_x(o);
     } else if (chr == 0xB4 || chr == 0xB5 || chr == 0xB8 || chr == 0xB9 || chr == 0xA8) {
       // enemy death:
       oam_used[i] = 0;
-      shadow_chr = 0;
     } else if (chr == 0xA9 || chr == 0x9B) {
       // enemy death only if 4 copies of it all in sequence:
       if (oam_chr(o+4) == chr && oam_chr(o+8) == chr && oam_chr(o+12) == chr) {
@@ -791,24 +768,14 @@ void on_nmi() {
         oam_used[i+1] = 0;
         oam_used[i+2] = 0;
         oam_used[i+3] = 0;
-        shadow_chr = 0;
+      }
+    } else if (chr == 0xB7 || chr == 0x80) {
+      // sparkle for cemetery ghost sprite:
+      if (oam_chr(o+4) == 0x1E6) {
+        oam_used[i+0] = 0;
+        oam_used[i+1] = 0;
       }
     }
-
-    //if (shadow_chr == 0) continue;
-    //
-    //// find a shadow sprite and unmark it:
-    //for (unsigned shi = i+1; shi < 128 && shi < i+0x0C; shi++) {
-    //  if (oam_used[shi] == 0) continue;
-    //
-    //  unsigned sho = shi<<2;
-    //  if (oam[sho+1] == 0xF0) continue;
-    //
-    //  if (oam_chr(sho) == shadow_chr && oam_x(sho) == shadow_x) {
-    //    oam_used[shi] = 0;
-    //    break;
-    //  }
-    //}
   }
 
   // mark all of Link's sprites as used:
