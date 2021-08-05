@@ -15,7 +15,6 @@ void WASMInterface::on_nmi() {
     M3Result res = runtime->with_function("on_nmi", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
-        printf("on_nmi: callv: %s\n", res);
         return;
       }
     });
@@ -36,14 +35,12 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
     M3Result res = runtime->with_function("on_frame_present", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
-        printf("on_frame_present: callv: %s\n", res);
         return;
       }
 
       uint32_t bufOffset;
       res = f.resultsv(0, &bufOffset);
       if (res != m3Err_none) {
-        printf("on_frame_present: resultsv: %s\n", res);
         return;
       }
 

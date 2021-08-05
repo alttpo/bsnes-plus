@@ -21,11 +21,42 @@ static void check_error(M3Result err) {
 
 Function::Function(IM3Function function) : m_function(function) {}
 
+M3Result Function::dumpBacktrace(M3Result res) {
+  if (res == m3Err_none) {
+    return res;
+  }
+
+  //M3ErrorInfo errorInfo;
+  //m3_GetErrorInfo(runtime->m_runtime, &errorInfo);
+  //if (errorInfo.file || errorInfo.message) {
+  //  printf("  %s(%d): %s\n", errorInfo.file, errorInfo.line, errorInfo.message);
+  //}
+
+  IM3Module module = m3_GetFunctionModule(m_function);
+  IM3Runtime runtime = m3_GetModuleRuntime(module);
+
+  fprintf(stderr, "callv(%s.%s): %s\n", m3_GetModuleName(module), m3_GetFunctionName(m_function), res);
+
+  IM3BacktraceInfo bt = m3_GetBacktrace(runtime);
+  if (bt) {
+    IM3BacktraceFrame frame = bt->frames;
+    while (frame) {
+      IM3Module module = m3_GetFunctionModule(frame->function);
+      fprintf(stderr, "  %s.%s; offs %06x\n", m3_GetModuleName(module), m3_GetFunctionName(frame->function), frame->moduleOffset);
+      frame = frame->next;
+    }
+  }
+
+  return res;
+}
+
 M3Result Function::callv(int dummy, ...) {
   va_list va;
   va_start(va, dummy);
   M3Result res = m3_CallVL(m_function, va);
   va_end(va);
+
+  dumpBacktrace(res);
 
   return res;
 }
@@ -41,6 +72,8 @@ M3Result Function::resultsv(int dummy, ...) {
 
 M3Result Function::callargv(int argc, const char * argv[]) {
   M3Result res = m3_CallArgv(m_function, argc, argv);
+
+  dumpBacktrace(res);
 
   return res;
 }
@@ -64,6 +97,8 @@ Module::Module(const std::string& key, const Runtime& runtime, const uint8_t *da
     m_data = nullptr;
     throw error(err);
   }
+
+  m3_SetModuleName(m_module, m_key.c_str());
 
   M3Result res = m3_LoadModule(runtime.m_runtime, m_module);
   check_error(res);
@@ -306,6 +341,12 @@ void Runtime::each_module(const std::function<void(const std::shared_ptr<Module>
 }
 
 //
+Host::Host(size_t stack_size_bytes) : default_stack_size_bytes(stack_size_bytes) {
+  m_env.reset(m3_NewEnvironment(), m3_FreeEnvironment);
+  if (m_env == nullptr) {
+    throw std::bad_alloc();
+  }
+}
 
 void Host::reset() {
   m_runtimes.clear();
