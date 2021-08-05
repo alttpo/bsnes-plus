@@ -44,6 +44,8 @@ struct Function {
 
   M3Result callargv(int argc, const char * argv[]);
 
+  M3Result dumpBacktrace(M3Result res);
+
 public:
   const IM3Function m_function;
 };
@@ -120,12 +122,7 @@ public:
 
 // A Host contains multiple Runtimes in a single Environment
 struct Host {
-  Host(size_t stack_size_bytes) : default_stack_size_bytes(stack_size_bytes) {
-    m_env.reset(m3_NewEnvironment(), m3_FreeEnvironment);
-    if (m_env == nullptr) {
-      throw std::bad_alloc();
-    }
-  }
+  Host(size_t stack_size_bytes);
 
   void reset();
   std::shared_ptr<Runtime> get_runtime(const std::string& key);
