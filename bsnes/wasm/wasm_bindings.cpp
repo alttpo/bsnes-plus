@@ -76,6 +76,8 @@ wasm_binding(msg_size, "i(*)") {
 
   m3ApiGetArgMem(uint16_t *, o_size)
 
+  m3ApiCheckMem(o_size, sizeof(uint16_t));
+
   auto m_runtime = WASM::host.get_runtime(runtime);
 
   if (!m_runtime->msg_size(o_size)) {
@@ -91,6 +93,8 @@ wasm_binding(msg_recv, "i(*i)") {
 
   m3ApiGetArgMem(uint8_t *, o_data)
   m3ApiGetArg   (uint32_t,  i_size)
+
+  m3ApiCheckMem(o_data, i_size);
 
   auto m_runtime = WASM::host.get_runtime(runtime);
 
@@ -122,6 +126,8 @@ wasm_binding(ppux_sprite_read, "i(i*)") {
 
   m3ApiGetArg   (uint32_t,             i_index)
   m3ApiGetArgMem(struct ppux_sprite *, o_spr)
+
+  m3ApiCheckMem(o_spr, sizeof(struct ppux_sprite));
 
   if (i_index >= SNES::PPU::extra_count) {
     m3ApiReturn(-1);
@@ -162,6 +168,8 @@ wasm_binding(ppux_sprite_write, "i(i*)") {
 
   m3ApiGetArg(uint32_t, i_index)
   m3ApiGetArgMem(struct ppux_sprite *, i_spr)
+
+  m3ApiCheckMem(i_spr, sizeof(struct ppux_sprite));
 
   if (i_index >= SNES::PPU::extra_count) {
     m3ApiReturn(-1);
@@ -214,6 +222,8 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
   m3ApiGetArgMem(uint8_t*,          i_data)
   m3ApiGetArg   (uint32_t,          i_size)
 
+  m3ApiCheckMem(i_data, i_size);
+
   if (i_space >= SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
     m3ApiReturn(-2);
@@ -265,6 +275,8 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
   m3ApiGetArgMem(uint8_t*,          o_data)
   m3ApiGetArg   (uint32_t,          i_size)
 
+  m3ApiCheckMem(o_data, i_size);
+
   if (i_space >= SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
     m3ApiReturn(-2);
@@ -312,6 +324,8 @@ wasm_binding(snes_bus_read, "v(i*i)") {
   m3ApiGetArgMem(uint8_t*, o_data)
   m3ApiGetArg   (uint32_t, i_size)
 
+  m3ApiCheckMem(o_data, i_size);
+
   for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
     uint8_t b;
     b = SNES::bus.read(a);
@@ -326,6 +340,8 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiGetArg   (uint32_t, i_address)
   m3ApiGetArgMem(uint8_t*, i_data)
   m3ApiGetArg   (uint32_t, i_size)
+
+  m3ApiCheckMem(i_data, i_size);
 
   for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
     uint8_t b = i_data[o];
