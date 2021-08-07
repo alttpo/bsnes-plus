@@ -117,18 +117,20 @@ wasm_binding(msg_size, "i(*)") {
 
 //int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
 wasm_binding(msg_recv, "i(*i)") {
-  m3ApiReturnType(int32_t)
+  //m3ApiReturnType(int32_t)
 
-  m3ApiGetArgMem(uint8_t *, o_data)
-  m3ApiGetArg   (uint32_t,  i_size)
+  uint8_t * o_data;
+  uint32_t  i_size;
 
-  m3ApiCheckMem(o_data, i_size);
+  i_size = (uint32_t)args->data[1].of.i32;
+  o_data = mem<uint8_t>(args->data[0].of.i32, i_size);
 
-  auto m_runtime = WASM::host.get_runtime(runtime);
-
-  auto msg = m_runtime->msg_dequeue();
+  auto msg = msg_dequeue();
   if (msg->m_size > i_size) {
-    m3ApiReturn(-1)
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   memcpy((void *)o_data, (const void *)msg->m_data, msg->m_size);
@@ -155,19 +157,26 @@ wasm_binding(ppux_sprite_reset, "v()") {
 
 //int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
 wasm_binding(ppux_sprite_read, "i(i*)") {
-  m3ApiReturnType(int32_t)
+  //m3ApiReturnType(int32_t)
 
-  m3ApiGetArg   (uint32_t,             i_index)
-  m3ApiGetArgMem(struct ppux_sprite *, o_spr)
+  uint32_t              i_index;
+  struct ppux_sprite *  o_spr;
 
-  m3ApiCheckMem(o_spr, sizeof(struct ppux_sprite));
+  i_index = (uint32_t)args->data[0].of.i32;
+  o_spr = mem<struct ppux_sprite>(args->data[1].of.i32, sizeof(struct ppux_sprite));
 
   if (i_index >= SNES::PPU::extra_count) {
-    m3ApiReturn(-1);
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (!o_spr) {
-    m3ApiReturn(-2);
+    wasm_val_t val = WASM_I32_VAL(-2);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   auto &t = SNES::ppu.extra_list[i_index];
@@ -202,27 +211,40 @@ wasm_binding(ppux_sprite_read, "i(i*)") {
 
 //int32_t ppux_sprite_write(uint32_t i_index, struct ppux_sprite *i_spr);
 wasm_binding(ppux_sprite_write, "i(i*)") {
-  m3ApiReturnType(int32_t)
+  //m3ApiReturnType(int32_t)
 
-  m3ApiGetArg(uint32_t, i_index)
-  m3ApiGetArgMem(struct ppux_sprite *, i_spr)
+  uint32_t              i_index;
+  struct ppux_sprite *  i_spr;
 
-  m3ApiCheckMem(i_spr, sizeof(struct ppux_sprite));
+  i_index = (uint32_t)args->data[0].of.i32;
+  i_spr = mem<struct ppux_sprite>(args->data[1].of.i32, sizeof(struct ppux_sprite));
 
   if (i_index >= SNES::PPU::extra_count) {
-    m3ApiReturn(-1);
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (!i_spr) {
-    m3ApiReturn(-2);
+    wasm_val_t val = WASM_I32_VAL(-2);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (i_spr->vram_space >= SNES::PPU::extra_spaces) {
-    m3ApiReturn(-3);
+    wasm_val_t val = WASM_I32_VAL(-3);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (i_spr->cgram_space >= SNES::PPU::extra_spaces) {
-    m3ApiReturn(-4);
+    wasm_val_t val = WASM_I32_VAL(-4);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   auto &t = SNES::ppu.extra_list[i_index];
@@ -257,19 +279,26 @@ wasm_binding(ppux_sprite_write, "i(i*)") {
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
 wasm_binding(ppux_ram_write, "i(iii*i)") {
-  m3ApiReturnType(int32_t)
+  //m3ApiReturnType(int32_t)
 
-  m3ApiGetArg   (ppux_memory_type,  i_memory)
-  m3ApiGetArg   (uint32_t,          i_space)
-  m3ApiGetArg   (uint32_t,          i_offset)
-  m3ApiGetArgMem(uint8_t*,          i_data)
-  m3ApiGetArg   (uint32_t,          i_size)
+  ppux_memory_type   i_memory;
+  uint32_t           i_space;
+  uint32_t           i_offset;
+  uint8_t*           i_data;
+  uint32_t           i_size;
 
-  m3ApiCheckMem(i_data, i_size);
+  i_memory = (ppux_memory_type)args->data[0].of.i32;
+  i_space = (uint32_t)args->data[1].of.i32;
+  i_offset = (uint32_t)args->data[2].of.i32;
+  i_size = (uint32_t)args->data[4].of.i32;
+  i_data = mem<uint8_t>(args->data[3].of.i32, i_size);
 
   if (i_space >= SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
-    m3ApiReturn(-2);
+    wasm_val_t val = WASM_I32_VAL(-2);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   unsigned maxSize = 0;
@@ -282,25 +311,40 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
     maxSize = 0x200;
   } else {
     //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
-    m3ApiReturn(-1);
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
-    m3ApiReturn(-1);
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (i_offset >= maxSize) {
     //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    m3ApiReturn(-3);
+    wasm_val_t val = WASM_I32_VAL(-3);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
   if (i_offset & 1) {
     //return makeErrorReply("offset must be multiple of 2");
-    m3ApiReturn(-4);
+    wasm_val_t val = WASM_I32_VAL(-4);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (i_offset + i_size > maxSize) {
     //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    m3ApiReturn(-5);
+    wasm_val_t val = WASM_I32_VAL(-5);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   memcpy(t + i_offset, i_data, i_size);
@@ -315,19 +359,26 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 wasm_binding(ppux_ram_read, "i(iii*i)") {
-  m3ApiReturnType(int32_t)
+  //m3ApiReturnType(int32_t)
 
-  m3ApiGetArg   (ppux_memory_type,  i_memory)
-  m3ApiGetArg   (uint32_t,          i_space)
-  m3ApiGetArg   (uint32_t,          i_offset)
-  m3ApiGetArgMem(uint8_t*,          o_data)
-  m3ApiGetArg   (uint32_t,          i_size)
+  ppux_memory_type   i_memory;
+  uint32_t           i_space;
+  uint32_t           i_offset;
+  uint8_t*           o_data;
+  uint32_t           i_size;
 
-  m3ApiCheckMem(o_data, i_size);
+  i_memory = (ppux_memory_type)args->data[0].of.i32;
+  i_space = (uint32_t)args->data[1].of.i32;
+  i_offset = (uint32_t)args->data[2].of.i32;
+  i_size = (uint32_t)args->data[4].of.i32;
+  o_data = mem<uint8_t>(args->data[3].of.i32, i_size);
 
   if (i_space >= SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
-    m3ApiReturn(-2);
+    wasm_val_t val = WASM_I32_VAL(-2);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   unsigned maxSize = 0;
@@ -340,25 +391,40 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
     maxSize = 0x200;
   } else {
     //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
-    m3ApiReturn(-1);
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
-    m3ApiReturn(-1);
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (i_offset >= maxSize) {
     //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    m3ApiReturn(-3);
+    wasm_val_t val = WASM_I32_VAL(-3);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
   if (i_offset & 1) {
     //return makeErrorReply("offset must be multiple of 2");
-    m3ApiReturn(-4);
+    wasm_val_t val = WASM_I32_VAL(-4);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   if (i_offset + i_size > maxSize) {
     //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    m3ApiReturn(-5);
+    wasm_val_t val = WASM_I32_VAL(-5);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
   memcpy(o_data, t + i_offset, i_size);
@@ -373,11 +439,13 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
 
 //void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
 wasm_binding(snes_bus_read, "v(i*i)") {
-  m3ApiGetArg   (uint32_t, i_address)
-  m3ApiGetArgMem(uint8_t*, o_data)
-  m3ApiGetArg   (uint32_t, i_size)
+  uint32_t  i_address;
+  uint8_t*  o_data;
+  uint32_t  i_size;
 
-  m3ApiCheckMem(o_data, i_size);
+  i_address = (uint32_t)args->data[0].of.i32;
+  i_size = (uint32_t)args->data[2].of.i32;
+  o_data = mem<uint8_t>(args->data[1].of.i32, i_size);
 
   for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
     uint8_t b;
@@ -390,11 +458,13 @@ wasm_binding(snes_bus_read, "v(i*i)") {
 
 //void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
 wasm_binding(snes_bus_write, "v(i*i)") {
-  m3ApiGetArg   (uint32_t, i_address)
-  m3ApiGetArgMem(uint8_t*, i_data)
-  m3ApiGetArg   (uint32_t, i_size)
+  uint32_t  i_address;
+  uint8_t*  i_data;
+  uint32_t  i_size;
 
-  m3ApiCheckMem(i_data, i_size);
+  i_address = (uint32_t)args->data[0].of.i32;
+  i_size = (uint32_t)args->data[2].of.i32;
+  i_data = mem<uint8_t>(args->data[1].of.i32, i_size);
 
   for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
     uint8_t b = i_data[o];
@@ -406,18 +476,19 @@ wasm_binding(snes_bus_write, "v(i*i)") {
 
 // void frame_acquire(const uint16_t *io_data, uint32_t *o_pitch, uint32_t *o_width, uint32_t *o_height, bool *o_interlace)
 wasm_binding(frame_acquire, "v(*****)") {
-  m3ApiGetArgMem(uint16_t*, io_data)
-  m3ApiGetArgMem(uint32_t*, o_pitch)
-  m3ApiGetArgMem(uint32_t*, o_width)
-  m3ApiGetArgMem(uint32_t*, o_height)
-  m3ApiGetArgMem(bool*,     o_interlace)
+  uint16_t*  io_data;
+  uint32_t*  o_pitch;
+  uint32_t*  o_width;
+  uint32_t*  o_height;
+  bool*      o_interlace;
 
-  m3ApiCheckMem(io_data, frame.height * frame.pitch)
+  auto& frame = wasmInterface.frame;
 
-  m3ApiCheckMem(o_pitch, sizeof(uint32_t))
-  m3ApiCheckMem(o_width, sizeof(uint32_t))
-  m3ApiCheckMem(o_height, sizeof(uint32_t))
-  m3ApiCheckMem(o_interlace, sizeof(int32_t))
+  io_data = mem<uint16_t>(args->data[0].of.i32, frame.height * frame.pitch);
+  o_pitch = mem<uint32_t>(args->data[1].of.i32, sizeof(uint32_t));
+  o_width = mem<uint32_t>(args->data[2].of.i32, sizeof(uint32_t));
+  o_height = mem<uint32_t>(args->data[3].of.i32, sizeof(uint32_t));
+  o_interlace = mem<bool>(args->data[4].of.i32, sizeof(int32_t));
 
   *o_pitch = frame.pitch;
   *o_width = frame.width;
