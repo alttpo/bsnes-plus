@@ -114,6 +114,12 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
   return frame.data;
 }
 
+void WASMInterface::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
+  for (auto& instance : m_instances) {
+    instance->msg_enqueue(msg);
+  }
+}
+
 void WASMInterface::reset() {
   m_instances.clear();
   m_store.reset();
@@ -147,12 +153,6 @@ void WASMInterface::load_module(const std::string& module_name, const uint8_t *d
   m_instances.emplace_back(module);
 }
 
-void WASMInterface::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
-  for (auto& instance : m_instances) {
-    instance->msg_enqueue(msg);
-  }
-}
-
 ////////////
 
 ModuleInstance::ModuleInstance(wasm_module_t* module)
@@ -161,6 +161,10 @@ ModuleInstance::ModuleInstance(wasm_module_t* module)
   // fetch export types:
   m_exporttypes.reset(new wasm_exporttype_vec_t());
   wasm_module_exports(m_module.get(), m_exporttypes.get());
+
+  // fetch import types:
+  m_importtypes.reset(new wasm_importtype_vec_t());
+  wasm_module_imports(m_module.get(), m_importtypes.get());
 }
 
 void ModuleInstance::instantiate(wasm_extern_vec_t* imports) {

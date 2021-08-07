@@ -27,32 +27,47 @@ enum ppux_memory_type : uint32_t {
 };
 
 void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
-  unsigned int i = 0;
+  std::map<std::string, int> import_index;
 
-  wasm_extern_vec_new_uninitialized(imports, 13);
+  auto importtypes = m_importtypes.get();
+  for (int i = 0; i < importtypes->size; i++) {
+    const wasm_name_t* name = wasm_importtype_name(importtypes->data[i]);
+    import_index.emplace(
+      std::string((const char *)name->data),
+      i
+    );
+  }
+
+  wasm_extern_vec_new_uninitialized(imports, importtypes->size);
 
 // link wasm_bindings.cpp member functions:
-#define link(name) { \
-    wasm_functype_t*  host_func_type  = parse_sig(wa_sig_##name); \
-    wasm_func_t*      host_func       = wasm_func_new_with_env( \
-      wasmInterface.m_store.get(), \
-      host_func_type, \
-      /* wasm_func_callback_with_env_t: */ \
-      [](void* env, const wasm_val_vec_t* args, wasm_val_vec_t* results) -> wasm_trap_t* { \
-        try { \
-          return ((ModuleInstance*)env)->wa_fun_##name(args, results);          \
-        } catch (WASMTrapException& ex) {                                       \
-          wasm_message_t msg;                                                   \
-          wasm_name_new(&msg, ex.message().size(), ex.message().c_str());       \
-          wasm_trap_t* trap = wasm_trap_new(wasmInterface.m_store.get(), &msg); \
-          return trap; \
-        } \
-      }, \
-      (void *)this, \
-      nullptr \
-    ); \
-    wasm_functype_delete(host_func_type); \
-    imports->data[i++] = wasm_func_as_extern(host_func); \
+#define link(name) \
+  { \
+    auto it = import_index.find(#name); \
+    if (it != import_index.end()) { \
+      wasm_functype_t*  host_func_type  = parse_sig(wa_sig_##name); \
+      wasm_func_t*      host_func       = wasm_func_new_with_env( \
+        wasmInterface.m_store.get(), \
+        host_func_type, \
+        /* wasm_func_callback_with_env_t: */ \
+        [](void* env, const wasm_val_vec_t* args, wasm_val_vec_t* results) -> wasm_trap_t* { \
+          try { \
+            return ((ModuleInstance*)env)->wa_fun_##name(args, results);          \
+          } catch (WASMTrapException& ex) {                                       \
+            wasm_message_t msg;                                                   \
+            wasm_name_new(&msg, ex.message().size(), ex.message().c_str());       \
+            wasm_trap_t* trap = wasm_trap_new(wasmInterface.m_store.get(), &msg); \
+            return trap; \
+          } \
+        }, \
+        (void *)this, \
+        nullptr \
+      ); \
+      wasm_functype_delete(host_func_type); \
+      imports->data[it->second] = wasm_func_as_extern(host_func); \
+    } else {       \
+      fprintf(stderr, "warn: could not bind import '%s'\n", #name); \
+    } \
   }
 
   link(debugger_break);

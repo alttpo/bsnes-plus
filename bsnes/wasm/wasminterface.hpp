@@ -86,6 +86,7 @@ public:
 public:
   // module:
   std::shared_ptr<wasm_module_t>          m_module;
+  std::shared_ptr<wasm_importtype_vec_t>  m_importtypes;
   std::shared_ptr<wasm_exporttype_vec_t>  m_exporttypes;
 
   // instance:
