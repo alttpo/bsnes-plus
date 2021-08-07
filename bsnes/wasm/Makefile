@@ -1,8 +1,7 @@
-wasm_objects := wasm-host wasm-interface
+wasm_objects := wasm-interface
 objects += $(wasm_objects)
 
-link += -L../external/wasm3/build/source -lm3
-flags += -I../external/wasm3/source
+link += -L../external/wasmer/lib -lwasmer
+flags += -I../external/wasmer/include
 
-$(objdir)/wasm-host.o: $(wasm)/host.cpp
 $(objdir)/wasm-interface.o: $(wasm)/wasminterface.cpp

@@ -1,7 +1,7 @@
 
 QByteArray NWAccess::cmdWasmReset(QByteArray args)
 {
-  WASM::host.reset();
+  wasmInterface.reset();
   return makeOkReply();
 }
 
@@ -10,30 +10,20 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
   QStringList items = QString::fromUtf8(args).split(';');
 
   if (items.isEmpty()) {
-    return makeErrorReply("missing runtime name");
-  }
-  std::string runtime_name = items.takeFirst().toStdString();
-
-  if (items.isEmpty()) {
     return makeErrorReply("missing module name");
   }
   std::string module_name  = items.takeFirst().toStdString();
 
   QByteArray reply;
   try {
-    WASM::host.with_runtime(runtime_name, [&](const std::shared_ptr<WASM::Runtime>& runtime) {
-      // instantiate and parse the module:
-      std::shared_ptr<WASM::Module> module = runtime->parse_module(module_name, reinterpret_cast<const uint8_t *>(data.constData()), data.size());
-
-      // load the module into the runtime:
-      runtime->load_module(module);
-
-      // link wasm functions:
-      wasmInterface.link_module(module);
-    });
+    wasmInterface.load_module(
+      module_name,
+      reinterpret_cast<const uint8_t *>(data.constData()),
+      data.size()
+    );
 
     reply = makeOkReply();
-  } catch (WASM::error& err) {
+  } catch (WASMError& err) {
     reply = makeErrorReply(err.what());
   }
 
@@ -50,10 +40,10 @@ QByteArray NWAccess::cmdWasmUnload(QByteArray args)
 
   QByteArray reply;
   try {
-    WASM::host.unload_runtime(runtime_name);
+    // TODO: implement
 
     reply = makeOkReply();
-  } catch (WASM::error& err) {
+  } catch (WASMError& err) {
     reply = makeErrorReply(err.what());
   }
 
@@ -86,17 +76,13 @@ QByteArray NWAccess::cmdWasmInvoke(QByteArray args)
     }
 
     QString function_name_qs = items[0];
-    QByteArray function_name_qba = function_name_qs.toUtf8();
-    const char *function_name = function_name_qba.constData();
+    std::string function_name = function_name_qs.toStdString();
 
-    WASM::host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
-      runtime->with_function(function_name, [&](WASM::Function& f){
-        f.callargv(count, argv);
-      });
-    });
+    // TODO:
+    wasmInterface.call(function_name, 0, 0);
 
     if (argv) delete[] argv;
-  } catch (WASM::error& err) {
+  } catch (WASMError& err) {
     if (!reply.isEmpty()) reply.append('\n');
     reply += "error:";
     reply += err.what();
@@ -106,27 +92,28 @@ QByteArray NWAccess::cmdWasmInvoke(QByteArray args)
 }
 
 QByteArray NWAccess::cmdWasmMsgEnqueue(QByteArray args, QByteArray data) {
-  QStringList items = QString::fromUtf8(args).split(';');
+  //QStringList items = QString::fromUtf8(args).split(';');
+  //
+  //if (items.isEmpty()) {
+  //  return makeErrorReply("missing runtime name");
+  //}
+  //QString name = items.takeFirst();
+  //
+  //QString reply = "name:";
+  //reply += name;
 
-  if (items.isEmpty()) {
-    return makeErrorReply("missing runtime name");
-  }
-  QString name = items.takeFirst();
-
-  QString reply = "name:";
-  reply += name;
-
+  QByteArray reply;
   try {
-    std::string runtime_name = name.toStdString();
-    WASM::host.with_runtime(runtime_name, [&](const std::shared_ptr<WASM::Runtime>& runtime) {
-      runtime->msg_enqueue(
-        std::shared_ptr<WASM::Message>(new WASM::Message((const uint8_t *)data.constData(), data.size()))
-      );
-    });
+    wasmInterface.msg_enqueue(
+      std::shared_ptr<WASMMessage>(new WASMMessage(
+        (const uint8_t *)data.constData(),
+        data.size()
+      ))
+    );
+    reply = makeOkReply();
   } catch (std::out_of_range& err) {
-    reply += "\nerror:";
-    reply += err.what();
+    reply = makeErrorReply(err.what());
   }
 
-  return makeHashReply(reply);
+  return reply;
 }

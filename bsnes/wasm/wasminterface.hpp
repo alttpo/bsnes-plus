@@ -1,15 +1,35 @@
 #pragma once
 
-#include "host.hpp"
+#include <stdexcept>
+#include <string>
+#include <map>
+#include <memory>
+#include <vector>
+#include "wasmer.h"
+
+struct WASMError : public std::runtime_error {
+  explicit WASMError(wasm_trap_t*);
+
+private:
+  static std::string get_message(wasm_trap_t* trap);
+};
+
+struct WASMMessage {
+  WASMMessage(const uint8_t *data, uint16_t size);
+  ~WASMMessage();
+
+  const uint8_t *m_data;
+  uint16_t m_size;
+};
 
 struct WASMInterface {
-  WASMInterface(WASM::Host &host);
-
-  WASM::Host &m_host;
+  WASMInterface();
 
 public:
   void on_nmi();
   const uint16_t *on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace);
+
+  void msg_enqueue(const std::shared_ptr<WASMMessage>&);
 
 public:
   void register_debugger(const std::function<void()>& do_break, const std::function<void()>& do_continue);
@@ -27,13 +47,14 @@ public:
   } frame;
 
 public:
-  // link functions:
-  void link_module(const std::shared_ptr<WASM::Module>& module);
+  void reset();
+  void load_module(const std::string& module_name, const uint8_t *data, const size_t size);
 
+public:
   // wasm bindings:
 #define decl_binding(name) \
-  static const char *wasmsig_##name; \
-  m3ApiRawFunction(wasm_##name)
+  static const char *wa_sig_##name; \
+  wasm_trap_t* wa_fun_##name(void* env, const wasm_val_vec_t* args, wasm_val_vec_t* results)
 
   decl_binding(debugger_break);
   decl_binding(debugger_continue);
@@ -55,6 +76,41 @@ public:
   // TODO: frame drawing functions
 
 #undef decl_binding
+
+public:
+  struct ModuleInstance {
+    explicit ModuleInstance(wasm_module_t* module);
+
+    void instantiate(wasm_extern_vec_t* imports);
+
+    // returns nullptr if not found
+    wasm_func_t* find_function(const std::string& function_name);
+
+    // throws WASMError
+    void call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results);
+
+    void msg_enqueue(const std::shared_ptr<WASMMessage>&);
+
+    uint8_t *mem(int32_t offset);
+
+  public:
+    // module:
+    std::shared_ptr<wasm_module_t>          m_module;
+    std::shared_ptr<wasm_exporttype_vec_t>  m_exporttypes;
+
+    // instance:
+    std::shared_ptr<wasm_instance_t>    m_instance;
+    std::shared_ptr<wasm_extern_vec_t>  m_exports;
+
+    wasm_memory_t*                      m_memory;
+    std::map<std::string, wasm_func_t*> m_functions;
+  };
+
+  std::vector<std::shared_ptr<ModuleInstance>>  m_instances;
+
+private:
+  std::shared_ptr<wasm_engine_t>  m_engine;
+  std::shared_ptr<wasm_store_t>   m_store;
 };
 
 extern WASMInterface wasmInterface;
