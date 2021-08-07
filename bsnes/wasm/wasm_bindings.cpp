@@ -39,7 +39,14 @@ void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
       host_func_type, \
       /* wasm_func_callback_with_env_t: */ \
       [](void* env, const wasm_val_vec_t* args, wasm_val_vec_t* results) -> wasm_trap_t* { \
-        return ((ModuleInstance*)env)->wa_fun_##name(args, results); \
+        try { \
+          return ((ModuleInstance*)env)->wa_fun_##name(args, results);          \
+        } catch (WASMTrapException& ex) {                                       \
+          wasm_message_t msg;                                                   \
+          wasm_name_new(&msg, ex.message().size(), ex.message().c_str());       \
+          wasm_trap_t* trap = wasm_trap_new(wasmInterface.m_store.get(), &msg); \
+          return trap; \
+        } \
       }, \
       (void *)this, \
       nullptr \
@@ -89,11 +96,9 @@ wasm_binding(debugger_continue, "v()") {
 
 //int32_t msg_size(uint16_t *o_size);
 wasm_binding(msg_size, "i(*)") {
-  m3ApiReturnType(int32_t)
+  //m3ApiReturnType(int32_t)
 
-  uint16_t *o_size = mem<uint16_t>(args->data[0].of.i32);
-
-  m3ApiCheckMem(o_size, sizeof(uint16_t));
+  uint16_t *o_size = mem<uint16_t>(args->data[0].of.i32, sizeof(uint16_t));
 
   if (!msg_size(o_size)) {
     wasm_val_t val = WASM_I32_VAL(-1);

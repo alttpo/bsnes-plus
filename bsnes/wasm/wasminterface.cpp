@@ -3,6 +3,8 @@
 
 WASMInterface wasmInterface;
 
+////////////
+
 WASMError::WASMError(wasm_trap_t* trap)
   : std::runtime_error(get_message(trap))
 {
@@ -26,6 +28,23 @@ std::string WASMError::get_message(wasm_trap_t* trap) {
   return s;
 }
 
+////////////
+
+WASMTrapException::WASMTrapException(const std::string& msg)
+  : m_msg(msg), std::runtime_error(msg)
+{
+}
+
+const char* WASMTrapException::what() const noexcept {
+  return m_msg.c_str();
+}
+
+const std::string& WASMTrapException::message() const noexcept {
+  return m_msg;
+}
+
+////////////
+
 WASMMessage::WASMMessage(const uint8_t * const data, uint16_t size)
   : m_data(new uint8_t[size]),
     m_size(size)
@@ -36,6 +55,8 @@ WASMMessage::WASMMessage(const uint8_t * const data, uint16_t size)
 WASMMessage::~WASMMessage() {
   delete[] m_data;
 }
+
+////////////
 
 WASMInterface::WASMInterface() {
   m_engine.reset(wasm_engine_new(), wasm_engine_delete);
@@ -197,14 +218,26 @@ void ModuleInstance::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
 }
 
 template<typename T>
-T* ModuleInstance::mem(int32_t s_offset) {
+T* ModuleInstance::mem(int32_t s_offset, size_t size) {
   uint32_t offset = static_cast<uint32_t>(s_offset);
   if (offset == 0) {
     return nullptr;
   }
 
+  size_t data_size = wasm_memory_data_size(m_memory);
+  if (offset >= data_size) {
+    throw WASMTrapException(std::string("out of bounds memory access"));
+  }
+  if (offset + size > data_size) {
+    throw WASMTrapException(std::string("out of bounds memory access"));
+  }
+
   byte_t* p = wasm_memory_data(m_memory);
   return reinterpret_cast<T*>(p + offset);
+}
+
+size_t ModuleInstance::mem_size() {
+  return wasm_memory_data_size(m_memory);
 }
 
 wasm_functype_t *ModuleInstance::parse_sig(const char *sig) {

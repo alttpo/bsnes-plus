@@ -14,6 +14,16 @@ private:
   static std::string get_message(wasm_trap_t* trap);
 };
 
+struct WASMTrapException : public std::runtime_error {
+  explicit WASMTrapException(const std::string&);
+
+  virtual const char* what() const noexcept;
+  const std::string& message() const noexcept;
+
+private:
+  std::string m_msg;
+};
+
 struct WASMMessage {
   WASMMessage(const uint8_t *data, uint16_t size);
   ~WASMMessage();
@@ -36,7 +46,8 @@ struct ModuleInstance {
   void msg_enqueue(const std::shared_ptr<WASMMessage>&);
 
   template<typename T>
-  T* mem(int32_t offset);
+  T* mem(int32_t offset, size_t size = 0);
+  size_t mem_size();
 
 public:
   // wasm bindings:
