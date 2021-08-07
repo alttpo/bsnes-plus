@@ -19,13 +19,10 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if len(args) < 2 {
-		fmt.Println("send-wasm [-reset] <runtime name> <wasm file> <wasm file> ...")
+	if len(args) < 1 {
+		fmt.Println("send-wasm [-reset] <wasm file> <wasm file> ...")
 		return
 	}
-
-	runtimeName := args[0]
-	args = args[1:]
 
 	var c *net.TCPConn
 	var addr *net.TCPAddr
@@ -63,7 +60,7 @@ func main() {
 		moduleName := filepath.Base(path)
 		moduleName = moduleName[0:len(moduleName)-len(filepath.Ext(moduleName))]
 
-		_, _ = fmt.Fprintf(&b, "WASM_LOAD %s;%s\n", runtimeName, moduleName)
+		_, _ = fmt.Fprintf(&b, "WASM_LOAD %s\n", moduleName)
 		b.WriteByte(0)
 		err = binary.Write(&b, binary.BigEndian, uint32(len(fb)))
 		if err != nil {
