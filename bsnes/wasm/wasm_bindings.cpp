@@ -80,6 +80,45 @@ void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
   const char *ModuleInstance::wa_sig_##name = sig; \
   wasm_trap_t* ModuleInstance::wa_fun_##name(const wasm_val_vec_t* args, wasm_val_vec_t* results)
 
+// TODO: convert and link
+#if 0
+m3ApiRawFunction(hexdump) {
+  m3ApiGetArgMem(const uint8_t*, i_data)
+  m3ApiGetArg   (uint32_t,       i_size)
+
+  for (uint32_t i = 0; i < i_size; i += 16) {
+    char line[8+2+(3*16)+2];
+    int n;
+    n = sprintf(line, "%08x ", i);
+    for (uint32_t j = 0; j < 16; j++) {
+      if (i+j >= i_size) break;
+      n += sprintf(&line[n], "%02x ", i_data[i + j]);
+    }
+    line[n-1] = 0;
+    puts(line);
+  }
+
+  m3ApiSuccess();
+}
+
+m3ApiRawFunction(m3puts) {
+  m3ApiReturnType (int32_t)
+
+  m3ApiGetArgMem  (const char*, i_str)
+
+  if (m3ApiIsNullPtr(i_str)) {
+    m3ApiReturn(0);
+  }
+
+  m3ApiCheckMem(i_str, 1);
+  size_t fmt_len = strnlen(i_str, ((uintptr_t)(_mem) + m3_GetMemorySize(runtime)) - (uintptr_t)(i_str));
+  m3ApiCheckMem(i_str, fmt_len+1); // include `\0`
+
+  // use fputs to avoid redundant newline
+  m3ApiReturn(fputs(i_str, stdout));
+}
+#endif
+
 //void debugger_break();
 wasm_binding(debugger_break, "v()") {
   wasmInterface.m_do_break();

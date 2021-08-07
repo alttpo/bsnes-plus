@@ -76,11 +76,11 @@ void WASMInterface::on_nmi() {
   wasm_val_vec_t args = WASM_ARRAY_VEC(args_val);
   wasm_val_vec_t results = WASM_ARRAY_VEC(results_val);
 
-  for (auto &item : m_instances) {
-    auto func = item->find_function("on_nmi");
+  for (auto &instance : m_instances) {
+    auto func = instance->find_function("on_nmi");
     if (!func) continue;
 
-    item->call(func, &args, &results);
+    instance->call(func, &args, &results);
   }
 }
 
@@ -96,13 +96,13 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
   wasm_val_vec_t args = WASM_ARRAY_VEC(args_val);
   wasm_val_vec_t results = WASM_ARRAY_VEC(results_val);
 
-  for (auto &item : m_instances) {
-    auto func = item->find_function("on_frame_present");
+  for (auto &instance : m_instances) {
+    auto func = instance->find_function("on_frame_present");
     if (!func) continue;
 
-    item->call(func, &args, &results);
+    instance->call(func, &args, &results);
 
-    const uint16_t *newdata = item->mem<const uint16_t>(results_val[0].of.i32);
+    const uint16_t *newdata = instance->mem<const uint16_t>(results_val[0].of.i32);
     if (newdata) {
       // frame_acquire() copies the original frame data into wasm memory, so we
       // avoid a copy here and just present the (possibly modified) frame data
@@ -145,6 +145,12 @@ void WASMInterface::load_module(const std::string& module_name, const uint8_t *d
   module->instantiate(&import_object);
 
   m_instances.emplace_back(module);
+}
+
+void WASMInterface::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
+  for (auto& instance : m_instances) {
+    instance->msg_enqueue(msg);
+  }
 }
 
 ////////////
@@ -214,7 +220,37 @@ void ModuleInstance::call(const wasm_func_t* func, const wasm_val_vec_t* args, w
 }
 
 void ModuleInstance::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
-  // TODO
+  m_msgs.push(msg);
+
+  auto func = find_function("on_msg_recv");
+  if (!func) {
+    return;
+  }
+
+  wasm_val_t args_val[0] = { };
+  wasm_val_t results_val[0] = { };
+  wasm_val_vec_t args = WASM_ARRAY_VEC(args_val);
+  wasm_val_vec_t results = WASM_ARRAY_VEC(results_val);
+
+  call(func, &args, &results);
+}
+
+std::shared_ptr<WASMMessage> ModuleInstance::msg_dequeue() {
+  auto msg = m_msgs.front();
+  //printf("msg_dequeue() -> {%p, %u}\n", msg->m_data, msg->m_size);
+  m_msgs.pop();
+  return msg;
+}
+
+bool ModuleInstance::msg_size(uint16_t *o_size) {
+  if (m_msgs.empty()) {
+    //printf("msg_size() -> false\n");
+    return false;
+  }
+
+  *o_size = m_msgs.front()->m_size;
+  //printf("msg_size() -> true, %u\n", *o_size);
+  return true;
 }
 
 template<typename T>

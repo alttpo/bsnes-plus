@@ -79,7 +79,7 @@ QByteArray NWAccess::cmdWasmInvoke(QByteArray args)
     std::string function_name = function_name_qs.toStdString();
 
     // TODO:
-    wasmInterface.call(function_name, 0, 0);
+    //wasmInterface.call(function_name, 0, 0);
 
     if (argv) delete[] argv;
   } catch (WASMError& err) {

@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <queue>
 #include <vector>
 #include "wasmer.h"
 
@@ -43,11 +44,14 @@ struct ModuleInstance {
   // throws WASMError
   void call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results);
 
-  void msg_enqueue(const std::shared_ptr<WASMMessage>&);
-
   template<typename T>
   T* mem(int32_t offset, size_t size = 0);
   size_t mem_size();
+
+public:
+  void msg_enqueue(const std::shared_ptr<WASMMessage>&);
+  std::shared_ptr<WASMMessage> msg_dequeue();
+  bool msg_size(uint16_t *o_size);
 
 public:
   // wasm bindings:
@@ -90,6 +94,8 @@ public:
 
   wasm_memory_t*                      m_memory;
   std::map<std::string, wasm_func_t*> m_functions;
+
+  std::queue<std::shared_ptr<WASMMessage>> m_msgs;
 };
 
 struct WASMInterface {
