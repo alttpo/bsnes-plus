@@ -32,8 +32,10 @@ void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
   auto importtypes = m_importtypes.get();
   for (int i = 0; i < importtypes->size; i++) {
     const wasm_name_t* name = wasm_importtype_name(importtypes->data[i]);
+    printf("%d %p\n", (int)name->size, name->data);
+    printf("import[%d] = '%.*s'\n", i, (int)name->size, (const char *)name->data);
     import_index.emplace(
-      std::string((const char *)name->data),
+      std::string((const char *)name->data, name->size),
       i
     );
   }

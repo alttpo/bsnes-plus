@@ -159,12 +159,26 @@ ModuleInstance::ModuleInstance(wasm_module_t* module)
   : m_module(module, wasm_module_delete)
 {
   // fetch export types:
-  m_exporttypes.reset(new wasm_exporttype_vec_t());
-  wasm_module_exports(m_module.get(), m_exporttypes.get());
+  {
+    auto exporttypes = new wasm_exporttype_vec_t();
+    wasm_module_exports(m_module.get(), exporttypes);
+    printf("ModuleInstance(): %d exports\n", exporttypes->size);
+    m_exporttypes.reset(exporttypes, [](wasm_exporttype_vec_t* vec) {
+      wasm_exporttype_vec_delete(vec);
+      delete vec;
+    });
+  }
 
   // fetch import types:
-  m_importtypes.reset(new wasm_importtype_vec_t());
-  wasm_module_imports(m_module.get(), m_importtypes.get());
+  {
+    auto importtypes = new wasm_importtype_vec_t();
+    wasm_module_imports(m_module.get(), importtypes);
+    printf("ModuleInstance(): %d imports\n", importtypes->size);
+    m_importtypes.reset(importtypes, [](wasm_importtype_vec_t* vec) {
+      wasm_importtype_vec_delete(vec);
+      delete vec;
+    });
+  }
 }
 
 void ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
@@ -199,8 +213,9 @@ void ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
       m_memory = wasm_extern_as_memory(extrn);
     } else if (wasm_extern_kind(extrn) == WASM_EXTERN_FUNC) {
       // track functions by name:
+      const wasm_name_t* name = wasm_exporttype_name(exporttype);
       m_functions.emplace(
-        std::string(wasm_exporttype_name(exporttype)->data),
+        std::string((const char *)name->data, name->size),
         wasm_extern_as_func(extrn)
       );
     }
