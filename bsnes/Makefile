@@ -95,6 +95,7 @@ build: ui_build $(objects)
 ifeq ($(platform),osx)
 	test -d $(osxbundle) || mkdir -p $(osxbundle)/Contents/MacOS
 	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/$(out) $(objects) $(link))
+	cp -f ../external/wasmer/lib/libwasmer.dylib $(osxbundle)/Contents/MacOS/libwasmer.dylib
 	mkdir -p $(osxbundle)/Contents/Resources
 	cp -f data/bsnes.icns $(osxbundle)/Contents/Resources/AppIcon.icns
 	sed 's/@VERSION/v$(version)/g' data/Info.plist > $(osxbundle)/Contents/Info.plist
