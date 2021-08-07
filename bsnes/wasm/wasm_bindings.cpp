@@ -26,10 +26,27 @@ enum ppux_memory_type : uint32_t {
   CGRAM
 };
 
-void WASMInterface::link_module() {
+void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
+  unsigned int i = 0;
+
+  wasm_extern_vec_new_uninitialized(imports, 13);
+
 // link wasm_bindings.cpp member functions:
-#define link(name) \
-  module->linkEx("*", #name, wa_sig_##name, &WASM::RawCall<WASMInterface>::adapter<&WASMInterface::wasm_##name>, (const void *)this)
+#define link(name) { \
+    wasm_functype_t*  host_func_type  = parse_sig(wa_sig_##name); \
+    wasm_func_t*      host_func       = wasm_func_new_with_env( \
+      wasmInterface.m_store.get(), \
+      host_func_type, \
+      /* wasm_func_callback_with_env_t: */ \
+      [](void* env, const wasm_val_vec_t* args, wasm_val_vec_t* results) -> wasm_trap_t* { \
+        return ((ModuleInstance*)env)->wa_fun_##name(args, results); \
+      }, \
+      (void *)this, \
+      nullptr \
+    ); \
+    wasm_functype_delete(host_func_type); \
+    imports->data[i++] = wasm_func_as_extern(host_func); \
+  }
 
   link(debugger_break);
   link(debugger_continue);
@@ -53,38 +70,44 @@ void WASMInterface::link_module() {
 }
 
 #define wasm_binding(name, sig) \
-  const char *WASMInterface::wa_sig_##name = sig; \
-  m3ApiRawFunction(WASMInterface::wa_fun_##name)
+  const char *ModuleInstance::wa_sig_##name = sig; \
+  wasm_trap_t* ModuleInstance::wa_fun_##name(const wasm_val_vec_t* args, wasm_val_vec_t* results)
 
 //void debugger_break();
 wasm_binding(debugger_break, "v()") {
-  m_do_break();
+  wasmInterface.m_do_break();
 
-  m3ApiSuccess()
+  return nullptr;
 }
 
 //void debugger_continue();
 wasm_binding(debugger_continue, "v()") {
-  m_do_continue();
+  wasmInterface.m_do_continue();
 
-  m3ApiSuccess()
+  return nullptr;
 }
 
 //int32_t msg_size(uint16_t *o_size);
 wasm_binding(msg_size, "i(*)") {
   m3ApiReturnType(int32_t)
 
-  m3ApiGetArgMem(uint16_t *, o_size)
+  uint16_t *o_size = mem<uint16_t>(args->data[0].of.i32);
 
   m3ApiCheckMem(o_size, sizeof(uint16_t));
 
-  auto m_runtime = WASM::host.get_runtime(runtime);
-
-  if (!m_runtime->msg_size(o_size)) {
-    m3ApiReturn(-1)
+  if (!msg_size(o_size)) {
+    wasm_val_t val = WASM_I32_VAL(-1);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
   }
 
-  m3ApiReturn(0)
+  {
+    wasm_val_t val = WASM_I32_VAL(0);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
+  }
 }
 
 //int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
@@ -105,19 +128,24 @@ wasm_binding(msg_recv, "i(*i)") {
 
   memcpy((void *)o_data, (const void *)msg->m_data, msg->m_size);
 
-  m3ApiReturn(0)
+  {
+    wasm_val_t val = WASM_I32_VAL(0);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
+  }
 }
 
 //void ppux_reset();
 wasm_binding(ppux_reset, "v()") {
   SNES::ppu.ppux_reset();
-  m3ApiSuccess();
+  return nullptr;
 }
 
 //void ppux_sprite_reset();
 wasm_binding(ppux_sprite_reset, "v()") {
   SNES::ppu.ppux_sprite_reset();
-  m3ApiSuccess();
+  return nullptr;
 }
 
 //int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
@@ -159,7 +187,12 @@ wasm_binding(ppux_sprite_read, "i(i*)") {
   o_spr->width = t.width;
   o_spr->height = t.height;
 
-  m3ApiReturn(0);
+  {
+    wasm_val_t val = WASM_I32_VAL(0);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
+  }
 }
 
 //int32_t ppux_sprite_write(uint32_t i_index, struct ppux_sprite *i_spr);
@@ -209,7 +242,12 @@ wasm_binding(ppux_sprite_write, "i(i*)") {
   t.width = i_spr->width;
   t.height = i_spr->height;
 
-  m3ApiReturn(0);
+  {
+    wasm_val_t val = WASM_I32_VAL(0);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
+  }
 }
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
@@ -262,7 +300,12 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
 
   memcpy(t + i_offset, i_data, i_size);
 
-  m3ApiReturn(0);
+  {
+    wasm_val_t val = WASM_I32_VAL(0);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
+  }
 }
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
@@ -315,7 +358,12 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
 
   memcpy(o_data, t + i_offset, i_size);
 
-  m3ApiReturn(0);
+  {
+    wasm_val_t val = WASM_I32_VAL(0);
+    wasm_val_copy(&results->data[0], &val);
+    wasm_val_delete(&val);
+    return nullptr;
+  }
 }
 
 //void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
@@ -332,7 +380,7 @@ wasm_binding(snes_bus_read, "v(i*i)") {
     o_data[o] = b;
   }
 
-  m3ApiSuccess();
+  return nullptr;
 }
 
 //void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
@@ -348,7 +396,7 @@ wasm_binding(snes_bus_write, "v(i*i)") {
     SNES::bus.write(a, b);
   }
 
-  m3ApiSuccess();
+  return nullptr;
 }
 
 // void frame_acquire(const uint16_t *io_data, uint32_t *o_pitch, uint32_t *o_width, uint32_t *o_height, bool *o_interlace)
@@ -374,7 +422,7 @@ wasm_binding(frame_acquire, "v(*****)") {
   // copy from frame.data into wasm memory:
   memcpy(io_data, frame.data, frame.height * frame.pitch);
 
-  m3ApiSuccess();
+  return nullptr;
 }
 
 #undef wasm_binding

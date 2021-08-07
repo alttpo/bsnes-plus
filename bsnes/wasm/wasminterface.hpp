@@ -22,6 +22,65 @@ struct WASMMessage {
   uint16_t m_size;
 };
 
+struct ModuleInstance {
+  explicit ModuleInstance(wasm_module_t* module);
+
+  void instantiate(wasm_extern_vec_t* imports);
+
+  // returns nullptr if not found
+  wasm_func_t* find_function(const std::string& function_name);
+
+  // throws WASMError
+  void call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results);
+
+  void msg_enqueue(const std::shared_ptr<WASMMessage>&);
+
+  template<typename T>
+  T* mem(int32_t offset);
+
+public:
+  // wasm bindings:
+  void link_module(wasm_extern_vec_t *imports);
+  wasm_functype_t *parse_sig(const char *sig);
+
+#define decl_binding(name) \
+  static const char *wa_sig_##name; \
+  wasm_trap_t* wa_fun_##name(const wasm_val_vec_t* args, wasm_val_vec_t* results)
+
+  decl_binding(debugger_break);
+  decl_binding(debugger_continue);
+
+  decl_binding(msg_recv);
+  decl_binding(msg_size);
+
+  decl_binding(snes_bus_read);
+  decl_binding(snes_bus_write);
+
+  decl_binding(ppux_reset);
+  decl_binding(ppux_sprite_reset);
+  decl_binding(ppux_sprite_read);
+  decl_binding(ppux_sprite_write);
+  decl_binding(ppux_ram_write);
+  decl_binding(ppux_ram_read);
+
+  decl_binding(frame_acquire);
+  // TODO: frame drawing functions
+
+#undef decl_binding
+
+public:
+  // module:
+  std::shared_ptr<wasm_module_t>          m_module;
+  std::shared_ptr<wasm_exporttype_vec_t>  m_exporttypes;
+
+  // instance:
+  std::shared_ptr<wasm_instance_t>    m_instance;
+  std::shared_ptr<wasm_extern_vec_t>  m_exports;
+
+  wasm_memory_t*                      m_memory;
+  std::map<std::string, wasm_func_t*> m_functions;
+};
+
 struct WASMInterface {
   WASMInterface();
 
@@ -51,66 +110,13 @@ public:
   void load_module(const std::string& module_name, const uint8_t *data, const size_t size);
 
 public:
-  // wasm bindings:
-#define decl_binding(name) \
-  static const char *wa_sig_##name; \
-  wasm_trap_t* wa_fun_##name(void* env, const wasm_val_vec_t* args, wasm_val_vec_t* results)
-
-  decl_binding(debugger_break);
-  decl_binding(debugger_continue);
-
-  decl_binding(msg_recv);
-  decl_binding(msg_size);
-
-  decl_binding(snes_bus_read);
-  decl_binding(snes_bus_write);
-
-  decl_binding(ppux_reset);
-  decl_binding(ppux_sprite_reset);
-  decl_binding(ppux_sprite_read);
-  decl_binding(ppux_sprite_write);
-  decl_binding(ppux_ram_write);
-  decl_binding(ppux_ram_read);
-
-  decl_binding(frame_acquire);
-  // TODO: frame drawing functions
-
-#undef decl_binding
-
-public:
-  struct ModuleInstance {
-    explicit ModuleInstance(wasm_module_t* module);
-
-    void instantiate(wasm_extern_vec_t* imports);
-
-    // returns nullptr if not found
-    wasm_func_t* find_function(const std::string& function_name);
-
-    // throws WASMError
-    void call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results);
-
-    void msg_enqueue(const std::shared_ptr<WASMMessage>&);
-
-    uint8_t *mem(int32_t offset);
-
-  public:
-    // module:
-    std::shared_ptr<wasm_module_t>          m_module;
-    std::shared_ptr<wasm_exporttype_vec_t>  m_exporttypes;
-
-    // instance:
-    std::shared_ptr<wasm_instance_t>    m_instance;
-    std::shared_ptr<wasm_extern_vec_t>  m_exports;
-
-    wasm_memory_t*                      m_memory;
-    std::map<std::string, wasm_func_t*> m_functions;
-  };
-
   std::vector<std::shared_ptr<ModuleInstance>>  m_instances;
 
 private:
   std::shared_ptr<wasm_engine_t>  m_engine;
   std::shared_ptr<wasm_store_t>   m_store;
+
+  friend struct ModuleInstance;
 };
 
 extern WASMInterface wasmInterface;

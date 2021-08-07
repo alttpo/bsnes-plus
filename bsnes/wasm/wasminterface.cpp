@@ -81,7 +81,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
 
     item->call(func, &args, &results);
 
-    const uint16_t *newdata = (const uint16_t *)item->mem(results_val[0].of.i32);
+    const uint16_t *newdata = item->mem<const uint16_t>(results_val[0].of.i32);
     if (newdata) {
       // frame_acquire() copies the original frame data into wasm memory, so we
       // avoid a copy here and just present the (possibly modified) frame data
@@ -116,10 +116,11 @@ void WASMInterface::load_module(const std::string& module_name, const uint8_t *d
 
   wasm_byte_vec_delete(&wasm_bytes);
 
-  // TODO: create imports:
-  wasm_extern_t* imports[0] = {};
-  wasm_extern_vec_t import_object = WASM_ARRAY_VEC(imports);
+  // define imports:
+  wasm_extern_vec_t import_object = WASM_EMPTY_VEC;
+  module->link_module(&import_object);
 
+  // instantiate module:
   module->instantiate(&import_object);
 
   m_instances.emplace_back(module);
@@ -127,7 +128,7 @@ void WASMInterface::load_module(const std::string& module_name, const uint8_t *d
 
 ////////////
 
-WASMInterface::ModuleInstance::ModuleInstance(wasm_module_t* module)
+ModuleInstance::ModuleInstance(wasm_module_t* module)
   : m_module(module, wasm_module_delete)
 {
   // fetch export types:
@@ -135,7 +136,7 @@ WASMInterface::ModuleInstance::ModuleInstance(wasm_module_t* module)
   wasm_module_exports(m_module.get(), m_exporttypes.get());
 }
 
-void WASMInterface::ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
+void ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
   wasm_trap_t* trap = nullptr;
 
   // create instance:
@@ -175,7 +176,7 @@ void WASMInterface::ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
   }
 }
 
-wasm_func_t* WASMInterface::ModuleInstance::find_function(const std::string& function_name) {
+wasm_func_t* ModuleInstance::find_function(const std::string& function_name) {
   auto funcIt = m_functions.find(function_name);
   if (funcIt == m_functions.end()) {
     return nullptr;
@@ -184,25 +185,32 @@ wasm_func_t* WASMInterface::ModuleInstance::find_function(const std::string& fun
   return funcIt->second;
 }
 
-void WASMInterface::ModuleInstance::call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results) {
+void ModuleInstance::call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results) {
   wasm_trap_t *trap = wasm_func_call(func, args, results);
   if (trap) {
     throw WASMError(trap);
   }
 }
 
-void WASMInterface::ModuleInstance::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
+void ModuleInstance::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
   // TODO
 }
 
-uint8_t *WASMInterface::ModuleInstance::mem(int32_t s_offset) {
+template<typename T>
+T* ModuleInstance::mem(int32_t s_offset) {
   uint32_t offset = static_cast<uint32_t>(s_offset);
   if (offset == 0) {
     return nullptr;
   }
 
-  uint8_t *memory = reinterpret_cast<uint8_t*>(wasm_memory_data(m_memory));
-  return memory + offset;
+  byte_t* p = wasm_memory_data(m_memory);
+  return reinterpret_cast<T*>(p + offset);
 }
+
+wasm_functype_t *ModuleInstance::parse_sig(const char *sig) {
+  // TODO
+  return wasm_functype_new_0_1(wasm_valtype_new_i32());
+}
+
 
 #include "wasm_bindings.cpp"
