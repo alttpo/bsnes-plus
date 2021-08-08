@@ -1,5 +1,6 @@
 #include <snes/snes.hpp>
 #include "wasminterface.hpp"
+#include <sstream>
 
 WASMInterface wasmInterface;
 
@@ -351,8 +352,65 @@ void ModuleInstance::offset(wasm_val_t* out, T* ptr) {
 }
 
 wasm_functype_t *ModuleInstance::parse_sig(const char *sig) {
-  // TODO
-  return wasm_functype_new_0_1(wasm_valtype_new_i32());
+  wasm_valtype_t* ps[1024];
+  wasm_valtype_t* rs[1024];
+
+  size_t max_types = strlen(sig);
+  if (max_types < 2) {
+    throw std::runtime_error("malformed signature; must contain at least '()'");
+  }
+  max_types -= 2;
+
+  size_t num_rets = 0, num_params = 0;
+
+  size_t* counter = &num_rets;
+  wasm_valtype_t** list = rs;
+
+  bool parsing_rets = true;
+  const char *s = sig;
+  while (*s) {
+    char c = *s++;
+
+    if (c == '(') {
+      if (!parsing_rets) {
+        throw std::runtime_error("malformed signature; unexpected '('");
+      }
+      list = ps;
+      counter = &num_params;
+      parsing_rets = false;
+      continue;
+    } else if (c == ' ') {
+      continue;
+    } else if (c == 'v') {
+      // void type
+      continue;
+    } else if (c == ')') {
+      break;
+    }
+
+    switch (c) {
+      case 'i': *list++ = wasm_valtype_new(WASM_I32); break;
+      case 'I': *list++ = wasm_valtype_new(WASM_I64); break;
+      case 'f': *list++ = wasm_valtype_new(WASM_F32); break;
+      case 'F': *list++ = wasm_valtype_new(WASM_F64); break;
+      case '*': *list++ = wasm_valtype_new(WASM_I32); break;
+      default: {
+        std::ostringstream e;
+        e << "malformed signature; unrecognized type character '";
+        e << c;
+        e << "'";
+        throw std::runtime_error(e.str());
+      }
+    }
+
+    ++(*counter);
+  }
+
+  wasm_valtype_vec_t params, results;
+  wasm_valtype_vec_new(&params, num_params, ps);
+  wasm_valtype_vec_new(&results, num_rets, rs);
+
+  return wasm_functype_new(&params, &results);
 }
 
 

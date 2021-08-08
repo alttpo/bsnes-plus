@@ -144,7 +144,6 @@ wasm_binding(puts, "i(*)") {
   if (i_str == nullptr) {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -158,7 +157,6 @@ wasm_binding(puts, "i(*)") {
   {
     wasm_val_t val = WASM_I32_VAL(ret);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 }
@@ -210,14 +208,12 @@ wasm_binding(msg_size, "i(*)") {
   if (!msg_size(o_size)) {
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
   {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 }
@@ -236,7 +232,6 @@ wasm_binding(msg_recv, "i(*i)") {
   if (msg->m_size > i_size) {
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -245,7 +240,6 @@ wasm_binding(msg_recv, "i(*i)") {
   {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 }
@@ -275,14 +269,12 @@ wasm_binding(ppux_sprite_read, "i(i*)") {
   if (i_index >= SNES::PPU::extra_count) {
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
   if (!o_spr) {
     wasm_val_t val = WASM_I32_VAL(-2);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -311,7 +303,6 @@ wasm_binding(ppux_sprite_read, "i(i*)") {
   {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 }
@@ -329,28 +320,24 @@ wasm_binding(ppux_sprite_write, "i(i*)") {
   if (i_index >= SNES::PPU::extra_count) {
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
   if (!i_spr) {
     wasm_val_t val = WASM_I32_VAL(-2);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
   if (i_spr->vram_space >= SNES::PPU::extra_spaces) {
     wasm_val_t val = WASM_I32_VAL(-3);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
   if (i_spr->cgram_space >= SNES::PPU::extra_spaces) {
     wasm_val_t val = WASM_I32_VAL(-4);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -379,7 +366,6 @@ wasm_binding(ppux_sprite_write, "i(i*)") {
   {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 }
@@ -404,7 +390,6 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
     wasm_val_t val = WASM_I32_VAL(-2);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -420,14 +405,12 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
     //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -435,14 +418,12 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
     //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
     wasm_val_t val = WASM_I32_VAL(-3);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
   if (i_offset & 1) {
     //return makeErrorReply("offset must be multiple of 2");
     wasm_val_t val = WASM_I32_VAL(-4);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -450,7 +431,6 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
     //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
     wasm_val_t val = WASM_I32_VAL(-5);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -459,7 +439,7 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
   {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
+    //wasm_val_delete(&val);
     return nullptr;
   }
 }
@@ -484,7 +464,6 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
     wasm_val_t val = WASM_I32_VAL(-2);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -500,14 +479,12 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
     //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
     wasm_val_t val = WASM_I32_VAL(-1);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -515,14 +492,12 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
     //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
     wasm_val_t val = WASM_I32_VAL(-3);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
   if (i_offset & 1) {
     //return makeErrorReply("offset must be multiple of 2");
     wasm_val_t val = WASM_I32_VAL(-4);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -530,7 +505,6 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
     //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
     wasm_val_t val = WASM_I32_VAL(-5);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 
@@ -539,7 +513,6 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
   {
     wasm_val_t val = WASM_I32_VAL(0);
     wasm_val_copy(&results->data[0], &val);
-    wasm_val_delete(&val);
     return nullptr;
   }
 }
