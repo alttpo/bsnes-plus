@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <functional>
 #include <string>
 #include <map>
 #include <memory>
