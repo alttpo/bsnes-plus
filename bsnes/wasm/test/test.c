@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "wasm.h"
 #include "../../../external/printf/printf.c"
+#include "drawing.h"
 
 void _putchar(char character) {
 
@@ -594,24 +595,18 @@ void oam_convert(unsigned o, unsigned i) {
   }
 }
 
-uint16_t frame[512 * 512];
+struct frame frame;
 
 __attribute__((export_name("on_frame_present")))
 uint16_t *on_frame_present() {
-  uint32_t pitch;
-  uint32_t width;
-  uint32_t height;
-  int32_t  interlace;
-
-  frame_acquire(frame, &pitch, &width, &height, &interlace);
-
-  // divide by sizeof(uint16_t)
-  pitch >>= 1;
+  frame_acquire(&frame);
 
   // poke out a white pixel:
-  frame[pitch * 16 + 16] = 0x7fff;
+  //frame[(pitch>>1) * 16 + 16] = 0x7fff;
 
-  return frame;
+  draw_hline(&frame, 16, 16, 16, 0x7fff);
+
+  return frame.data;
 }
 
 // called on NMI:

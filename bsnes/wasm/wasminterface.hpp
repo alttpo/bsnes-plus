@@ -52,7 +52,7 @@ public:
   decl_binding(ppux_ram_read);
 
   decl_binding(frame_acquire);
-  // TODO: frame drawing functions
+  decl_binding(draw_hline);
 
 #undef decl_binding
 };

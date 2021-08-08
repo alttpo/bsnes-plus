@@ -26,6 +26,14 @@ enum ppux_memory_type : uint32_t {
   CGRAM
 };
 
+struct frame {
+  uint32_t pitch;
+  uint32_t width;
+  uint32_t height;
+  int32_t  interlace;
+  uint16_t data[512 * 512];
+};
+
 void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 // link wasm_bindings.cpp member functions:
 #define link(name) \
@@ -48,6 +56,7 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(ppux_ram_write);
 
   link(frame_acquire);
+  link(draw_hline);
 
 #undef link
 }
@@ -351,28 +360,42 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiSuccess();
 }
 
-// void frame_acquire(const uint16_t *io_data, uint32_t *o_pitch, uint32_t *o_width, uint32_t *o_height, bool *o_interlace)
-wasm_binding(frame_acquire, "v(*****)") {
-  m3ApiGetArgMem(uint16_t*, io_data)
-  m3ApiGetArgMem(uint32_t*, o_pitch)
-  m3ApiGetArgMem(uint32_t*, o_width)
-  m3ApiGetArgMem(uint32_t*, o_height)
-  m3ApiGetArgMem(bool*,     o_interlace)
+// void frame_acquire(struct frame* io_frame)
+wasm_binding(frame_acquire, "v(*)") {
+  m3ApiGetArgMem(struct frame*, io_frame);
 
-  m3ApiCheckMem(io_data, frame.height * frame.pitch)
+  m3ApiCheckMem(io_frame, sizeof(struct frame));
 
-  m3ApiCheckMem(o_pitch, sizeof(uint32_t))
-  m3ApiCheckMem(o_width, sizeof(uint32_t))
-  m3ApiCheckMem(o_height, sizeof(uint32_t))
-  m3ApiCheckMem(o_interlace, sizeof(int32_t))
-
-  *o_pitch = frame.pitch;
-  *o_width = frame.width;
-  *o_height = frame.height;
-  *o_interlace = frame.interlace;
+  io_frame->pitch = frame.pitch;
+  io_frame->width = frame.width;
+  io_frame->height = frame.height;
+  io_frame->interlace = frame.interlace;
 
   // copy from frame.data into wasm memory:
-  memcpy(io_data, frame.data, frame.height * frame.pitch);
+  memcpy(io_frame->data, frame.data, frame.height * frame.pitch);
+
+  m3ApiSuccess();
+}
+
+wasm_binding(draw_hline, "v(*iiii)") {
+  m3ApiGetArgMem(struct frame*, io_frame)
+  m3ApiGetArg   (int32_t,       x0)
+  m3ApiGetArg   (int32_t,       y0)
+  m3ApiGetArg   (int32_t,       w)
+  m3ApiGetArg   (uint16_t,      color)
+
+  m3ApiCheckMem(io_frame, sizeof(struct frame));
+
+  if (y0 < 0) m3ApiSuccess();
+  if (y0 >= io_frame->height) m3ApiSuccess();
+
+  uint32_t pitch = io_frame->pitch >> 1;
+  for (int32_t x = x0; x < x0+w; x++) {
+    if (x < 0) continue;
+    if (x >= io_frame->width) continue;
+
+    io_frame->data[y0 * pitch + x] = color;
+  }
 
   m3ApiSuccess();
 }
