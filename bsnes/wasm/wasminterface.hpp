@@ -44,9 +44,20 @@ struct ModuleInstance {
   // throws WASMError
   void call(const wasm_func_t* func, const wasm_val_vec_t* args, wasm_val_vec_t* results);
 
+  inline size_t mem_size();
+
   template<typename T>
-  T* mem(int32_t offset, size_t size = 0);
-  size_t mem_size();
+  size_t mem_remaining(T* ptr);
+
+  template<typename T>
+  T* mem(wasm_val_t* val, size_t size = 0);
+  template<typename T>
+  T* mem_unchecked(wasm_val_t* val);
+  template<typename T>
+  T* mem_check(T* ptr, size_t size);
+
+  template<typename T>
+  void offset(wasm_val_t* out, T* ptr);
 
 public:
   void msg_enqueue(const std::shared_ptr<WASMMessage>&);
@@ -61,6 +72,10 @@ public:
 #define decl_binding(name) \
   static const char *wa_sig_##name; \
   wasm_trap_t* wa_fun_##name(const wasm_val_vec_t* args, wasm_val_vec_t* results)
+
+  decl_binding(puts);
+  decl_binding(memcpy);
+  decl_binding(memset);
 
   decl_binding(debugger_break);
   decl_binding(debugger_continue);

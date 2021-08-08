@@ -102,7 +102,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
 
     instance->call(func, &args, &results);
 
-    const uint16_t *newdata = instance->mem<const uint16_t>(results_val[0].of.i32);
+    const uint16_t *newdata = instance->mem<const uint16_t>(&results_val[0]);
     if (newdata) {
       // frame_acquire() copies the original frame data into wasm memory, so we
       // avoid a copy here and just present the (possibly modified) frame data
@@ -199,6 +199,12 @@ void ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
     wasm_instance_new(wasmInterface.m_store.get(), m_module.get(), imports, &trap),
     wasm_instance_delete
   );
+  if (trap != nullptr) {
+    throw WASMError(trap);
+  }
+  if (m_instance.get() == nullptr) {
+    throw std::runtime_error("failed to create module instance");
+  }
 
   // fetch instance exports:
   wasm_extern_vec_t* exports = new wasm_extern_vec_t();
@@ -290,14 +296,37 @@ bool ModuleInstance::msg_size(uint16_t *o_size) {
   return true;
 }
 
+inline size_t ModuleInstance::mem_size() {
+  return wasm_memory_data_size(m_memory);
+}
+
 template<typename T>
-T* ModuleInstance::mem(int32_t s_offset, size_t size) {
-  uint32_t offset = static_cast<uint32_t>(s_offset);
+T* ModuleInstance::mem(wasm_val_t* val, size_t size) {
+  T* ptr = mem_unchecked<T>(val);
+  if (ptr == nullptr) {
+    return nullptr;
+  }
+
+  return mem_check<T>(ptr, size);
+}
+
+template<typename T>
+T* ModuleInstance::mem_unchecked(wasm_val_t* val) {
+  uint32_t offset = static_cast<uint32_t>(val->of.i32);
   if (offset == 0) {
     return nullptr;
   }
 
-  size_t data_size = wasm_memory_data_size(m_memory);
+  byte_t* base = wasm_memory_data(m_memory);
+  return reinterpret_cast<T*>(base + offset);
+}
+
+template<typename T>
+T* ModuleInstance::mem_check(T* ptr, size_t size) {
+  byte_t* base = wasm_memory_data(m_memory);
+  uint32_t offset = (uint32_t)((uintptr_t)ptr - (uintptr_t)base);
+
+  size_t data_size = mem_size();
   if (offset >= data_size) {
     throw WASMTrapException(std::string("out of bounds memory access"));
   }
@@ -305,12 +334,20 @@ T* ModuleInstance::mem(int32_t s_offset, size_t size) {
     throw WASMTrapException(std::string("out of bounds memory access"));
   }
 
-  byte_t* p = wasm_memory_data(m_memory);
-  return reinterpret_cast<T*>(p + offset);
+  return ptr;
 }
 
-size_t ModuleInstance::mem_size() {
-  return wasm_memory_data_size(m_memory);
+template<typename T>
+size_t ModuleInstance::mem_remaining(T* ptr) {
+  byte_t* base = wasm_memory_data(m_memory);
+  return ((uintptr_t)ptr + (uintptr_t)mem_size()) - (uintptr_t)base;
+}
+
+template<typename T>
+void ModuleInstance::offset(wasm_val_t* out, T* ptr) {
+  byte_t* base = wasm_memory_data(m_memory);
+  out->of.i32 = (int32_t)((uintptr_t)ptr - (uintptr_t)base);
+  out->kind = WASM_I32;
 }
 
 wasm_functype_t *ModuleInstance::parse_sig(const char *sig) {
