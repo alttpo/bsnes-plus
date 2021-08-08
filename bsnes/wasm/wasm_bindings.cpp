@@ -29,11 +29,10 @@ enum ppux_memory_type : uint32_t {
 void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
   std::map<std::string, int> import_index;
 
+  // map names to indices:
   auto importtypes = m_importtypes.get();
   for (int i = 0; i < importtypes->size; i++) {
     const wasm_name_t* name = wasm_importtype_name(importtypes->data[i]);
-    printf("%d %p\n", (int)name->size, name->data);
-    printf("import[%d] = '%.*s'\n", i, (int)name->size, (const char *)name->data);
     import_index.emplace(
       std::string((const char *)name->data, name->size),
       i
@@ -41,6 +40,9 @@ void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
   }
 
   wasm_extern_vec_new_uninitialized(imports, importtypes->size);
+  for (int i = 0; i < imports->size; i++) {
+    imports->data[i] = nullptr;
+  }
 
 // link wasm_bindings.cpp member functions:
 #define link(name) \
@@ -68,7 +70,7 @@ void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
       wasm_functype_delete(host_func_type); \
       imports->data[it->second] = wasm_func_as_extern(host_func); \
     } else {       \
-      fprintf(stderr, "warn: could not bind import '%s'\n", #name); \
+      fprintf(stderr, "warn: could not find a named import '%s'\n", #name); \
     } \
   }
 
@@ -91,6 +93,14 @@ void ModuleInstance::link_module(wasm_extern_vec_t *imports) {
   link(frame_acquire);
 
 #undef link
+
+  // verify:
+  for (int i = 0; i < imports->size; ++i) {
+    if (imports->data[i] == nullptr) {
+      const wasm_name_t* name = wasm_importtype_name(importtypes->data[i]);
+      fprintf(stderr, "import[%d] unresolved: '%.*s'\n", i, (int)name->size, (const char *)name->data);
+    }
+  }
 }
 
 #define wasm_binding(name, sig) \

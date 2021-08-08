@@ -162,22 +162,32 @@ ModuleInstance::ModuleInstance(wasm_module_t* module)
   {
     auto exporttypes = new wasm_exporttype_vec_t();
     wasm_module_exports(m_module.get(), exporttypes);
-    printf("ModuleInstance(): %d exports\n", exporttypes->size);
+    printf("module %zu exports\n", exporttypes->size);
     m_exporttypes.reset(exporttypes, [](wasm_exporttype_vec_t* vec) {
       wasm_exporttype_vec_delete(vec);
       delete vec;
     });
+
+    for (size_t i = 0; i < exporttypes->size; i++) {
+      const wasm_name_t* name = wasm_exporttype_name(exporttypes->data[i]);
+      printf("module export[%zu] = '%.*s'\n", i, (int)name->size, (const char *)name->data);
+    }
   }
 
   // fetch import types:
   {
     auto importtypes = new wasm_importtype_vec_t();
     wasm_module_imports(m_module.get(), importtypes);
-    printf("ModuleInstance(): %d imports\n", importtypes->size);
+    printf("module %zu imports\n", importtypes->size);
     m_importtypes.reset(importtypes, [](wasm_importtype_vec_t* vec) {
       wasm_importtype_vec_delete(vec);
       delete vec;
     });
+
+    for (size_t i = 0; i < importtypes->size; i++) {
+      const wasm_name_t* name = wasm_importtype_name(importtypes->data[i]);
+      printf("module import[%zu] = '%.*s'\n", i, (int)name->size, (const char *)name->data);
+    }
   }
 }
 
@@ -206,18 +216,26 @@ void ModuleInstance::instantiate(wasm_extern_vec_t* imports) {
   // export resolution:
   for (size_t i = 0; i < size; i++) {
     auto extrn = exports->data[i];
+    auto kind = wasm_extern_kind(extrn);
     auto exporttype = exporttypes->data[i];
-    if (wasm_extern_kind(extrn) == WASM_EXTERN_MEMORY) {
+    if (kind == WASM_EXTERN_MEMORY) {
+      printf("instance export[%zu] memory\n", i);
       // should only be one memory per instance:
       assert(m_memory == nullptr);
       m_memory = wasm_extern_as_memory(extrn);
-    } else if (wasm_extern_kind(extrn) == WASM_EXTERN_FUNC) {
+    } else if (kind == WASM_EXTERN_FUNC) {
       // track functions by name:
       const wasm_name_t* name = wasm_exporttype_name(exporttype);
+      std::string name_s((const char *)name->data, name->size);
+      printf("instance export[%zu] function '%s'\n", i, name_s.c_str());
       m_functions.emplace(
-        std::string((const char *)name->data, name->size),
+        name_s,
         wasm_extern_as_func(extrn)
       );
+    } else if (kind == WASM_EXTERN_GLOBAL) {
+      printf("instance export[%zu] global\n", i);
+    } else if (kind == WASM_EXTERN_TABLE) {
+      printf("instance export[%zu] table\n", i);
     }
   }
 }
