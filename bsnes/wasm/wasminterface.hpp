@@ -51,10 +51,17 @@ public:
   decl_binding(ppux_ram_write);
   decl_binding(ppux_ram_read);
 
-  decl_binding(frame_acquire);
-  decl_binding(draw_hline);
+  decl_binding(draw_list);
 
 #undef decl_binding
+
+private:
+  void draw_list(uint16_t* data);
+  void draw_hline(uint16_t* data, int16_t x0, int16_t y0, int16_t w, uint16_t color);
+  void draw_vline(uint16_t* data, int16_t x0, int16_t y0, int16_t h, uint16_t color);
+
+  std::vector<uint8_t> cmdlist;
+  uint16_t tmp[512 * 512];
 };
 
 extern WASMInterface wasmInterface;

@@ -55,8 +55,7 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(ppux_ram_read);
   link(ppux_ram_write);
 
-  link(frame_acquire);
-  link(draw_hline);
+  link(draw_list);
 
 #undef link
 }
@@ -69,21 +68,21 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 wasm_binding(debugger_break, "v()") {
   m_do_break();
 
-  m3ApiSuccess()
+  m3ApiSuccess();
 }
 
 //void debugger_continue();
 wasm_binding(debugger_continue, "v()") {
   m_do_continue();
 
-  m3ApiSuccess()
+  m3ApiSuccess();
 }
 
 //int32_t msg_size(uint16_t *o_size);
 wasm_binding(msg_size, "i(*)") {
-  m3ApiReturnType(int32_t)
+  m3ApiReturnType(int32_t);
 
-  m3ApiGetArgMem(uint16_t *, o_size)
+  m3ApiGetArgMem(uint16_t *, o_size);
 
   m3ApiCheckMem(o_size, sizeof(uint16_t));
 
@@ -98,10 +97,10 @@ wasm_binding(msg_size, "i(*)") {
 
 //int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
 wasm_binding(msg_recv, "i(*i)") {
-  m3ApiReturnType(int32_t)
+  m3ApiReturnType(int32_t);
 
-  m3ApiGetArgMem(uint8_t *, o_data)
-  m3ApiGetArg   (uint32_t,  i_size)
+  m3ApiGetArgMem(uint8_t *, o_data);
+  m3ApiGetArg   (uint32_t,  i_size);
 
   m3ApiCheckMem(o_data, i_size);
 
@@ -131,10 +130,10 @@ wasm_binding(ppux_sprite_reset, "v()") {
 
 //int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
 wasm_binding(ppux_sprite_read, "i(i*)") {
-  m3ApiReturnType(int32_t)
+  m3ApiReturnType(int32_t);
 
-  m3ApiGetArg   (uint32_t,             i_index)
-  m3ApiGetArgMem(struct ppux_sprite *, o_spr)
+  m3ApiGetArg   (uint32_t,             i_index);
+  m3ApiGetArgMem(struct ppux_sprite *, o_spr);
 
   m3ApiCheckMem(o_spr, sizeof(struct ppux_sprite));
 
@@ -173,10 +172,10 @@ wasm_binding(ppux_sprite_read, "i(i*)") {
 
 //int32_t ppux_sprite_write(uint32_t i_index, struct ppux_sprite *i_spr);
 wasm_binding(ppux_sprite_write, "i(i*)") {
-  m3ApiReturnType(int32_t)
+  m3ApiReturnType(int32_t);
 
-  m3ApiGetArg(uint32_t, i_index)
-  m3ApiGetArgMem(struct ppux_sprite *, i_spr)
+  m3ApiGetArg(uint32_t, i_index);
+  m3ApiGetArgMem(struct ppux_sprite *, i_spr);
 
   m3ApiCheckMem(i_spr, sizeof(struct ppux_sprite));
 
@@ -223,13 +222,13 @@ wasm_binding(ppux_sprite_write, "i(i*)") {
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
 wasm_binding(ppux_ram_write, "i(iii*i)") {
-  m3ApiReturnType(int32_t)
+  m3ApiReturnType(int32_t);
 
-  m3ApiGetArg   (ppux_memory_type,  i_memory)
-  m3ApiGetArg   (uint32_t,          i_space)
-  m3ApiGetArg   (uint32_t,          i_offset)
-  m3ApiGetArgMem(uint8_t*,          i_data)
-  m3ApiGetArg   (uint32_t,          i_size)
+  m3ApiGetArg   (ppux_memory_type,  i_memory);
+  m3ApiGetArg   (uint32_t,          i_space);
+  m3ApiGetArg   (uint32_t,          i_offset);
+  m3ApiGetArgMem(uint8_t*,          i_data);
+  m3ApiGetArg   (uint32_t,          i_size);
 
   m3ApiCheckMem(i_data, i_size);
 
@@ -276,13 +275,13 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 wasm_binding(ppux_ram_read, "i(iii*i)") {
-  m3ApiReturnType(int32_t)
+  m3ApiReturnType(int32_t);
 
-  m3ApiGetArg   (ppux_memory_type,  i_memory)
-  m3ApiGetArg   (uint32_t,          i_space)
-  m3ApiGetArg   (uint32_t,          i_offset)
-  m3ApiGetArgMem(uint8_t*,          o_data)
-  m3ApiGetArg   (uint32_t,          i_size)
+  m3ApiGetArg   (ppux_memory_type,  i_memory);
+  m3ApiGetArg   (uint32_t,          i_space);
+  m3ApiGetArg   (uint32_t,          i_offset);
+  m3ApiGetArgMem(uint8_t*,          o_data);
+  m3ApiGetArg   (uint32_t,          i_size);
 
   m3ApiCheckMem(o_data, i_size);
 
@@ -329,9 +328,9 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
 
 //void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
 wasm_binding(snes_bus_read, "v(i*i)") {
-  m3ApiGetArg   (uint32_t, i_address)
-  m3ApiGetArgMem(uint8_t*, o_data)
-  m3ApiGetArg   (uint32_t, i_size)
+  m3ApiGetArg   (uint32_t, i_address);
+  m3ApiGetArgMem(uint8_t*, o_data);
+  m3ApiGetArg   (uint32_t, i_size);
 
   m3ApiCheckMem(o_data, i_size);
 
@@ -346,9 +345,9 @@ wasm_binding(snes_bus_read, "v(i*i)") {
 
 //void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
 wasm_binding(snes_bus_write, "v(i*i)") {
-  m3ApiGetArg   (uint32_t, i_address)
-  m3ApiGetArgMem(uint8_t*, i_data)
-  m3ApiGetArg   (uint32_t, i_size)
+  m3ApiGetArg   (uint32_t, i_address);
+  m3ApiGetArgMem(uint8_t*, i_data);
+  m3ApiGetArg   (uint32_t, i_size);
 
   m3ApiCheckMem(i_data, i_size);
 
@@ -360,42 +359,23 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiSuccess();
 }
 
-// void frame_acquire(struct frame* io_frame)
-wasm_binding(frame_acquire, "v(*)") {
-  m3ApiGetArgMem(struct frame*, io_frame);
+wasm_binding(draw_list, "v(i*)") {
+  m3ApiGetArg   (uint32_t,  i_size);
+  m3ApiGetArgMem(uint8_t*,  i_cmdlist);
 
-  m3ApiCheckMem(io_frame, sizeof(struct frame));
+  m3ApiCheckMem(i_cmdlist, i_size);
 
-  io_frame->pitch = frame.pitch;
-  io_frame->width = frame.width;
-  io_frame->height = frame.height;
-  io_frame->interlace = frame.interlace;
-
-  // copy from frame.data into wasm memory:
-  memcpy(io_frame->data, frame.data, frame.height * frame.pitch);
-
-  m3ApiSuccess();
-}
-
-wasm_binding(draw_hline, "v(*iiii)") {
-  m3ApiGetArgMem(struct frame*, io_frame)
-  m3ApiGetArg   (int32_t,       x0)
-  m3ApiGetArg   (int32_t,       y0)
-  m3ApiGetArg   (int32_t,       w)
-  m3ApiGetArg   (uint16_t,      color)
-
-  m3ApiCheckMem(io_frame, sizeof(struct frame));
-
-  if (y0 < 0) m3ApiSuccess();
-  if (y0 >= io_frame->height) m3ApiSuccess();
-
-  uint32_t pitch = io_frame->pitch >> 1;
-  for (int32_t x = x0; x < x0+w; x++) {
-    if (x < 0) continue;
-    if (x >= io_frame->width) continue;
-
-    io_frame->data[y0 * pitch + x] = color;
+  // commands are aligned to 16-bits:
+  if ((i_size & 1) != 0) {
+    m3ApiTrap("draw_list: i_size must be even");
   }
+
+  // append command list to internal vector:
+  auto old_size = cmdlist.size();
+  cmdlist.resize(cmdlist.size() + i_size);
+
+  void* dst = (void *)(cmdlist.data() + old_size);
+  memcpy(dst, (const void *)i_cmdlist, i_size);
 
   m3ApiSuccess();
 }

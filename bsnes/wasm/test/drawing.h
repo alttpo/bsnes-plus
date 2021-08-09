@@ -2,16 +2,17 @@
 
 #include <stdint.h>
 
-struct frame {
-  uint32_t pitch;
-  uint32_t width;
-  uint32_t height;
-  int32_t  interlace;
-  uint16_t data[512 * 512];
+enum draw_cmd {
+  CMD_PIXEL,
+  CMD_IMAGE,
+  CMD_HLINE,
+  CMD_VLINE,
+  CMD_RECT,
+  CMD_TEXT_UTF8,
+  CMD_VRAM_TILE_2BPP,
+  CMD_VRAM_TILE_4BPP,
+  CMD_VRAM_TILE_8BPP
 };
 
-__attribute__((import_module("env"), import_name("frame_acquire")))
-void frame_acquire(struct frame* io_frame);
-
-__attribute__((import_module("env"), import_name("draw_hline")))
-void draw_hline(struct frame *io_frame, int32_t x0, int32_t y0, int32_t w, uint16_t color);
+__attribute__((import_module("env"), import_name("draw_list")))
+void draw_list(uint32_t size, uint16_t* cmdlist);

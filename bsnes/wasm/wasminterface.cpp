@@ -31,26 +31,12 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
   frame.height = height;
   frame.interlace = interlace;
 
+  // call 'on_frame_present':
   m_host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
     M3Result res = runtime->with_function("on_frame_present", [&](WASM::Function &f) {
       M3Result res = f.callv(0);
       if (res != m3Err_none) {
         return;
-      }
-
-      uint32_t bufOffset;
-      res = f.resultsv(0, &bufOffset);
-      if (res != m3Err_none) {
-        return;
-      }
-
-      uint32_t size;
-      const uint16_t *data = (const uint16_t *)runtime->memory(bufOffset, size);
-      if (data) {
-        // frame_acquire() copies the original frame data into wasm memory, so we
-        // avoid a copy here and just present the (possibly modified) frame data
-        // directly from wasm memory:
-        frame.data = data;
       }
     });
 
@@ -58,7 +44,130 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
     runtime->warn(res, "on_frame_present");
   });
 
+  // draw command list:
+  if (!cmdlist.empty()) {
+    memcpy(tmp, frame.data, 512 * 512 * sizeof(uint16_t));
+    draw_list(tmp);
+    frame.data = tmp;
+    cmdlist.clear();
+  }
+
   return frame.data;
+}
+
+enum draw_cmd {
+  CMD_PIXEL,
+  CMD_IMAGE,
+  CMD_HLINE,
+  CMD_VLINE,
+  CMD_RECT,
+  CMD_TEXT_UTF8,
+  CMD_VRAM_TILE_2BPP,
+  CMD_VRAM_TILE_4BPP,
+  CMD_VRAM_TILE_8BPP
+};
+
+void WASMInterface::draw_list(uint16_t* data) {
+  uint32_t  pitch = frame.pitch>>1;
+
+  uint16_t* start = (uint16_t*) cmdlist.data();
+  uint32_t  end = cmdlist.size()>>1;
+  uint16_t* p = start;
+
+  while ((p - start) < end) {
+    // every command starts with the number of 16-bit words in length, including command, arguments, and inline data:
+    uint16_t len = *p++;
+
+    uint16_t* d = p;
+
+    uint16_t cmd = *d++;
+
+    uint16_t color;
+    int16_t  x0, y0, w, h;
+    switch (cmd) {
+      case CMD_PIXEL:
+        color = *d++;
+        if (color >= 0x8000) {
+          break;
+        }
+
+        x0 = *d++;
+        y0 = *d++;
+        data[(y0 * pitch) + x0] = color;
+        break;
+      case CMD_IMAGE:
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+        h  = (int16_t)*d++;
+        for (int16_t y = y0; y < y0+h; y++) {
+          if (y < 0) continue;
+          if (y >= frame.height) break;
+
+          for (int16_t x = x0; x < x0+w; x++) {
+            if (x < 0) continue;
+            if (x >= frame.width) break;
+
+            color = *d++;
+            if (color >= 0x8000) continue;
+
+            data[(y * pitch) + x] = color;
+          }
+        }
+        break;
+      case CMD_HLINE:
+        color = *d++;
+        if (color >= 0x8000) {
+          break;
+        }
+
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+
+        draw_hline(data, x0, y0, w, color);
+        break;
+      case CMD_VLINE:
+        color = *d++;
+        if (color >= 0x8000) {
+          break;
+        }
+
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        h  = (int16_t)*d++;
+
+        draw_vline(data, x0, y0, h, color);
+        break;
+    }
+
+    p += len;
+  }
+}
+
+void WASMInterface::draw_hline(uint16_t* data, int16_t x0, int16_t y0, int16_t w, uint16_t color) {
+  if (y0 < 0) return;
+  if (y0 >= frame.height) return;
+
+  uint32_t pitch = frame.pitch>>1;
+  for (int16_t x = x0; x < x0+w; x++) {
+    if (x < 0) continue;
+    if (x >= frame.width) return;
+
+    data[(y0 * pitch) + x] = color;
+  }
+}
+void WASMInterface::draw_vline(uint16_t* data, int16_t x0, int16_t y0, int16_t h, uint16_t color) {
+  if (x0 < 0) return;
+  if (x0 >= frame.width) return;
+
+  uint32_t pitch = frame.pitch>>1;
+  for (int16_t y = y0; y < y0+h; y++) {
+    if (y < 0) continue;
+    if (y >= frame.height) break;
+
+    data[(y * pitch) + x0] = color;
+  }
 }
 
 #include "wasm_bindings.cpp"

@@ -595,18 +595,14 @@ void oam_convert(unsigned o, unsigned i) {
   }
 }
 
-struct frame frame;
-
 __attribute__((export_name("on_frame_present")))
-uint16_t *on_frame_present() {
-  frame_acquire(&frame);
+void on_frame_present() {
+  uint16_t cmd[] = {
+    5,
+    CMD_HLINE, 0x7fff, 16, 16, 16
+  };
 
-  // poke out a white pixel:
-  //frame[(pitch>>1) * 16 + 16] = 0x7fff;
-
-  draw_hline(&frame, 16, 16, 16, 0x7fff);
-
-  return frame.data;
+  draw_list(sizeof(cmd), cmd);
 }
 
 // called on NMI:
