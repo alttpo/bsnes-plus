@@ -2,6 +2,31 @@
 
 #include "host.hpp"
 
+struct Glyph {
+  uint8_t  m_height;
+  uint8_t  m_width;
+  uint32_t m_bitmapdataOffset;
+};
+
+struct Index {
+  Index() = default;
+  explicit Index(uint32_t minCodePoint);
+
+  uint32_t m_glyphIndex;
+  uint32_t m_minCodePoint;
+  uint32_t m_maxCodePoint;
+};
+
+struct Font {
+  bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const;
+  uint32_t find_glyph(uint32_t codePoint) const;
+
+  int                   m_stride;
+  std::vector<uint8_t>  m_bitmapdata;
+  std::vector<Glyph>    m_glyphs;
+  std::vector<Index>    m_index;
+};
+
 struct WASMInterface {
   WASMInterface(WASM::Host &host);
 
@@ -57,11 +82,15 @@ public:
 
 private:
   void draw_list(uint16_t* data);
-  void draw_hline(uint16_t* data, int16_t x0, int16_t y0, int16_t w, uint16_t color);
-  void draw_vline(uint16_t* data, int16_t x0, int16_t y0, int16_t h, uint16_t color);
+  inline void draw_pixel(uint16_t* data, int16_t x0, int16_t y0, uint16_t color);
+  inline void draw_hline(uint16_t* data, int16_t x0, int16_t y0, int16_t w, uint16_t color);
+  inline void draw_vline(uint16_t* data, int16_t x0, int16_t y0, int16_t h, uint16_t color);
+  void draw_text_utf8(uint8_t* s, int16_t x0, int16_t y0, const Font& font, const std::function<void(int,int)>& px);
 
   std::vector<uint8_t> cmdlist;
   uint16_t tmp[512 * 512];
+
+  std::vector<std::shared_ptr<Font>> fonts;
 };
 
 extern WASMInterface wasmInterface;
