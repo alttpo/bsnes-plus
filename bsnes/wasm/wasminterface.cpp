@@ -82,7 +82,7 @@ void WASMInterface::draw_list(uint16_t* data) {
 
     uint16_t cmd = *d++;
 
-    uint16_t color;
+    uint16_t color, fillcolor;
     int16_t  x0, y0, w, h;
     switch (cmd) {
       case CMD_PIXEL:
@@ -139,6 +139,36 @@ void WASMInterface::draw_list(uint16_t* data) {
 
         draw_vline(data, x0, y0, h, color);
         break;
+      case CMD_RECT:
+        color = *d++;
+        fillcolor = *d++;
+
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+        h  = (int16_t)*d++;
+
+        if (fillcolor < 0x8000) {
+          for (int16_t y = y0; y < y0+h; y++) {
+            if (y < 0) continue;
+            if (y >= frame.height) break;
+
+            for (int16_t x = x0; x < x0+w; x++) {
+              if (x < 0) continue;
+              if (x >= frame.width) break;
+
+              data[(y * pitch) + x] = fillcolor;
+            }
+          }
+        }
+        if (color < 0x8000) {
+          draw_hline(data, x0, y0, w, color);
+          draw_hline(data, x0, y0+h, w, color);
+          draw_vline(data, x0, y0, h, color);
+          draw_vline(data, x0+w, y0, h, color);
+        }
+        break;
+      }
     }
 
     p += len;
