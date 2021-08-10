@@ -37,7 +37,7 @@ struct frame {
 void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 // link wasm_bindings.cpp member functions:
 #define link(name) \
-  module->linkEx("*", #name, wasmsig_##name, &WASM::RawCall<WASMInterface>::adapter<&WASMInterface::wasm_##name>, (const void *)this)
+  module->linkEx("*", #name, wa_sig_##name, &WASM::RawCall<WASMInterface>::adapter<&WASMInterface::wa_fun_##name>, (const void *)this)
 
   link(debugger_break);
   link(debugger_continue);
@@ -55,14 +55,15 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(ppux_ram_read);
   link(ppux_ram_write);
 
-  link(draw_list);
+  link(draw_list_clear);
+  link(draw_list_append);
 
 #undef link
 }
 
 #define wasm_binding(name, sig) \
-  const char *WASMInterface::wasmsig_##name = sig; \
-  m3ApiRawFunction(WASMInterface::wasm_##name)
+  const char *WASMInterface::wa_sig_##name = sig; \
+  m3ApiRawFunction(WASMInterface::wa_fun_##name)
 
 //void debugger_break();
 wasm_binding(debugger_break, "v()") {
@@ -359,7 +360,13 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiSuccess();
 }
 
-wasm_binding(draw_list, "v(i*)") {
+wasm_binding(draw_list_clear, "v()") {
+  cmdlist.clear();
+
+  m3ApiSuccess();
+}
+
+wasm_binding(draw_list_append, "v(i*)") {
   m3ApiGetArg   (uint32_t,  i_size);
   m3ApiGetArgMem(uint8_t*,  i_cmdlist);
 

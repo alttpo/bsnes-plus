@@ -57,8 +57,8 @@ public:
 
   // wasm bindings:
 #define decl_binding(name) \
-  static const char *wasmsig_##name; \
-  m3ApiRawFunction(wasm_##name)
+  static const char *wa_sig_##name; \
+  m3ApiRawFunction(wa_fun_##name)
 
   decl_binding(debugger_break);
   decl_binding(debugger_continue);
@@ -76,7 +76,8 @@ public:
   decl_binding(ppux_ram_write);
   decl_binding(ppux_ram_read);
 
-  decl_binding(draw_list);
+  decl_binding(draw_list_clear);
+  decl_binding(draw_list_append);
 
 #undef decl_binding
 

@@ -51,7 +51,6 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
     memcpy(tmp, frame.data, 512 * 512 * sizeof(uint16_t));
     draw_list(tmp);
     frame.data = tmp;
-    cmdlist.clear();
   }
 
   return frame.data;
@@ -152,11 +151,11 @@ void WASMInterface::draw_list(uint16_t* data) {
         h  = (int16_t)*d++;
 
         if (fillcolor < 0x8000) {
-          for (int16_t y = y0; y < y0+h; y++) {
+          for (int16_t y = y0+1; y < y0+h-1; y++) {
             if (y < 0) continue;
             if (y >= frame.height) break;
 
-            for (int16_t x = x0; x < x0+w; x++) {
+            for (int16_t x = x0+1; x < x0+w-1; x++) {
               if (x < 0) continue;
               if (x >= frame.width) break;
 
@@ -166,9 +165,9 @@ void WASMInterface::draw_list(uint16_t* data) {
         }
         if (color < 0x8000) {
           draw_hline(data, x0, y0, w, color);
-          draw_hline(data, x0, y0+h, w, color);
+          draw_hline(data, x0, y0+h-1, w, color);
           draw_vline(data, x0, y0, h, color);
-          draw_vline(data, x0+w, y0, h, color);
+          draw_vline(data, x0+w-1, y0, h, color);
         }
         break;
       case CMD_TEXT_UTF8: {

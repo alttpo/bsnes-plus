@@ -598,11 +598,17 @@ void oam_convert(unsigned o, unsigned i) {
 __attribute__((export_name("on_frame_present")))
 void on_frame_present() {
   uint16_t cmd[] = {
-    5,
-    CMD_HLINE, 0x7fff, 16, 16, 16
+    4, CMD_PIXEL, 0x1F3F, 8, 8,
+    9, CMD_IMAGE, 64, 64, 2, 2,
+    0x001F, 0x03E0,
+    0x7C00, 0x001F,
+    5, CMD_HLINE, 0x7FFF, 16, 16, 16,
+    5, CMD_VLINE, 0x7FFF, 16, 16, 16,
+    7, CMD_RECT, 0x7C00, 0xFFFF, 70, 70, 8, 8,
   };
 
-  draw_list(sizeof(cmd), cmd);
+  draw_list_clear();
+  draw_list_append(sizeof(cmd), cmd);
 }
 
 // called on NMI:

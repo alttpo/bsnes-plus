@@ -14,5 +14,8 @@ enum draw_cmd {
   CMD_VRAM_TILE_8BPP
 };
 
-__attribute__((import_module("env"), import_name("draw_list")))
-void draw_list(uint32_t size, uint16_t* cmdlist);
+__attribute__((import_module("env"), import_name("draw_list_clear")))
+void draw_list_clear();
+
+__attribute__((import_module("env"), import_name("draw_list_append")))
+void draw_list_append(uint32_t size, uint16_t* cmdlist);
