@@ -285,11 +285,11 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
 #define PCF_BIT_MASK            (1<<3)      /* If set then Most Sig Bit First */
 #define PCF_SCAN_UNIT_MASK      (3<<4)      /* See the bitmap table for explanation */
 
-  std::vector<Glyph>    glyphs;
-  std::vector<Index>    index;
-  std::vector<uint8_t>  bitmapdata;
-  int                   fontHeight;
-  int                   kmax;
+  std::vector<PixelFont::Glyph> glyphs;
+  std::vector<PixelFont::Index> index;
+  std::vector<uint8_t>          bitmapdata;
+  int fontHeight;
+  int kmax;
 
   auto readMetrics = [&glyphs](QByteArray section) {
     QDataStream in(&section, QIODevice::ReadOnly);
@@ -561,7 +561,7 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     // add in new font at requested index:
     wasmInterface.fonts.resize(fontindex+1);
     wasmInterface.fonts[fontindex].reset(
-      new Font(glyphs, index, fontHeight, kmax)
+      new PixelFont::Font(glyphs, index, fontHeight, kmax)
     );
 
     return makeOkReply();

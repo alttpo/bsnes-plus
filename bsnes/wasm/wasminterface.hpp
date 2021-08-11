@@ -1,42 +1,8 @@
 #pragma once
 
 #include "host.hpp"
-
-struct Glyph {
-  uint8_t               m_width;
-  std::vector<uint32_t> m_bitmapdata;
-};
-
-struct Index {
-  Index() = default;
-  Index(
-    uint32_t glyphIndex,
-    uint32_t minCodePoint,
-    uint32_t maxCodePoint
-  );
-  explicit Index(uint32_t minCodePoint);
-
-  uint32_t m_glyphIndex;
-  uint32_t m_minCodePoint;
-  uint32_t m_maxCodePoint;
-};
-
-struct Font {
-  Font(
-    const std::vector<Glyph>& glyphs,
-    const std::vector<Index>& index,
-    int height,
-    int kmax
-  );
-
-  bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const;
-  uint32_t find_glyph(uint32_t codePoint) const;
-
-  std::vector<Glyph>  m_glyphs;
-  std::vector<Index>  m_index;
-  int m_height;
-  int m_kmax;
-};
+#include "pixelfont.hpp"
+#include "drawlist.hpp"
 
 struct WASMInterface {
   WASMInterface(WASM::Host &host);
@@ -52,15 +18,6 @@ public:
 
   std::function<void()> m_do_break;
   std::function<void()> m_do_continue;
-
-public:
-  struct {
-    const uint16_t *data;
-    unsigned pitch;
-    unsigned width;
-    unsigned height;
-    bool interlace;
-  } frame;
 
 public:
   // link functions:
@@ -93,17 +50,11 @@ public:
 #undef decl_binding
 
 private:
-  void draw_list(uint16_t* data);
-  inline void draw_pixel(uint16_t* data, int16_t x0, int16_t y0, uint16_t color);
-  inline void draw_hline(uint16_t* data, int16_t x0, int16_t y0, int16_t w, uint16_t color);
-  inline void draw_vline(uint16_t* data, int16_t x0, int16_t y0, int16_t h, uint16_t color);
-  void draw_text_utf8(uint8_t* s, int16_t x0, int16_t y0, const Font& font, const std::function<void(int,int)>& px);
-
   std::vector<uint8_t> cmdlist;
   uint16_t tmp[512 * 512];
 
 public:
-  std::vector<std::shared_ptr<Font>> fonts;
+  std::vector<std::shared_ptr<PixelFont::Font>> fonts;
 };
 
 extern WASMInterface wasmInterface;
