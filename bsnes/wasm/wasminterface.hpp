@@ -4,12 +4,16 @@
 
 struct Glyph {
   uint8_t               m_width;
-  uint8_t               m_height;
   std::vector<uint8_t>  m_bitmapdata;
 };
 
 struct Index {
   Index() = default;
+  Index(
+    uint32_t glyphIndex,
+    uint32_t minCodePoint,
+    uint32_t maxCodePoint
+  );
   explicit Index(uint32_t minCodePoint);
 
   uint32_t m_glyphIndex;
@@ -19,17 +23,19 @@ struct Index {
 
 struct Font {
   Font(
-    const std::vector<Glyph>&    glyphs,
-    const std::vector<Index>&    index,
-    int                          stride
+    const std::vector<Glyph>& glyphs,
+    const std::vector<Index>& index,
+    int                       height,
+    int                       stride
   );
 
   bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const;
   uint32_t find_glyph(uint32_t codePoint) const;
 
-  std::vector<Glyph>    m_glyphs;
-  std::vector<Index>    m_index;
-  int                   m_stride;
+  std::vector<Glyph>  m_glyphs;
+  std::vector<Index>  m_index;
+  int                 m_height;
+  int                 m_stride;
 };
 
 struct WASMInterface {

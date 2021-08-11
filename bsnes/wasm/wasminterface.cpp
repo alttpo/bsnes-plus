@@ -273,15 +273,25 @@ void WASMInterface::draw_text_utf8(uint8_t* s, int16_t x0, int16_t y0, const Fon
 }
 
 // TODO: generic font upload routine
+Index::Index(
+  uint32_t glyphIndex,
+  uint32_t minCodePoint,
+  uint32_t maxCodePoint
+) : m_glyphIndex(glyphIndex),
+    m_minCodePoint(minCodePoint),
+    m_maxCodePoint(maxCodePoint)
+{}
 
 Index::Index(uint32_t codePoint) : m_minCodePoint(codePoint) {}
 
 Font::Font(
-  const std::vector<Glyph>&    glyphs,
-  const std::vector<Index>&    index,
-  int                          stride
+  const std::vector<Glyph>& glyphs,
+  const std::vector<Index>& index,
+  int                       height,
+  int                       stride
 ) : m_glyphs(glyphs),
     m_index(index),
+    m_height(height),
     m_stride(stride)
 {}
 
@@ -295,7 +305,7 @@ bool Font::draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const
   auto b = g.m_bitmapdata.data();
 
   width = g.m_width;
-  height = g.m_height;
+  height = m_height;
   for (int y = 0; y < height; y++, b += m_stride) {
     uint32_t bits = b[0];
     if (m_stride >= 2) {
