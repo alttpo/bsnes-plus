@@ -257,6 +257,17 @@ QByteArray NWAccess::cmdPpuxRamRead(QByteArray args)
   return makeBinaryReply(data);
 }
 
+void print_binary(uint32_t n) {
+  for (int c = 31; c >= 0; c--) {
+    uint32_t k = n >> c;
+
+    if (k & 1)
+      printf("1");
+    else
+      printf("0");
+  }
+}
+
 QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
 {
   QStringList sargs = QString::fromUtf8(args).split(';');
@@ -278,13 +289,13 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
   std::vector<Index>    index;
   std::vector<uint8_t>  bitmapdata;
   int                   fontHeight;
-  int                   fontStride;
+  int                   kmax;
 
   auto readMetrics = [&glyphs](QByteArray section) {
     QDataStream in(&section, QIODevice::ReadOnly);
     in.setByteOrder(QDataStream::LittleEndian);
 
-    qint32 format;
+    quint32 format;
     in >> format;
 
     if (format & PCF_BYTE_MASK) {
@@ -292,11 +303,11 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     }
 
     if (format & PCF_COMPRESSED_METRICS) {
-      qint16 count;
+      quint16 count;
       in >> count;
 
       glyphs.resize(count);
-      for (qint16 i = 0; i < count; i++) {
+      for (quint16 i = 0; i < count; i++) {
         quint8 tmp;
         qint16 left_sided_bearing;
         qint16 right_side_bearing;
@@ -322,11 +333,11 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
         glyphs[i].m_width = character_width;
       }
     } else {
-      qint16 count;
+      quint16 count;
       in >> count;
 
       glyphs.resize(count);
-      for (qint16 i = 0; i < count; i++) {
+      for (quint16 i = 0; i < count; i++) {
         qint16 left_sided_bearing;
         qint16 right_side_bearing;
         qint16 character_width;
@@ -346,27 +357,31 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     }
   };
 
-  auto readBitmaps = [&glyphs, &bitmapdata, &fontStride, &fontHeight](QByteArray section, QByteArray file) {
+  auto readBitmaps = [&glyphs, &bitmapdata, &fontHeight, &kmax](QByteArray section, QByteArray file) {
     QDataStream in(&section, QIODevice::ReadOnly);
     in.setByteOrder(QDataStream::LittleEndian);
 
-    qint32 format;
+    quint32 format;
     in >> format;
 
     if (format & PCF_BYTE_MASK) {
       in.setByteOrder(QDataStream::BigEndian);
     }
 
+    auto elemSize = (format >> 4) & 3;
+    auto elemBytes = 1 << elemSize;
+    kmax = (elemBytes << 3) - 1;
+
     quint32 count;
     in >> count;
 
     std::vector<quint32> offsets;
-    offsets.reserve(count);
+    offsets.resize(count);
     for (quint32 i = 0; i < count; i++) {
       quint32 offset;
       in >> offset;
 
-      offsets.push_back(offset);
+      offsets[i] = offset;
     }
 
     quint32 bitmapSizes[4];
@@ -374,16 +389,58 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
       in >> bitmapSizes[i];
     }
 
-    quint32 bitmapSize = bitmapSizes[format & 3];
-    fontStride = 1 << (format & 3);
-    fontHeight = bitmapSize / fontStride;
+    int fontStride = 1 << (format & 3);
+    //printf("bitmap stride=%d\n", fontStride);
+
+    quint32 bitmapsSize = bitmapSizes[format & 3];
+    fontHeight = (bitmapsSize / count) / fontStride;
+
+    //printf("bitmaps size=%d, height=%d\n", bitmapsSize, fontHeight);
+
+    QByteArray bitmapData;
+    bitmapData.resize(bitmapsSize);
+    in.readRawData(bitmapData.data(), bitmapsSize);
 
     // read bitmap data:
     glyphs.resize(count);
     for (quint32 i = 0; i < count; i++) {
-      // TODO: account for bit order
-      glyphs[i].m_bitmapdata.resize(bitmapSize);
-      memcpy(glyphs[i].m_bitmapdata.data(), file.constData() + offsets[i], bitmapSize);
+      quint32 size = 0;
+      if (i < count-1) {
+        size = offsets[i+1] - offsets[i];
+      } else {
+        size = bitmapsSize - offsets[i];
+      }
+
+      // find where to read from:
+      QDataStream bits(&bitmapData, QIODevice::ReadOnly);
+      bits.skipRawData(offsets[i]);
+
+      glyphs[i].m_bitmapdata.resize(size / fontStride);
+
+      //printf("[%3d]\n", i);
+      int y = 0;
+      for (int k = 0; k < size; k += fontStride, y++) {
+        quint32 b;
+        if (elemSize == 0) {
+          quint8  w;
+          bits >> w;
+          b = w;
+        } else if (elemSize == 1) {
+          quint16 w;
+          bits >> w;
+          b = w;
+        } else if (elemSize == 2) {
+          quint32 w;
+          bits >> w;
+          b = w;
+        }
+        bits.skipRawData(fontStride - elemBytes);
+
+        // TODO: account for bit order
+        glyphs[i].m_bitmapdata[y] = b;
+        //print_binary(b);
+        //putc('\n', stdout);
+      }
     }
   };
 
@@ -391,7 +448,7 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     QDataStream in(&section, QIODevice::ReadOnly);
     in.setByteOrder(QDataStream::LittleEndian);
 
-    qint32 format;
+    quint32 format;
     in >> format;
 
     if (format & PCF_BYTE_MASK) {
@@ -410,37 +467,53 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     in >> max_byte1;
     in >> default_char;
 
-    quint32 count = (max_char_or_byte2-min_char_or_byte2+1)*(max_byte1-min_byte1+1);
+    //printf("[%02x..%02x], [%02x..%02x]\n", min_byte1, max_byte1, min_char_or_byte2, max_char_or_byte2);
+
+    quint32 byte2count = (max_char_or_byte2-min_char_or_byte2+1);
+    quint32 count = byte2count * (max_byte1-min_byte1+1);
     quint16 glyphindices[count];
     for (quint32 i = 0; i < count; i++) {
       in >> glyphindices[i];
+      //printf("%4d\n", glyphindices[i]);
     }
 
     // construct an ordered list of index ranges:
     quint32 startIndex = 0xFFFF;
     quint16 startCodePoint = 0xFFFF;
     quint16 endCodePoint = 0xFFFF;
-    for (quint32 i = 0; i < count; i++) {
-      quint16 x = glyphindices[i];
-      if (x == 0xFFFF) {
-        if (startIndex != 0xFFFF) {
-          index.emplace_back(startIndex, startCodePoint, endCodePoint);
-          startIndex = 0xFFFF;
-          startCodePoint = 0xFFFF;
+    quint32 i = 0;
+    for (quint32 b1 = min_byte1; b1 <= max_byte1; b1++) {
+      for (quint32 b2 = min_char_or_byte2; b2 <= max_char_or_byte2; b2++, i++) {
+        quint16 x = glyphindices[i];
+
+        // calculate code point:
+        quint32 cp = (b1<<8) + b2;
+
+        if (x == 0xFFFF) {
+          if (startIndex != 0xFFFF) {
+            index.emplace_back(startIndex, startCodePoint, endCodePoint);
+            startIndex = 0xFFFF;
+            startCodePoint = 0xFFFF;
+          }
+        } else {
+          if (startIndex == 0xFFFF) {
+            startIndex = x;
+            startCodePoint = cp;
+          }
+          endCodePoint = cp;
         }
-      } else {
-        if (startIndex == 0xFFFF) {
-          startIndex = i;
-          startCodePoint = x;
-        }
-        endCodePoint = x;
       }
     }
+
     if (startIndex != 0xFFFF) {
       index.emplace_back(startIndex, startCodePoint, endCodePoint);
       startIndex = 0xFFFF;
       startCodePoint = 0xFFFF;
     }
+
+    //for (const auto& i : index) {
+    //  printf("index[%4d @ %4d..%4d]\n", i.m_glyphIndex, i.m_minCodePoint, i.m_maxCodePoint);
+    //}
   };
 
   auto readPCF = [&]() -> QByteArray {
@@ -488,7 +561,7 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     // add in new font at requested index:
     wasmInterface.fonts.resize(fontindex+1);
     wasmInterface.fonts[fontindex].reset(
-      new Font(glyphs, index, fontHeight, fontStride)
+      new Font(glyphs, index, fontHeight, kmax)
     );
 
     return makeOkReply();

@@ -262,6 +262,7 @@ void WASMInterface::draw_text_utf8(uint8_t* s, int16_t x0, int16_t y0, const Fon
     }
 
     // have code point:
+    //printf("U+%04x\n", codepoint);
     font.draw_glyph(gw, gh, codepoint, [=](int rx, int ry) { px(x0+rx, y0+ry); });
 
     x0 += gw;
@@ -282,17 +283,17 @@ Index::Index(
     m_maxCodePoint(maxCodePoint)
 {}
 
-Index::Index(uint32_t codePoint) : m_minCodePoint(codePoint) {}
+Index::Index(uint32_t codePoint) : m_maxCodePoint(codePoint) {}
 
 Font::Font(
   const std::vector<Glyph>& glyphs,
   const std::vector<Index>& index,
-  int                       height,
-  int                       stride
+  int height,
+  int kmax
 ) : m_glyphs(glyphs),
     m_index(index),
     m_height(height),
-    m_stride(stride)
+    m_kmax(kmax)
 {}
 
 bool Font::draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const {
@@ -302,22 +303,20 @@ bool Font::draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const
   }
 
   const auto& g = m_glyphs[glyphIndex];
-  auto b = g.m_bitmapdata.data();
+  auto b = (const uint32_t *)g.m_bitmapdata.data();
 
   width = g.m_width;
   height = m_height;
-  for (int y = 0; y < height; y++, b += m_stride) {
-    uint32_t bits = b[0];
-    if (m_stride >= 2) {
-      bits |= (b[1] << 8);
-    }
-    if (m_stride >= 4) {
-      bits |= (b[2] << 16) | (b[3] << 24);
-    }
+  for (int y = 0; y < height; y++, b++) {
+    uint32_t bits = *b;
 
-    int k = 1 << (width-1);
-    for (int x = 0; x < width; x++, k >>= 1) {
-      if (bits & k) {
+    int x = 0;
+    for (int k = m_kmax; k >= 0; k--, x++) {
+      if (m_kmax - k > g.m_width) {
+        continue;
+      }
+
+      if (bits & (1<<k)) {
         px(x, y);
       }
     }
@@ -332,16 +331,23 @@ uint32_t Font::find_glyph(uint32_t codePoint) const {
     m_index.end(),
     Index(codePoint),
     [](const Index& first, const Index& last) {
-      return first.m_minCodePoint < last.m_minCodePoint;
+      return first.m_maxCodePoint < last.m_maxCodePoint;
     }
   );
   if (it == m_index.end()) {
     return UINT32_MAX;
   }
-  if (codePoint > it->m_maxCodePoint) {
-    return UINT32_MAX;
+
+  uint32_t index;
+  if (codePoint < it->m_minCodePoint) {
+    index = UINT32_MAX;
+  } else if (codePoint > it->m_maxCodePoint) {
+    index = UINT32_MAX;
+  } else {
+    index = it->m_glyphIndex + (codePoint - it->m_minCodePoint);
   }
-  return it->m_glyphIndex;
+  //printf("%04x = %04x + (%04x - %04x)\n", index, it->m_glyphIndex, codePoint, it->m_minCodePoint);
+  return index;
 }
 
 #include "wasm_bindings.cpp"

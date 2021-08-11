@@ -4,7 +4,7 @@
 
 struct Glyph {
   uint8_t               m_width;
-  std::vector<uint8_t>  m_bitmapdata;
+  std::vector<uint32_t> m_bitmapdata;
 };
 
 struct Index {
@@ -25,8 +25,8 @@ struct Font {
   Font(
     const std::vector<Glyph>& glyphs,
     const std::vector<Index>& index,
-    int                       height,
-    int                       stride
+    int height,
+    int kmax
   );
 
   bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const;
@@ -34,8 +34,8 @@ struct Font {
 
   std::vector<Glyph>  m_glyphs;
   std::vector<Index>  m_index;
-  int                 m_height;
-  int                 m_stride;
+  int m_height;
+  int m_kmax;
 };
 
 struct WASMInterface {
