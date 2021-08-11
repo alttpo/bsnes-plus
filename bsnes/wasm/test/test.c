@@ -595,6 +595,12 @@ void oam_convert(unsigned o, unsigned i) {
   }
 }
 
+void strcpy(char *d, const char *s) {
+  for (; *s; s++) {
+    *d++ = *s;
+  }
+}
+
 __attribute__((export_name("on_frame_present")))
 void on_frame_present() {
   uint16_t cmd[] = {
@@ -605,7 +611,10 @@ void on_frame_present() {
     5, CMD_HLINE, 0x7FFF, 16, 16, 16,
     5, CMD_VLINE, 0x7FFF, 16, 16, 16,
     7, CMD_RECT, 0x7C00, 0xFFFF, 70, 70, 8, 8,
+    12, CMD_TEXT_UTF8, 0x03E0, 0xFFFF, 0, 2, 2,
+    0, 0, 0, 0, 0, 0
   };
+  strcpy((char *)&cmd[(1+4+1+9+1+5+1+5+1+7+1+6)], "Hello world");
 
   draw_list_clear();
   draw_list_append(sizeof(cmd), cmd);
