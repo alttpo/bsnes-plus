@@ -55,6 +55,7 @@ protected:
     QByteArray cmdPpuxSpriteRead(QByteArray args);
     QByteArray cmdPpuxRamWrite(QByteArray args, QByteArray data);
     QByteArray cmdPpuxRamRead(QByteArray args);
+    QByteArray cmdPpuxFontUpload(QByteArray args, QByteArray data);
 
 public slots:
     void newConnection();

@@ -256,3 +256,143 @@ QByteArray NWAccess::cmdPpuxRamRead(QByteArray args)
 
   return makeBinaryReply(data);
 }
+
+QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
+{
+  QStringList sargs = QString::fromUtf8(args).split(';');
+
+  QString arg = sargs.takeFirst();
+  auto fontindex = toInt(arg);
+
+#define PCF_DEFAULT_FORMAT      0x00000000
+#define PCF_INKBOUNDS           0x00000200
+#define PCF_ACCEL_W_INKBOUNDS   0x00000100
+#define PCF_COMPRESSED_METRICS  0x00000100
+
+#define PCF_GLYPH_PAD_MASK      (3<<0)      /* See the bitmap table for explanation */
+#define PCF_BYTE_MASK           (1<<2)      /* If set then Most Sig Byte First */
+#define PCF_BIT_MASK            (1<<3)      /* If set then Most Sig Bit First */
+#define PCF_SCAN_UNIT_MASK      (3<<4)      /* See the bitmap table for explanation */
+
+  std::vector<Glyph>    glyphs;
+  std::vector<Index>    index;
+  std::vector<uint8_t>  bitmapdata;
+  qint32                stride;
+
+  auto readMetrics = [&glyphs](QByteArray section) {
+    QDataStream in(&section, QIODevice::ReadOnly);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    qint32 format;
+    in >> format;
+
+    if (format & PCF_BYTE_MASK) {
+      in.setByteOrder(QDataStream::BigEndian);
+    }
+
+    if (format & PCF_COMPRESSED_METRICS) {
+      qint16 count;
+      in >> count;
+
+      glyphs.reserve(count);
+      for (qint16 i = 0; i < count; i++) {
+        quint8 tmp;
+        qint16 left_sided_bearing;
+        qint16 right_side_bearing;
+        qint16 character_width;
+        qint16 character_ascent;
+        qint16 character_descent;
+
+        in >> tmp;
+        left_sided_bearing = (qint16)tmp - 0x80;
+
+        in >> tmp;
+        right_side_bearing = (qint16)tmp - 0x80;
+
+        in >> tmp;
+        character_width = (qint16)tmp - 0x80;
+
+        in >> tmp;
+        character_ascent = (qint16)tmp - 0x80;
+
+        in >> tmp;
+        character_descent = (qint16)tmp - 0x80;
+
+        glyphs.emplace_back(0, character_width, UINT32_MAX);
+      }
+    } else {
+      qint16 count;
+      in >> count;
+
+      glyphs.reserve(count);
+      for (qint16 i = 0; i < count; i++) {
+        qint16 left_sided_bearing;
+        qint16 right_side_bearing;
+        qint16 character_width;
+        qint16 character_ascent;
+        qint16 character_descent;
+        quint16 character_attributes;
+
+        in >> left_sided_bearing;
+        in >> right_side_bearing;
+        in >> character_width;
+        in >> character_ascent;
+        in >> character_descent;
+        in >> character_attributes;
+
+        glyphs.emplace_back(0, character_width, UINT32_MAX);
+      }
+    }
+  };
+
+  auto readPCF = [&]() -> QByteArray {
+    // parse PCF data:
+    QDataStream in(&data, QIODevice::ReadOnly);
+
+    char hdr[4];
+    in.readRawData(hdr, 4);
+    if (strncmp(hdr, "\1fcp", 4) != 0) {
+      return makeErrorReply("expected PCF file format header not found");
+    }
+
+    // read little endian aka LSB first:
+    in.setByteOrder(QDataStream::LittleEndian);
+    qint32 table_count;
+    in >> table_count;
+
+#define PCF_PROPERTIES              (1<<0)
+#define PCF_ACCELERATORS            (1<<1)
+#define PCF_METRICS                 (1<<2)
+#define PCF_BITMAPS                 (1<<3)
+#define PCF_INK_METRICS             (1<<4)
+#define PCF_BDF_ENCODINGS           (1<<5)
+#define PCF_SWIDTHS                 (1<<6)
+#define PCF_GLYPH_NAMES             (1<<7)
+#define PCF_BDF_ACCELERATORS        (1<<8)
+
+    for (qint32 t = 0; t < table_count; t++) {
+      qint32 type, table_format, size, offset;
+      in >> type >> table_format >> size >> offset;
+
+      switch (type) {
+        case PCF_METRICS:
+          readMetrics(data.mid(offset, size));
+          break;
+        case PCF_BITMAPS:
+          break;
+        case PCF_BDF_ENCODINGS:
+          break;
+      }
+    }
+
+    // add in new font at requested index:
+    wasmInterface.fonts.resize(fontindex+1);
+    wasmInterface.fonts[fontindex].reset(
+      new Font(glyphs, index, bitmapdata, stride)
+    );
+
+    return makeOkReply();
+  };
+
+  return readPCF();
+}

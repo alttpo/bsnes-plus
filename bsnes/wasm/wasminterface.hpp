@@ -3,6 +3,12 @@
 #include "host.hpp"
 
 struct Glyph {
+  Glyph(
+    uint8_t  height,
+    uint8_t  width,
+    uint32_t bitmapdataOffset
+  );
+
   uint8_t  m_height;
   uint8_t  m_width;
   uint32_t m_bitmapdataOffset;
@@ -18,13 +24,20 @@ struct Index {
 };
 
 struct Font {
+  Font(
+    const std::vector<Glyph>&    glyphs,
+    const std::vector<Index>&    index,
+    const std::vector<uint8_t>&  bitmapdata,
+    int                          stride
+  );
+
   bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const;
   uint32_t find_glyph(uint32_t codePoint) const;
 
-  int                   m_stride;
-  std::vector<uint8_t>  m_bitmapdata;
   std::vector<Glyph>    m_glyphs;
   std::vector<Index>    m_index;
+  std::vector<uint8_t>  m_bitmapdata;
+  int                   m_stride;
 };
 
 struct WASMInterface {
@@ -91,6 +104,7 @@ private:
   std::vector<uint8_t> cmdlist;
   uint16_t tmp[512 * 512];
 
+public:
   std::vector<std::shared_ptr<Font>> fonts;
 };
 
