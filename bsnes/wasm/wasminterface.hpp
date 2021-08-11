@@ -3,15 +3,9 @@
 #include "host.hpp"
 
 struct Glyph {
-  Glyph(
-    uint8_t  height,
-    uint8_t  width,
-    uint32_t bitmapdataOffset
-  );
-
-  uint8_t  m_height;
-  uint8_t  m_width;
-  uint32_t m_bitmapdataOffset;
+  uint8_t               m_width;
+  uint8_t               m_height;
+  std::vector<uint8_t>  m_bitmapdata;
 };
 
 struct Index {
@@ -27,7 +21,6 @@ struct Font {
   Font(
     const std::vector<Glyph>&    glyphs,
     const std::vector<Index>&    index,
-    const std::vector<uint8_t>&  bitmapdata,
     int                          stride
   );
 
@@ -36,7 +29,6 @@ struct Font {
 
   std::vector<Glyph>    m_glyphs;
   std::vector<Index>    m_index;
-  std::vector<uint8_t>  m_bitmapdata;
   int                   m_stride;
 };
 

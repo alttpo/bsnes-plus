@@ -294,7 +294,7 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
       qint16 count;
       in >> count;
 
-      glyphs.reserve(count);
+      glyphs.resize(count);
       for (qint16 i = 0; i < count; i++) {
         quint8 tmp;
         qint16 left_sided_bearing;
@@ -318,13 +318,13 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
         in >> tmp;
         character_descent = (qint16)tmp - 0x80;
 
-        glyphs.emplace_back(0, character_width, UINT32_MAX);
+        glyphs[i].m_width = character_width;
       }
     } else {
       qint16 count;
       in >> count;
 
-      glyphs.reserve(count);
+      glyphs.resize(count);
       for (qint16 i = 0; i < count; i++) {
         qint16 left_sided_bearing;
         qint16 right_side_bearing;
@@ -340,8 +340,46 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
         in >> character_descent;
         in >> character_attributes;
 
-        glyphs.emplace_back(0, character_width, UINT32_MAX);
+        glyphs[i].m_width = character_width;
       }
+    }
+  };
+
+  auto readBitmaps = [&glyphs, &bitmapdata](QByteArray section, QByteArray file) {
+    QDataStream in(&section, QIODevice::ReadOnly);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    qint32 format;
+    in >> format;
+
+    if (format & PCF_BYTE_MASK) {
+      in.setByteOrder(QDataStream::BigEndian);
+    }
+
+    quint32 count;
+    in >> count;
+
+    std::vector<quint32> offsets;
+    offsets.reserve(count);
+    for (quint32 i = 0; i < count; i++) {
+      quint32 offset;
+      in >> offset;
+
+      offsets.push_back(offset);
+    }
+
+    quint32 bitmapSizes[4];
+    for (quint32 i = 0; i < 4; i++) {
+      in >> bitmapSizes[i];
+    }
+
+    quint32 bitmapSize = bitmapSizes[format & 3];
+
+    // read bitmap data:
+    glyphs.resize(count);
+    for (quint32 i = 0; i < count; i++) {
+      glyphs[i].m_bitmapdata.resize(bitmapSize);
+      memcpy(glyphs[i].m_bitmapdata.data(), file.constData() + offsets[i], bitmapSize);
     }
   };
 
@@ -379,8 +417,10 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
           readMetrics(data.mid(offset, size));
           break;
         case PCF_BITMAPS:
+          readBitmaps(data.mid(offset, size), data);
           break;
         case PCF_BDF_ENCODINGS:
+          //readEncodings(data.mid(offset, size));
           break;
       }
     }
@@ -388,7 +428,7 @@ QByteArray NWAccess::cmdPpuxFontUpload(QByteArray args, QByteArray data)
     // add in new font at requested index:
     wasmInterface.fonts.resize(fontindex+1);
     wasmInterface.fonts[fontindex].reset(
-      new Font(glyphs, index, bitmapdata, stride)
+      new Font(glyphs, index, stride)
     );
 
     return makeOkReply();
