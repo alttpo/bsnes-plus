@@ -6,6 +6,7 @@ void PPU::ppux_sprite_reset() {
 
 void PPU::ppux_reset() {
   ppux_sprite_reset();
+  ppux_draw_lists.clear();
   for (unsigned i = 0; i < extra_spaces; i++) {
     if (vram_space[i]) {
       delete vram_space[i];
@@ -36,12 +37,17 @@ bool PPU::ppux_is_sprite_on_scanline(struct extra_item *spr) {
 }
 
 void PPU::ppux_render_frame_pre() {
-  memset(ppux_mode7_pal, 0, sizeof(ppux_mode7_pal));
-  memset(ppux_mode7_space, 0, sizeof(ppux_mode7_space));
+  // extra sprites drawn on pre-transformed mode7 BG1 or BG2 layers:
+  for(int i = 0; i < 256; i++) {
+    ppux_mode7_col[0][i] = 0xffff;
+    ppux_mode7_col[1][i] = 0xffff;
+  }
+
   for(int s = 0; s < extra_count; s++) {
     struct extra_item *t = &extra_list[s];
 
     if(!t->enabled) continue;
+    // (layer & 0x80) means pre-transform mode7 BG1 or BG2 layer:
     if((t->layer & 0x80) == 0) continue;
 
     uint8 layer = (t->layer & 0x7F);
@@ -124,22 +130,52 @@ void PPU::ppux_render_frame_pre() {
         col += t->palette;
 
         // output:
-        ppux_mode7_pal[layer][(sy << 10) + sx] = col;
-        ppux_mode7_space[layer][(sy << 10) + sx] = t->cgram_space;
+        ppux_mode7_col[layer][(sy << 10) + sx] = get_palette_space(t->cgram_space, col);
       }
     }
   }
+
+  // pre-render ppux draw_lists to frame buffers:
+  memset(ppux_layer_pri, 0xFF, sizeof(ppux_layer_pri));
+  for (const auto& dl : ppux_draw_lists) {
+    std::function<void(int x, int y, uint16_t color)> px;
+
+    // select pixel-drawing function:
+    if (dl.layer & 0x80) {
+      px = [&](int x, int y, uint16_t color) {
+        // draw to mode7 pre-transform BG1 (layer=0x80) or BG2 (layer=0x81):
+        auto offs = (y * 256) + x;
+        ppux_mode7_col[dl.layer & 1][offs] = color;
+        // TODO: capture priority from (dl.priority & 0x7f)
+      };
+    } else {
+      px = [&](int x, int y, uint16_t color) {
+        // draw to any PPU layer:
+        auto offs = (y * 256) + x;
+        ppux_layer_pri[offs] = dl.priority;
+        ppux_layer_lyr[offs] = dl.layer & 0x7f;
+        ppux_layer_col[offs] = color;
+      };
+    }
+
+    DrawList::Target target(256, 256, px);
+    DrawList::Context context(target);
+
+    context.draw_list(dl.cmdlist, wasmInterface.fonts);
+  }
 }
 
-void PPU::ppux_mode7_fetch(int32 px, int32 py, int32 tile, unsigned layer, int32 &palette, unsigned &cgramspace) {
+void PPU::ppux_mode7_fetch(int32 px, int32 py, int32 tile, unsigned layer, int32 &palette, uint16& color) {
   int32 ix = (py << 10) + px;
-  palette = ppux_mode7_pal[layer][ix];
-  if(palette != 0) {
-    cgramspace = ppux_mode7_space[layer][ix];
+
+  color = ppux_mode7_col[layer][ix];
+  if(color < 0x8000) {
+    // TODO: set palette to 0 or 1 based on priority; need to capture priority values from pre-render
+    palette = 0;
     return;
   }
+
   palette = memory::vram[(((tile << 6) + ((py & 7) << 3) + (px & 7)) << 1) + 1];
-  cgramspace = 0;
 }
 
 void PPU::ppux_render_line_pre() {
@@ -160,8 +196,13 @@ void PPU::ppux_render_line_post() {
     if(t->layer > 5) continue;
     if(t->priority > 12) continue;
 
-    bool bg_enabled    = regs.bg_enabled[t->layer];
-    bool bgsub_enabled = regs.bgsub_enabled[t->layer];
+    uint8 layer = t->layer;
+    bool bg_enabled = true;
+    bool bgsub_enabled = false;
+    if (layer <= 5) {
+      bg_enabled    = regs.bg_enabled[t->layer];
+      bgsub_enabled = regs.bgsub_enabled[t->layer];
+    }
     if (bg_enabled == false && bgsub_enabled == false) continue;
 
     if(!ppux_is_sprite_on_scanline(t)) continue;
@@ -257,13 +298,20 @@ void PPU::ppux_render_line_post() {
 
     uint8_t layer = ex_lyr[sx];
 
-    bool bg_enabled    = regs.bg_enabled[layer];
-    bool bgsub_enabled = regs.bgsub_enabled[layer];
+    bool bg_enabled = true;
+    bool bgsub_enabled = false;
+    uint8 wt_main = 0;
+    uint8 wt_sub = 0;
+    if (layer <= 5) {
+      bg_enabled    = regs.bg_enabled[layer];
+      bgsub_enabled = regs.bgsub_enabled[layer];
+      wt_main = window[layer].main[sx];
+      wt_sub  = window[layer].sub[sx];
+    } else {
+      layer = 5;
+    }
 
-    uint8 *wt_main = window[layer].main;
-    uint8 *wt_sub  = window[layer].sub;
-
-    if(bg_enabled    == true && !wt_main[sx]) {
+    if(bg_enabled    == true && !wt_main) {
       if(pixel_cache[sx].pri_main < priority) {
         pixel_cache[sx].pri_main = priority;
         pixel_cache[sx].bg_main  = layer;
@@ -271,12 +319,57 @@ void PPU::ppux_render_line_post() {
         pixel_cache[sx].ce_main  = ex_ce[sx];
       }
     }
-    if(bgsub_enabled == true && !wt_sub[sx]) {
+    if(bgsub_enabled == true && !wt_sub) {
       if(pixel_cache[sx].pri_sub < priority) {
         pixel_cache[sx].pri_sub = priority;
         pixel_cache[sx].bg_sub  = layer;
         pixel_cache[sx].src_sub = ex_bgr[sx];
         pixel_cache[sx].ce_sub  = ex_ce[sx];
+      }
+    }
+  }
+
+  // render draw_lists on top:
+  int offs = (line-1) * 256;
+  for (int sx = 0; sx < 256; sx++, offs++) {
+    uint8_t priority = ppux_layer_pri[offs];
+    if (priority == 0xFF) continue;
+
+    uint8_t layer = ppux_layer_lyr[offs];
+    // (layer & 0x80) means pre-transform mode7 BG1 or BG2 layer:
+    if (layer & 0x80) continue;
+
+    // color-math applies if (priority & 0x80):
+    bool ce = (priority & 0x80) ? false : true;
+    priority &= 0x7f;
+
+    bool bg_enabled = true;
+    bool bgsub_enabled = false;
+    uint8 wt_main = 0;
+    uint8 wt_sub = 0;
+    if (layer <= 5) {
+      bg_enabled    = regs.bg_enabled[layer];
+      bgsub_enabled = regs.bgsub_enabled[layer];
+      wt_main = window[layer].main[sx];
+      wt_sub  = window[layer].sub[sx];
+    } else {
+      layer = 5;
+    }
+
+    if(bg_enabled    == true && !wt_main) {
+      if(pixel_cache[sx].pri_main < priority) {
+        pixel_cache[sx].pri_main = priority;
+        pixel_cache[sx].bg_main  = layer;
+        pixel_cache[sx].src_main = ppux_layer_col[offs];
+        pixel_cache[sx].ce_main  = ce;
+      }
+    }
+    if(bgsub_enabled == true && !wt_sub) {
+      if(pixel_cache[sx].pri_sub < priority) {
+        pixel_cache[sx].pri_sub = priority;
+        pixel_cache[sx].bg_sub  = layer;
+        pixel_cache[sx].src_sub = ppux_layer_col[offs];
+        pixel_cache[sx].ce_sub  = ce;
       }
     }
   }

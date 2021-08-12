@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include "wasm.h"
 #include "../../../external/printf/printf.c"
-#include "drawing.h"
 
 void _putchar(char character) {
 
@@ -603,7 +602,7 @@ void strcpy(char *d, const char *s) {
 
 __attribute__((export_name("on_frame_present")))
 void on_frame_present() {
-  uint16_t cmd[] = {
+  static uint16_t cmd[] = {
     4, CMD_PIXEL, 0x1F3F, 18, 18,
     9, CMD_IMAGE, 20, 20, 2, 2,
     0x001F, 0x03E0,
@@ -611,13 +610,24 @@ void on_frame_present() {
     5, CMD_HLINE, 0x7FFF, 24, 24, 16,
     5, CMD_VLINE, 0x7FFF, 24, 24, 16,
     7, CMD_RECT, 0x7C00, 0xFFFF, 32, 32, 8, 8,
-    12, CMD_TEXT_UTF8, 0x03E0, 0x7C00, 0, 1, 1,
+    12, CMD_TEXT_UTF8, 0x03E0, 0x001F, 0, 0, 0,
     0, 0, 0, 0, 0, 0
   };
-  strcpy((char *)&cmd[(1+4+1+9+1+5+1+5+1+7+1+6)], "Hello world");
+  strcpy((char *)&cmd[(1+4+1+9+1+5+1+5+1+7+1+6)], "jsd1982");
 
-  draw_list_clear();
-  draw_list_append(sizeof(cmd), cmd);
+  // increment y:
+  cmd[1+4+1+9+1+5+1+5+1+7+1+5]++;
+  if (cmd[1+4+1+9+1+5+1+5+1+7+1+5] == 240) {
+    cmd[1+4+1+9+1+5+1+5+1+7+1+5] = UINT16_MAX - 16;
+    // increment x:
+    cmd[1+4+1+9+1+5+1+5+1+7+1+4] += 4;
+    if (cmd[1+4+1+9+1+5+1+5+1+7+1+4] == 252) {
+      cmd[1+4+1+9+1+5+1+5+1+7+1+4] = UINT16_MAX - 16;
+    }
+  }
+
+  ppux_draw_list_clear();
+  ppux_draw_list_append(2, 9 | 0x80, sizeof(cmd), cmd);
 }
 
 // called on NMI:

@@ -22,6 +22,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
 
   int32 px, py;
   int32 tx, ty, tile, palette;
+  uint16 ppuxcolor;
   unsigned cgramspace;
 
   int32 a = sclip<16>(cache.m7a);
@@ -64,7 +65,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
         tx = ((px >> 3) & 127);
         ty = ((py >> 3) & 127);
         tile    = memory::vram[(ty * 128 + tx) << 1];
-        ppux_mode7_fetch(px, py, tile, bg, palette, cgramspace);
+        ppux_mode7_fetch(px, py, tile, bg, palette, ppuxcolor);
       } break;
       case 2: {  //palette color 0 outside of screen area
         if((px | py) & ~1023) {
@@ -75,7 +76,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
           tx = ((px >> 3) & 127);
           ty = ((py >> 3) & 127);
           tile    = memory::vram[(ty * 128 + tx) << 1];
-          ppux_mode7_fetch(px, py, tile, bg, palette, cgramspace);
+          ppux_mode7_fetch(px, py, tile, bg, palette, ppuxcolor);
         }
       } break;
       case 3: {  //character 0 repetition outside of screen area
@@ -88,28 +89,35 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
           ty = ((py >> 3) & 127);
           tile = memory::vram[(ty * 128 + tx) << 1];
         }
-        ppux_mode7_fetch(px, py, tile, bg, palette, cgramspace);
+        ppux_mode7_fetch(px, py, tile, bg, palette, ppuxcolor);
       } break;
     }
 
-    if(bg == BG1) {
-      _pri = pri0_pos;
+    uint32 col;
+    if (ppuxcolor < 0x8000) {
+      // override mode7 color with ppux graphics:
+      col = ppuxcolor;
+      _pri = palette ? pri1_pos : pri0_pos;
     } else {
-      _pri = (palette >> 7) ? pri1_pos : pri0_pos;
-      palette &= 0x7f;
-    }
+      // normal mode7 color lookup:
+      if(bg == BG1) {
+        _pri = pri0_pos;
+      } else {
+        _pri = (palette >> 7) ? pri1_pos : pri0_pos;
+        palette &= 0x7f;
+      }
 
-    if(!palette) continue;
+      if(!palette) continue;
+
+      if(regs.direct_color == true && bg == BG1) {
+        //direct color mode does not apply to bg2, as it is only 128 colors...
+        col = get_direct_color(0, palette);
+      } else {
+        col = get_palette_space(cgramspace, palette);
+      }
+    }
 
     _x = (regs.mode7_hflip == false) ? (x) : (255 - x);
-
-    uint32 col;
-    if(regs.direct_color == true && bg == BG1) {
-      //direct color mode does not apply to bg2, as it is only 128 colors...
-      col = get_direct_color(0, palette);
-    } else {
-      col = get_palette_space(cgramspace, palette);
-    }
 
     if(regs.bg_enabled[bg] == true && !wt_main[_x]) {
       if(pixel_cache[_x].pri_main < _pri) {

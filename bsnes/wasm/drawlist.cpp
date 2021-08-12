@@ -2,23 +2,17 @@
 namespace DrawList {
 
 Target::Target(
-  uint16_t *data_p,
-  unsigned pitch_p,
-  unsigned width_p,
-  unsigned height_p,
-  bool interlace_p
-) : data(data_p),
-  pitch(pitch_p),
-  width(width_p),
-  height(height_p),
-  interlace(interlace_p)
+  unsigned p_width,
+  unsigned p_height,
+  const std::function<void(int x, int y, uint16_t color)>& p_px
+) : width(p_width),
+    height(p_height),
+    px(p_px)
 {}
 
 Context::Context(const Target& target) : m_target(target) {}
 
 void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<std::shared_ptr<PixelFont::Font>> &fonts) {
-  uint32_t  pitch = m_target.pitch>>1;
-
   uint16_t* start = (uint16_t*) cmdlist.data();
   uint32_t  end = cmdlist.size()>>1;
   uint16_t* p = start;
@@ -31,7 +25,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
 
     uint16_t cmd = *d++;
 
-    uint16_t color, fillcolor;
+    uint16_t color, fillcolor, outlinecolor;
     int16_t  x0, y0, w, h;
     switch (cmd) {
       case CMD_PIXEL:
@@ -61,7 +55,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
             color = *d++;
             if (color >= 0x8000) continue;
 
-            m_target.data[(y * pitch) + x] = color;
+            draw_pixel(x, y, color);
           }
         }
         break;
@@ -99,15 +93,15 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
         h  = (int16_t)*d++;
 
         if (fillcolor < 0x8000) {
-          for (int16_t y = y0+1; y < y0+h-1; y++) {
+          for (int16_t y = y0; y < y0+h; y++) {
             if (y < 0) continue;
             if (y >= m_target.height) break;
 
-            for (int16_t x = x0+1; x < x0+w-1; x++) {
+            for (int16_t x = x0; x < x0+w; x++) {
               if (x < 0) continue;
               if (x >= m_target.width) break;
 
-              m_target.data[(y * pitch) + x] = fillcolor;
+              m_target.px(x, y, fillcolor);
             }
           }
         }
@@ -119,18 +113,17 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
         }
         break;
       case CMD_TEXT_UTF8: {
-        uint8_t gw, gh;
-
         // stroke color:
         color = *d++;
         // 1px outline color:
-        uint16_t outlinecolor = *d++;
+        outlinecolor = *d++;
 
         // select font:
         uint16_t fontindex = *d++;
         if (fontindex >= fonts.size()) {
           break;
         }
+
         const auto& font = *fonts[fontindex];
 
         x0 = (int16_t)*d++;
@@ -138,14 +131,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
 
         if (outlinecolor < 0x8000) {
           font.draw_text_utf8((uint8_t*)d, x0, y0, [=](int rx, int ry) {
-            draw_pixel(rx-1, ry-1, outlinecolor);
-            draw_pixel(rx, ry-1, outlinecolor);
-            draw_pixel(rx+1, ry-1, outlinecolor);
+            draw_hline(rx-1, ry-1, 3, outlinecolor);
             draw_pixel(rx-1, ry, outlinecolor);
             draw_pixel(rx+1, ry, outlinecolor);
-            draw_pixel(rx-1, ry+1, outlinecolor);
-            draw_pixel(rx, ry+1, outlinecolor);
-            draw_pixel(rx+1, ry+1, outlinecolor);
+            draw_hline(rx-1, ry+1, 3, outlinecolor);
           });
         }
         if (color < 0x8000) {
@@ -162,39 +151,36 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
   }
 }
 
-inline void Context::draw_pixel(int16_t x0, int16_t y0, uint16_t color) {
+inline void Context::draw_pixel(int x0, int y0, uint16_t color) {
   if (y0 < 0) return;
   if (y0 >= m_target.height) return;
   if (x0 < 0) return;
   if (x0 >= m_target.width) return;
 
-  uint32_t pitch = m_target.pitch>>1;
-  m_target.data[(y0 * pitch) + x0] = color;
+  m_target.px(x0, y0, color);
 }
 
-inline void Context::draw_hline(int16_t x0, int16_t y0, int16_t w, uint16_t color) {
+inline void Context::draw_hline(int x0, int y0, int w, uint16_t color) {
   if (y0 < 0) return;
   if (y0 >= m_target.height) return;
 
-  uint32_t pitch = m_target.pitch>>1;
-  for (int16_t x = x0; x < x0+w; x++) {
+  for (int x = x0; x < x0+w; x++) {
     if (x < 0) continue;
     if (x >= m_target.width) return;
 
-    m_target.data[(y0 * pitch) + x] = color;
+    m_target.px(x, y0, color);
   }
 }
 
-inline void Context::draw_vline(int16_t x0, int16_t y0, int16_t h, uint16_t color) {
+inline void Context::draw_vline(int x0, int y0, int h, uint16_t color) {
   if (x0 < 0) return;
   if (x0 >= m_target.width) return;
 
-  uint32_t pitch = m_target.pitch>>1;
-  for (int16_t y = y0; y < y0+h; y++) {
+  for (int y = y0; y < y0+h; y++) {
     if (y < 0) continue;
     if (y >= m_target.height) break;
 
-    m_target.data[(y * pitch) + x0] = color;
+    m_target.px(x0, y, color);
   }
 }
 

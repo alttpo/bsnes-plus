@@ -16,27 +16,23 @@ enum draw_cmd {
 
 struct Target {
   explicit Target(
-    uint16_t *data,
-    unsigned pitch,
     unsigned width,
     unsigned height,
-    bool interlace
+    const std::function<void(int x, int y, uint16_t color)>& px
   );
 
-  uint16_t *data;
-  unsigned pitch;
+  const std::function<void(int x, int y, uint16_t color)>& px;
   unsigned width;
   unsigned height;
-  bool interlace;
 };
 
 struct Context {
   Context(const Target& target);
 
-  void draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<std::shared_ptr<PixelFont::Font>> &);
-  inline void draw_pixel(int16_t x0, int16_t y0, uint16_t color);
-  inline void draw_hline(int16_t x0, int16_t y0, int16_t w, uint16_t color);
-  inline void draw_vline(int16_t x0, int16_t y0, int16_t h, uint16_t color);
+  void draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<std::shared_ptr<PixelFont::Font>>& fonts);
+  inline void draw_pixel(int x, int y, uint16_t color);
+  inline void draw_hline(int x, int y, int w, uint16_t color);
+  inline void draw_vline(int x, int y, int h, uint16_t color);
 
 private:
   const Target& m_target;

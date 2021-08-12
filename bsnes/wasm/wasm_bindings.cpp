@@ -26,14 +26,6 @@ enum ppux_memory_type : uint32_t {
   CGRAM
 };
 
-struct frame {
-  uint32_t pitch;
-  uint32_t width;
-  uint32_t height;
-  int32_t  interlace;
-  uint16_t data[512 * 512];
-};
-
 void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 // link wasm_bindings.cpp member functions:
 #define link(name) \
@@ -54,9 +46,8 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(ppux_sprite_write);
   link(ppux_ram_read);
   link(ppux_ram_write);
-
-  link(draw_list_clear);
-  link(draw_list_append);
+  link(ppux_draw_list_clear);
+  link(ppux_draw_list_append);
 
 #undef link
 }
@@ -360,13 +351,16 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiSuccess();
 }
 
-wasm_binding(draw_list_clear, "v()") {
-  cmdlist.clear();
+wasm_binding(ppux_draw_list_clear, "v()") {
+  SNES::ppu.ppux_draw_lists.clear();
 
   m3ApiSuccess();
 }
 
-wasm_binding(draw_list_append, "v(i*)") {
+wasm_binding(ppux_draw_list_append, "v(iii*)") {
+  m3ApiGetArg   (uint8_t,   i_layer);
+  m3ApiGetArg   (uint8_t,   i_priority);
+
   m3ApiGetArg   (uint32_t,  i_size);
   m3ApiGetArgMem(uint8_t*,  i_cmdlist);
 
@@ -374,14 +368,20 @@ wasm_binding(draw_list_append, "v(i*)") {
 
   // commands are aligned to 16-bits:
   if ((i_size & 1) != 0) {
-    m3ApiTrap("draw_list: i_size must be even");
+    m3ApiTrap("ppux_draw_list_append: i_size must be even");
   }
 
-  // append command list to internal vector:
-  auto old_size = cmdlist.size();
-  cmdlist.resize(cmdlist.size() + i_size);
+  // extend ppux_draw_lists vector:
+  int n = SNES::ppu.ppux_draw_lists.size();
+  SNES::ppu.ppux_draw_lists.resize(n + 1);
 
-  void* dst = (void *)(cmdlist.data() + old_size);
+  auto& dl = SNES::ppu.ppux_draw_lists[n];
+  dl.layer = i_layer;
+  dl.priority = i_priority;
+  dl.cmdlist.resize(i_size);
+
+  // copy cmdlist data in:
+  void* dst = (void *)(dl.cmdlist.data());
   memcpy(dst, (const void *)i_cmdlist, i_size);
 
   m3ApiSuccess();

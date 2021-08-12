@@ -43,9 +43,8 @@ public:
   decl_binding(ppux_sprite_write);
   decl_binding(ppux_ram_write);
   decl_binding(ppux_ram_read);
-
-  decl_binding(draw_list_clear);
-  decl_binding(draw_list_append);
+  decl_binding(ppux_draw_list_clear);
+  decl_binding(ppux_draw_list_append);
 
 #undef decl_binding
 

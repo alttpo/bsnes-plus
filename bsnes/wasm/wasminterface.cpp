@@ -39,17 +39,6 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
     runtime->warn(res, "on_frame_present");
   });
 
-  // draw command list:
-  if (!cmdlist.empty()) {
-    memcpy(tmp, data, 512 * 512 * sizeof(uint16_t));
-
-    DrawList::Target  target(tmp, pitch, width, height, interlace);
-    DrawList::Context context(target);
-    context.draw_list(cmdlist, fonts);
-
-    data = tmp;
-  }
-
   return data;
 }
 
