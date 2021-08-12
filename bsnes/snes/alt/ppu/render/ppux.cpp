@@ -38,7 +38,7 @@ bool PPU::ppux_is_sprite_on_scanline(struct extra_item *spr) {
 
 void PPU::ppux_render_frame_pre() {
   // extra sprites drawn on pre-transformed mode7 BG1 or BG2 layers:
-  for(int i = 0; i < 256; i++) {
+  for(int i = 0; i < 1024*1024; i++) {
     ppux_mode7_col[0][i] = 0xffff;
     ppux_mode7_col[1][i] = 0xffff;
   }
@@ -141,24 +141,30 @@ void PPU::ppux_render_frame_pre() {
     std::function<void(int x, int y, uint16_t color)> px;
 
     // select pixel-drawing function:
+    uint8 layer = dl.layer & 0x7f;
+    int width = 256, height = 256;
     if (dl.layer & 0x80) {
-      px = [&](int x, int y, uint16_t color) {
+      width = 1024;
+      height = 1024;
+      px = [=](int x, int y, uint16_t color) {
         // draw to mode7 pre-transform BG1 (layer=0x80) or BG2 (layer=0x81):
-        auto offs = (y * 256) + x;
-        ppux_mode7_col[dl.layer & 1][offs] = color;
+        if (layer > 1) return;
+
+        auto offs = (y << 10) + x;
+        ppux_mode7_col[layer][offs] = color;
         // TODO: capture priority from (dl.priority & 0x7f)
       };
     } else {
-      px = [&](int x, int y, uint16_t color) {
+      px = [=](int x, int y, uint16_t color) {
         // draw to any PPU layer:
-        auto offs = (y * 256) + x;
+        auto offs = (y << 8) + x;
         ppux_layer_pri[offs] = dl.priority;
-        ppux_layer_lyr[offs] = dl.layer & 0x7f;
+        ppux_layer_lyr[offs] = layer;
         ppux_layer_col[offs] = color;
       };
     }
 
-    DrawList::Target target(256, 256, px);
+    DrawList::Target target(width, height, px);
     DrawList::Context context(target);
 
     context.draw_list(dl.cmdlist, wasmInterface.fonts);

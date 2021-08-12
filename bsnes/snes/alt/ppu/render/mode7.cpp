@@ -23,7 +23,6 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
   int32 px, py;
   int32 tx, ty, tile, palette;
   uint16 ppuxcolor;
-  unsigned cgramspace;
 
   int32 a = sclip<16>(cache.m7a);
   int32 b = sclip<16>(cache.m7b);
@@ -57,6 +56,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
     px >>= 8;
     py >>= 8;
 
+    ppuxcolor = 0xffff;
     switch(regs.mode7_repeat) {
       case 0:    //screen repetition outside of screen area
       case 1: {  //same as case 0
@@ -97,7 +97,11 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
     if (ppuxcolor < 0x8000) {
       // override mode7 color with ppux graphics:
       col = ppuxcolor;
-      _pri = palette ? pri1_pos : pri0_pos;
+      if(bg == BG1) {
+        _pri = pri0_pos;
+      } else {
+        _pri = palette ? pri1_pos : pri0_pos;
+      }
     } else {
       // normal mode7 color lookup:
       if(bg == BG1) {
@@ -113,7 +117,7 @@ void PPU::render_line_mode7(uint8 pri0_pos, uint8 pri1_pos) {
         //direct color mode does not apply to bg2, as it is only 128 colors...
         col = get_direct_color(0, palette);
       } else {
-        col = get_palette_space(cgramspace, palette);
+        col = get_palette(palette);
       }
     }
 
