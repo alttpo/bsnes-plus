@@ -194,7 +194,13 @@ void PPU::ppux_render_frame_pre() {
       };
     }
 
-    DrawList::Target target(width, height, px);
+    DrawList::Target target(
+      width,
+      height,
+      px,
+      [this](int space) { return get_vram_space(space); },
+      [this](int space) { return get_cgram_space(space); }
+    );
     DrawList::Context context(target);
 
     context.draw_list(dl.cmdlist, wasmInterface.fonts);

@@ -9,21 +9,23 @@ enum draw_cmd {
   CMD_VLINE,
   CMD_RECT,
   CMD_TEXT_UTF8,
-  CMD_VRAM_TILE_2BPP,
-  CMD_VRAM_TILE_4BPP,
-  CMD_VRAM_TILE_8BPP
+  CMD_VRAM_TILE,
 };
 
 struct Target {
   explicit Target(
-    unsigned width,
-    unsigned height,
-    const std::function<void(int x, int y, uint16_t color)>& px
+    unsigned p_width,
+    unsigned p_height,
+    const std::function<void(int x, int y, uint16_t color)>& p_px,
+    const std::function<uint8_t*(int space)>& p_get_vram_space,
+    const std::function<uint8_t*(int space)>& p_get_cgram_space
   );
 
-  const std::function<void(int x, int y, uint16_t color)>& px;
   unsigned width;
   unsigned height;
+  const std::function<void(int x, int y, uint16_t color)>& px;
+  const std::function<uint8_t*(int space)>& get_vram_space;
+  const std::function<uint8_t*(int space)>& get_cgram_space;
 };
 
 struct Context {
