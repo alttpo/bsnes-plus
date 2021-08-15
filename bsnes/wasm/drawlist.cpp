@@ -133,8 +133,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
         x0 = (int16_t)*d++;
         y0 = (int16_t)*d++;
 
+        uint16_t textlen = (len - 5) << 1;
+
         if (outlinecolor < 0x8000) {
-          font.draw_text_utf8((uint8_t*)d, x0, y0, [=](int rx, int ry) {
+          font.draw_text_utf8((uint8_t*)d, textlen, x0, y0, [=](int rx, int ry) {
             draw_hline(rx-1, ry-1, 3, outlinecolor);
             draw_pixel(rx-1, ry, outlinecolor);
             draw_pixel(rx+1, ry, outlinecolor);
@@ -142,7 +144,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
           });
         }
         if (color < 0x8000) {
-          font.draw_text_utf8((uint8_t*)d, x0, y0, [=](int rx, int ry) {
+          font.draw_text_utf8((uint8_t*)d, textlen, x0, y0, [=](int rx, int ry) {
             draw_pixel(rx, ry, color);
           });
         }
@@ -173,7 +175,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
         // draw tile:
         unsigned sy = y0;
         for (unsigned ty = 0; ty < height; ty++, sy++) {
-          sy &= 256;
+          sy &= 255;
 
           unsigned sx = x0;
           unsigned y = (vflip == false) ? (ty) : (height-1 - ty);

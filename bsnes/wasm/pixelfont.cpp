@@ -25,14 +25,17 @@ Font::Font(
     m_kmax(kmax)
 {}
 
-void Font::draw_text_utf8(uint8_t* s, int x0, int y0, const std::function<void(int,int)>& px) const {
+void Font::draw_text_utf8(uint8_t* s, uint16_t len, int x0, int y0, const std::function<void(int,int)>& px) const {
   uint8_t gw, gh;
 
   uint32_t codepoint = 0;
   uint32_t state = 0;
 
-  for (; *s; ++s) {
-    if (decode(&state, &codepoint, *s)) {
+  for (unsigned n = 0; n < len; ++s, ++n) {
+    uint8_t c = *s;
+    if (c == 0) break;
+
+    if (decode(&state, &codepoint, c)) {
       continue;
     }
 

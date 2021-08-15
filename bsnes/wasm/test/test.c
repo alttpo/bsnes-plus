@@ -48,8 +48,6 @@ struct loc {
 } locs[80][128];
 uint8_t loc_tail = 0;
 
-uint32_t last_spr_index = 0;
-
 uint16_t xoffs;
 uint16_t yoffs;
 
@@ -611,7 +609,7 @@ void on_frame_present() {
     5, CMD_VLINE, 0x7FFF, 24, 24, 16,
     7, CMD_RECT, 0x7C00, 0xFFFF, 32, 32, 8, 8,
     12, CMD_TEXT_UTF8, 0x03E0, 0x001F, 0, 80, 80,
-    0, 0, 0, 0, 0, 0
+    0, 0, 0, 0, 0, 0,
   };
   strcpy((char *)&cmd[(1+4+1+9+1+5+1+5+1+7+1+6)], "jsd1982");
 
@@ -628,14 +626,72 @@ void on_frame_present() {
 
   ppux_draw_list_clear();
   ppux_draw_list_append(0 | 0x80, 9 | 0x80, sizeof(cmd), cmd);
+
+  uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
+
+  for (unsigned j = 0; j < 128; j++) {
+    // draw in reverse order because higher-indexed sprites and lower priority than lower-indexed ones:
+    unsigned i = 127 - j;
+
+    if (locs[79][i].enabled == 0) continue;
+
+    int32_t x = locs[79][i].x - xoffs;
+    int32_t y = locs[79][i].y - yoffs;
+
+    // visible bounds check:
+    if (y <= -16 || y >= 240) {
+      continue;
+    }
+    if (x <= -16 || x >= 256) {
+      continue;
+    }
+
+    uint16_t dl[13];
+    dl[0] = 12; // length in uint16_ts
+    dl[1] = CMD_VRAM_TILE;
+    dl[2] = x & 511;
+    dl[3] = y & 255;
+    dl[4] = locs[79][i].hflip;
+    dl[5] = locs[79][i].vflip;
+
+    dl[8] = 0;
+    dl[9] = locs[79][i].palette;
+    uint8_t priority = pri_lkup[locs[79][i].priority];
+
+    dl[10] = 4;
+    dl[11] = locs[79][i].width;
+    dl[12] = locs[79][i].height;
+
+    if (locs[79][i].chr < 0x20) {
+      dl[6] = 1;
+      dl[7] = locs[79][i].offs_top;
+
+      if (locs[79][i].bpp == 3 && dl[12] == 16) {
+        dl[12] = 8;
+        if (dl[5]) {
+          dl[3] += 8;
+        }
+        ppux_draw_list_append(4, priority, sizeof(dl), dl);
+
+        if (dl[5]) {
+          dl[3] -= 8;
+        } else {
+          dl[3] += 8;
+        }
+        dl[7] = locs[79][i].offs_bot;
+      }
+    } else {
+      dl[6] = 0;
+      dl[7] = 0x8000 + (locs[79][i].chr << 5);
+    }
+
+    ppux_draw_list_append(4, priority, sizeof(dl), dl);
+  }
 }
 
 // called on NMI:
 __attribute__((export_name("on_nmi")))
 void on_nmi() {
-  uint32_t spr_index = 0;
-  struct ppux_sprite spr;
-
   uint16_t link_oam_start;
 
   if (!copied) {
@@ -807,76 +863,4 @@ void on_nmi() {
     unsigned o = (i<<2);
     oam_convert(o, i);
   }
-
-  uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
-
-  spr.enabled = 1;
-  spr.cgram_space = 0;
-  spr.color_exemption = 0;
-  spr.hflip = 0;
-  spr.vflip = 0;
-  spr.vram_space = 1;
-  spr.palette = 0xF0;
-  spr.layer = 4;
-  spr.priority = 6;
-  spr.bpp = 4;
-  spr.width = 16;
-  spr.height = 16;
-
-  for (unsigned i = 0; i < 128; i++) {
-    spr.enabled = locs[79][i].enabled;
-
-    int32_t x = locs[79][i].x - xoffs;
-    int32_t y = locs[79][i].y+1 - yoffs;
-
-    // visible bounds check:
-    if (y <= -16 || y >= 240) {
-      spr.enabled = 0;
-    }
-    if (x <= -16 || x >= 256) {
-      spr.enabled = 0;
-    }
-
-    spr.x = x & 511;
-    spr.y = y & 255;
-    spr.hflip = locs[79][i].hflip;
-    spr.vflip = locs[79][i].vflip;
-    spr.palette = locs[79][i].palette;
-    spr.priority = pri_lkup[locs[79][i].priority];
-
-    spr.bpp = 4;
-    spr.width = locs[79][i].width;
-    spr.height = locs[79][i].height;
-
-    if (locs[79][i].chr < 0x20) {
-      spr.vram_space = 1;
-      spr.vram_addr = locs[79][i].offs_top;
-      if (locs[79][i].bpp == 3 && spr.height == 16) {
-        spr.height = 8;
-        if (spr.vflip) {
-          spr.y += 8;
-        }
-        ppux_sprite_write(spr_index++, &spr);
-
-        if (spr.vflip) {
-          spr.y -= 8;
-        } else {
-          spr.y += 8;
-        }
-        spr.vram_addr = locs[79][i].offs_bot;
-      }
-    } else {
-      spr.vram_space = 0;
-      spr.vram_addr = 0x8000 + (locs[79][i].chr << 5);
-    }
-
-    ppux_sprite_write(spr_index++, &spr);
-  }
-
-  for (unsigned i = spr_index; i < last_spr_index; i++) {
-    spr.enabled = 0;
-    ppux_sprite_write(i, &spr);
-  }
-
-  last_spr_index = spr_index;
 }

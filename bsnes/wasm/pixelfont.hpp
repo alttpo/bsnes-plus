@@ -31,7 +31,7 @@ struct Font {
 
   bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, const std::function<void(int,int)>& px) const;
   uint32_t find_glyph(uint32_t codePoint) const;
-  void draw_text_utf8(uint8_t* s, int x0, int y0, const std::function<void(int,int)>& px) const;
+  void draw_text_utf8(uint8_t* s, uint16_t len, int x0, int y0, const std::function<void(int,int)>& px) const;
 
   std::vector<Glyph>  m_glyphs;
   std::vector<Index>  m_index;

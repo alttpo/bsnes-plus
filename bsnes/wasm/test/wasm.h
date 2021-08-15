@@ -50,9 +50,7 @@ enum draw_cmd {
   CMD_VLINE,
   CMD_RECT,
   CMD_TEXT_UTF8,
-  CMD_VRAM_TILE_2BPP,
-  CMD_VRAM_TILE_4BPP,
-  CMD_VRAM_TILE_8BPP
+  CMD_VRAM_TILE
 };
 
 __attribute__((import_module("env"), import_name("ppux_reset")))
