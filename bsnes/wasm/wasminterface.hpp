@@ -48,10 +48,6 @@ public:
 
 #undef decl_binding
 
-private:
-  std::vector<uint8_t> cmdlist;
-  uint16_t tmp[512 * 512];
-
 public:
   std::vector<std::shared_ptr<PixelFont::Font>> fonts;
 };
