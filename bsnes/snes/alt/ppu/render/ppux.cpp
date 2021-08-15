@@ -1,5 +1,35 @@
 #ifdef PPU_CPP
 
+uint8* PPU::get_vram_space(uint8 space) {
+  if (space == 0) {
+    return memory::vram.data();
+  } else if (space <= extra_spaces) {
+    StaticRAM *ram = vram_space[space-1];
+    if (!ram) {
+      // allocate on demand:
+      vram_space[space-1] = ram = new StaticRAM(0x10000);
+    }
+    return ram->data();
+  } else {
+    return nullptr;
+  }
+}
+
+uint8* PPU::get_cgram_space(uint8 space) {
+  if (space == 0) {
+    return memory::cgram.data();
+  } else if (space <= extra_spaces) {
+    StaticRAM *ram = cgram_space[space-1];
+    if (!ram) {
+      // allocate on demand:
+      cgram_space[space-1] = ram = new StaticRAM(0x200);
+    }
+    return ram->data();
+  } else {
+    return nullptr;
+  }
+}
+
 void PPU::ppux_sprite_reset() {
   memset(extra_list, 0, sizeof(extra_list));
 }
