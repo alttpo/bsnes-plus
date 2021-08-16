@@ -36,8 +36,22 @@ __attribute__((import_module("env"), import_name("ppux_cgram_reset")))
 void ppux_cgram_reset();
 
 __attribute__((import_module("env"), import_name("ppux_vram_write")))
-int32_t ppux_vram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data,
-                       uint32_t i_size);
+int32_t ppux_vram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("ppux_cgram_write")))
+int32_t ppux_cgram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("ppux_oam_write")))
+int32_t ppux_oam_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("ppux_vram_read")))
+int32_t ppux_vram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("ppux_cgram_read")))
+int32_t ppux_cgram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("ppux_oam_read")))
+int32_t ppux_oam_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 
 __attribute__((import_module("env"), import_name("ppux_draw_list_reset")))
 void ppux_draw_list_reset();

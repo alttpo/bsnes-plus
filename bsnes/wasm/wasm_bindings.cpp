@@ -1,31 +1,4 @@
 
-struct ppux_sprite {
-  uint8_t  enabled;
-
-  uint16_t x;
-  uint16_t y;
-  uint8_t  hflip;
-  uint8_t  vflip;
-
-  uint8_t  vram_space;        //     0 ..   255; 0 = local, 1..255 = extra
-  uint16_t vram_addr;         // $0000 .. $FFFF (byte address)
-  uint8_t  cgram_space;       //     0 ..   255; 0 = local, 1..255 = extra
-  uint8_t  palette;           //     0 ..   255
-
-  uint8_t  layer;             // 0.. 4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
-  uint8_t  priority;          // 1..12
-  uint8_t  color_exemption;   // true = ignore color math, false = obey color math
-
-  uint8_t  bpp;               // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
-  uint16_t width;             // number of pixels width
-  uint16_t height;            // number of pixels high
-};
-
-enum ppux_memory_type : uint32_t {
-  VRAM,
-  CGRAM
-};
-
 void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
 // link wasm_bindings.cpp member functions:
 #define link(name) \
@@ -119,13 +92,13 @@ wasm_binding(ppux_reset, "v()") {
   m3ApiSuccess();
 }
 
-//void ppux_sprite_reset();
+//void ppux_vram_reset();
 wasm_binding(ppux_vram_reset, "v()") {
   SNES::ppu.ppux_vram_reset();
   m3ApiSuccess();
 }
 
-//void ppux_sprite_reset();
+//void ppux_cgram_reset();
 wasm_binding(ppux_cgram_reset, "v()") {
   SNES::ppu.ppux_cgram_reset();
   m3ApiSuccess();
