@@ -52,8 +52,6 @@ protected:
     QByteArray cmdPpuxReset(QByteArray args);
     QByteArray cmdPpuxVramReset(QByteArray args);
     QByteArray cmdPpuxCgramReset(QByteArray args);
-    QByteArray cmdPpuxRamWrite(QByteArray args, QByteArray data);
-    QByteArray cmdPpuxRamRead(QByteArray args);
     QByteArray cmdPpuxFontUpload(QByteArray args, QByteArray data);
 
 public slots:
