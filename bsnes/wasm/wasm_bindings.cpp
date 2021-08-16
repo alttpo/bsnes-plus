@@ -251,10 +251,6 @@ wasm_binding(ppux_oam_write, "i(ii*i)") {
     //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
     m3ApiReturn(-3);
   }
-  if (i_offset & 1) {
-    //return makeErrorReply("offset must be multiple of 2");
-    m3ApiReturn(-4);
-  }
 
   if (i_offset + i_size > maxSize) {
     //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
@@ -385,10 +381,6 @@ wasm_binding(ppux_oam_read, "i(ii*i)") {
   if (i_offset >= maxSize) {
     //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
     m3ApiReturn(-3);
-  }
-  if (i_offset & 1) {
-    //return makeErrorReply("offset must be multiple of 2");
-    m3ApiReturn(-4);
   }
 
   if (i_offset + i_size > maxSize) {
