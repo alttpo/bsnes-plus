@@ -20,7 +20,7 @@ func main() {
 
 	args := flag.Args()
 	if len(args) < 1 {
-		fmt.Println("emunwcmd <command>[;args;args...][@file]")
+		fmt.Println("emunwcmd <command>[;args;args...][@file] [<command>[;args;args...][@file]...]")
 		return
 	}
 
