@@ -16,11 +16,6 @@ void hexdump(const uint8_t *i_data, uint32_t i_size);
 
 // ppux:
 
-enum ppux_memory_type : uint32_t {
-  VRAM,
-  CGRAM
-};
-
 enum draw_cmd {
   CMD_PIXEL,
   CMD_IMAGE,
@@ -40,8 +35,8 @@ void ppux_vram_reset();
 __attribute__((import_module("env"), import_name("ppux_cgram_reset")))
 void ppux_cgram_reset();
 
-__attribute__((import_module("env"), import_name("ppux_ram_write")))
-int32_t ppux_ram_write(enum ppux_memory_type i_memorytype, uint32_t i_space, uint32_t i_offset, uint8_t *i_data,
+__attribute__((import_module("env"), import_name("ppux_vram_write")))
+int32_t ppux_vram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data,
                        uint32_t i_size);
 
 __attribute__((import_module("env"), import_name("ppux_draw_list_reset")))

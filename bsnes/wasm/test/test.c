@@ -281,13 +281,13 @@ void decompress_sprites() {
 
   // copy link 4bpp body sprites:
   snes_bus_read(0x108000, sprites, 0x2000);
-  ppux_ram_write(VRAM, 1, 0x0000, sprites, 0x2000);
+  ppux_vram_write(1, 0x0000, sprites, 0x2000);
   snes_bus_read(0x10A000, sprites, 0x2000);
-  ppux_ram_write(VRAM, 1, 0x2000, sprites, 0x2000);
+  ppux_vram_write(1, 0x2000, sprites, 0x2000);
   snes_bus_read(0x10C000, sprites, 0x2000);
-  ppux_ram_write(VRAM, 1, 0x4000, sprites, 0x2000);
+  ppux_vram_write(1, 0x4000, sprites, 0x2000);
   snes_bus_read(0x10E000, sprites, 0x2000);
-  ppux_ram_write(VRAM, 1, 0x6000, sprites, 0x2000);
+  ppux_vram_write(1, 0x6000, sprites, 0x2000);
 
   // decompress sword+shield 3bpp data:
   uint8_t  buf[0x1000];
@@ -626,12 +626,12 @@ void on_nmi() {
     // copy 3bpp->4bpp decompressed sprites from WRAM:
     // keep the same bank offset ($9000) in VRAM as it is in WRAM, cuz why not?
     snes_bus_read(0x7E9000, sprites, 0x2000);
-    ppux_ram_write(VRAM, 1, 0x9000, sprites, 0x2000);
+    ppux_vram_write(1, 0x9000, sprites, 0x2000);
     snes_bus_read(0x7EB000, sprites, 0x1000);
-    ppux_ram_write(VRAM, 1, 0xB000, sprites, 0x1000);
+    ppux_vram_write(1, 0xB000, sprites, 0x1000);
 #endif
 
-    ppux_ram_write(VRAM, 1, 0x9000, sprites, 0x2000);
+    ppux_vram_write(1, 0x9000, sprites, 0x2000);
 
     last_shield = curr_shield;
     last_sword = curr_sword;

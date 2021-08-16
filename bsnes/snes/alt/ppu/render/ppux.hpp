@@ -19,6 +19,8 @@ std::vector<ppux_draw_layer> ppux_draw_lists;
 inline uint16 get_palette_space(uint8 space, uint8 index);
 uint8* get_vram_space(uint8 space);
 uint8* get_cgram_space(uint8 space);
+uint8* get_oam_space(uint8 space);
+
 void   ppux_render_frame_pre();
 void   ppux_render_line_pre();
 void   ppux_render_line_post();

@@ -44,9 +44,15 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(ppux_vram_reset);
   link(ppux_cgram_reset);
   link(ppux_draw_list_reset);
-  link(ppux_ram_read);
-  link(ppux_ram_write);
   link(ppux_draw_list_append);
+
+  link(ppux_vram_write);
+  link(ppux_cgram_write);
+  link(ppux_oam_write);
+
+  link(ppux_vram_read);
+  link(ppux_cgram_read);
+  link(ppux_oam_read);
 
 #undef link
 }
@@ -125,11 +131,10 @@ wasm_binding(ppux_cgram_reset, "v()") {
   m3ApiSuccess();
 }
 
-//int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
-wasm_binding(ppux_ram_write, "i(iii*i)") {
+//int32_t ppux_vram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+wasm_binding(ppux_vram_write, "i(ii*i)") {
   m3ApiReturnType(int32_t);
 
-  m3ApiGetArg   (ppux_memory_type,  i_memory);
   m3ApiGetArg   (uint32_t,          i_space);
   m3ApiGetArg   (uint32_t,          i_offset);
   m3ApiGetArgMem(uint8_t*,          i_data);
@@ -137,23 +142,16 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
 
   m3ApiCheckMem(i_data, i_size);
 
-  if (i_space >= SNES::PPU::extra_spaces) {
+  // 0 = local, 1..255 = extra
+  if (i_space > SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
     m3ApiReturn(-2);
   }
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  if (i_memory == ppux_memory_type::VRAM) {
-    t = SNES::ppu.get_vram_space(i_space);
-    maxSize = 0x10000;
-  } else if (i_memory == ppux_memory_type::CGRAM) {
-    t = SNES::ppu.get_cgram_space(i_space);
-    maxSize = 0x200;
-  } else {
-    //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
-    m3ApiReturn(-1);
-  }
+  t = SNES::ppu.get_vram_space(i_space);
+  maxSize = 0x10000;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
     m3ApiReturn(-1);
@@ -178,11 +176,100 @@ wasm_binding(ppux_ram_write, "i(iii*i)") {
   m3ApiReturn(0);
 }
 
-//int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
-wasm_binding(ppux_ram_read, "i(iii*i)") {
+//int32_t ppux_cgram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+wasm_binding(ppux_cgram_write, "i(ii*i)") {
   m3ApiReturnType(int32_t);
 
-  m3ApiGetArg   (ppux_memory_type,  i_memory);
+  m3ApiGetArg   (uint32_t,          i_space);
+  m3ApiGetArg   (uint32_t,          i_offset);
+  m3ApiGetArgMem(uint8_t*,          i_data);
+  m3ApiGetArg   (uint32_t,          i_size);
+
+  m3ApiCheckMem(i_data, i_size);
+
+  // 0 = local, 1..255 = extra
+  if (i_space > SNES::PPU::extra_spaces) {
+    //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+    m3ApiReturn(-2);
+  }
+
+  unsigned maxSize = 0;
+  uint8_t *t = nullptr;
+  t = SNES::ppu.get_cgram_space(i_space);
+  maxSize = 0x200;
+  if (!t) {
+    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    m3ApiReturn(-1);
+  }
+
+  if (i_offset >= maxSize) {
+    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
+    m3ApiReturn(-3);
+  }
+  if (i_offset & 1) {
+    //return makeErrorReply("offset must be multiple of 2");
+    m3ApiReturn(-4);
+  }
+
+  if (i_offset + i_size > maxSize) {
+    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
+    m3ApiReturn(-5);
+  }
+
+  memcpy(t + i_offset, i_data, i_size);
+
+  m3ApiReturn(0);
+}
+
+//int32_t ppux_oam_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
+wasm_binding(ppux_oam_write, "i(ii*i)") {
+  m3ApiReturnType(int32_t);
+
+  m3ApiGetArg   (uint32_t,          i_space);
+  m3ApiGetArg   (uint32_t,          i_offset);
+  m3ApiGetArgMem(uint8_t*,          i_data);
+  m3ApiGetArg   (uint32_t,          i_size);
+
+  m3ApiCheckMem(i_data, i_size);
+
+  // 0 = local, 1..255 = extra
+  if (i_space > SNES::PPU::extra_spaces) {
+    //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+    m3ApiReturn(-2);
+  }
+
+  unsigned maxSize = 0;
+  uint8_t *t = nullptr;
+  t = SNES::ppu.get_oam_space(i_space);
+  maxSize = 0x220;
+  if (!t) {
+    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    m3ApiReturn(-1);
+  }
+
+  if (i_offset >= maxSize) {
+    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
+    m3ApiReturn(-3);
+  }
+  if (i_offset & 1) {
+    //return makeErrorReply("offset must be multiple of 2");
+    m3ApiReturn(-4);
+  }
+
+  if (i_offset + i_size > maxSize) {
+    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
+    m3ApiReturn(-5);
+  }
+
+  memcpy(t + i_offset, i_data, i_size);
+
+  m3ApiReturn(0);
+}
+
+//int32_t ppux_vram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
+wasm_binding(ppux_vram_read, "i(ii*i)") {
+  m3ApiReturnType(int32_t);
+
   m3ApiGetArg   (uint32_t,          i_space);
   m3ApiGetArg   (uint32_t,          i_offset);
   m3ApiGetArgMem(uint8_t*,          o_data);
@@ -190,23 +277,106 @@ wasm_binding(ppux_ram_read, "i(iii*i)") {
 
   m3ApiCheckMem(o_data, i_size);
 
-  if (i_space >= SNES::PPU::extra_spaces) {
+  // 0 = local, 1..255 = extra
+  if (i_space > SNES::PPU::extra_spaces) {
     //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
     m3ApiReturn(-2);
   }
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  if (i_memory == ppux_memory_type::VRAM) {
-    t = SNES::ppu.get_vram_space(i_space);
-    maxSize = 0x10000;
-  } else if (i_memory == ppux_memory_type::CGRAM) {
-    t = SNES::ppu.get_cgram_space(i_space);
-    maxSize = 0x200;
-  } else {
-    //return makeErrorReply(QString("unknown memory type '%1' expected 'VRAM' or 'CGRAM'").arg(memory));
+  t = SNES::ppu.get_vram_space(i_space);
+  maxSize = 0x10000;
+  if (!t) {
+    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
     m3ApiReturn(-1);
   }
+
+  if (i_offset >= maxSize) {
+    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
+    m3ApiReturn(-3);
+  }
+  if (i_offset & 1) {
+    //return makeErrorReply("offset must be multiple of 2");
+    m3ApiReturn(-4);
+  }
+
+  if (i_offset + i_size > maxSize) {
+    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
+    m3ApiReturn(-5);
+  }
+
+  memcpy(o_data, t + i_offset, i_size);
+
+  m3ApiReturn(0);
+}
+
+//int32_t ppux_cgram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
+wasm_binding(ppux_cgram_read, "i(ii*i)") {
+  m3ApiReturnType(int32_t);
+
+  m3ApiGetArg   (uint32_t,          i_space);
+  m3ApiGetArg   (uint32_t,          i_offset);
+  m3ApiGetArgMem(uint8_t*,          o_data);
+  m3ApiGetArg   (uint32_t,          i_size);
+
+  m3ApiCheckMem(o_data, i_size);
+
+  // 0 = local, 1..255 = extra
+  if (i_space > SNES::PPU::extra_spaces) {
+    //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+    m3ApiReturn(-2);
+  }
+
+  unsigned maxSize = 0;
+  uint8_t *t = nullptr;
+  t = SNES::ppu.get_cgram_space(i_space);
+  maxSize = 0x200;
+  if (!t) {
+    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    m3ApiReturn(-1);
+  }
+
+  if (i_offset >= maxSize) {
+    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
+    m3ApiReturn(-3);
+  }
+  if (i_offset & 1) {
+    //return makeErrorReply("offset must be multiple of 2");
+    m3ApiReturn(-4);
+  }
+
+  if (i_offset + i_size > maxSize) {
+    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
+    m3ApiReturn(-5);
+  }
+
+  memcpy(o_data, t + i_offset, i_size);
+
+  m3ApiReturn(0);
+}
+
+//int32_t ppux_oam_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
+wasm_binding(ppux_oam_read, "i(ii*i)") {
+  m3ApiReturnType(int32_t);
+
+  m3ApiGetArg   (uint32_t,          i_space);
+  m3ApiGetArg   (uint32_t,          i_offset);
+  m3ApiGetArgMem(uint8_t*,          o_data);
+  m3ApiGetArg   (uint32_t,          i_size);
+
+  m3ApiCheckMem(o_data, i_size);
+
+  // 0 = local, 1..255 = extra
+  if (i_space > SNES::PPU::extra_spaces) {
+    //return makeErrorReply(QString("space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
+    m3ApiReturn(-2);
+  }
+
+  unsigned maxSize = 0;
+  uint8_t *t = nullptr;
+  t = SNES::ppu.get_oam_space(i_space);
+  maxSize = 0x220;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
     m3ApiReturn(-1);

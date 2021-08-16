@@ -36,6 +36,16 @@ uint8* PPU::get_cgram_space(uint8 space) {
   }
 }
 
+uint8* PPU::get_oam_space(uint8 space) {
+  if (space == 0) {
+    return memory::oam.data();
+  } else {
+    // NOTE: this method is just here for consistency with VRAM/CGRAM. no plans to support extra OAM since
+    // the draw_list API takes care of drawing extra tiles for us.
+    return nullptr;
+  }
+}
+
 void PPU::ppux_draw_list_reset() {
   ppux_draw_lists.clear();
 }

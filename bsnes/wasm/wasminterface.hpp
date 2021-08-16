@@ -41,9 +41,15 @@ public:
   decl_binding(ppux_vram_reset);
   decl_binding(ppux_cgram_reset);
   decl_binding(ppux_draw_list_reset);
-  decl_binding(ppux_ram_write);
-  decl_binding(ppux_ram_read);
   decl_binding(ppux_draw_list_append);
+
+  decl_binding(ppux_vram_write);
+  decl_binding(ppux_cgram_write);
+  decl_binding(ppux_oam_write);
+
+  decl_binding(ppux_vram_read);
+  decl_binding(ppux_cgram_read);
+  decl_binding(ppux_oam_read);
 
 #undef decl_binding
 
