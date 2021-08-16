@@ -50,9 +50,8 @@ protected:
     QByteArray cmdWasmMsgEnqueue(QByteArray args, QByteArray data);
 
     QByteArray cmdPpuxReset(QByteArray args);
-    QByteArray cmdPpuxSpriteReset(QByteArray args);
-    QByteArray cmdPpuxSpriteWrite(QByteArray args);
-    QByteArray cmdPpuxSpriteRead(QByteArray args);
+    QByteArray cmdPpuxVramReset(QByteArray args);
+    QByteArray cmdPpuxCgramReset(QByteArray args);
     QByteArray cmdPpuxRamWrite(QByteArray args, QByteArray data);
     QByteArray cmdPpuxRamRead(QByteArray args);
     QByteArray cmdPpuxFontUpload(QByteArray args, QByteArray data);

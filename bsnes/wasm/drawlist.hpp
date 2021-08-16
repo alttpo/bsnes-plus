@@ -23,9 +23,9 @@ struct Target {
 
   unsigned width;
   unsigned height;
-  const std::function<void(int x, int y, uint16_t color)>& px;
-  const std::function<uint8_t*(int space)>& get_vram_space;
-  const std::function<uint8_t*(int space)>& get_cgram_space;
+  const std::function<void(int x, int y, uint16_t color)> px;
+  const std::function<uint8_t*(int space)> get_vram_space;
+  const std::function<uint8_t*(int space)> get_cgram_space;
 };
 
 struct Context {

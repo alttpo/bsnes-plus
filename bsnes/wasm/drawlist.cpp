@@ -133,7 +133,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
         x0 = (int16_t)*d++;
         y0 = (int16_t)*d++;
 
-        uint16_t textlen = (len - 5) << 1;
+        uint16_t textlen = (len - 6) << 1;
 
         if (outlinecolor < 0x8000) {
           font.draw_text_utf8((uint8_t*)d, textlen, x0, y0, [=](int rx, int ry) {
@@ -176,12 +176,15 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
         unsigned sy = y0;
         for (unsigned ty = 0; ty < height; ty++, sy++) {
           sy &= 255;
+          if (sy < 0) continue;
+          if (sy >= 256) continue;
 
           unsigned sx = x0;
           unsigned y = (vflip == false) ? (ty) : (height-1 - ty);
 
           for(unsigned tx = 0; tx < width; tx++, sx++) {
             sx &= 511;
+            if(sx < 0) continue;
             if(sx >= 256) continue;
 
             unsigned x = ((hflip == false) ? tx : (width-1 - tx));
@@ -250,7 +253,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
             // look up color in cgram:
             uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
 
-            m_target.px(sx, sy, bgr);
+            draw_pixel(sx, sy, bgr);
           }
         }
 

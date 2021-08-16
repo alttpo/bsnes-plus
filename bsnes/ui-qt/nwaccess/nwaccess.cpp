@@ -238,13 +238,13 @@ void NWAccess::clientDataReady()
             {
                 socket->write(cmdPpuxReset(args));
             }
-            else if (cmd == "PPUX_SPR_RESET")
+            else if (cmd == "PPUX_VRAM_RESET")
             {
-                socket->write(cmdPpuxSpriteReset(args));
+                socket->write(cmdPpuxVramReset(args));
             }
-            else if (cmd == "PPUX_SPR_WRITE")
+            else if (cmd == "PPUX_CGRAM_RESET")
             {
-                socket->write(cmdPpuxSpriteWrite(args));
+                socket->write(cmdPpuxCgramReset(args));
             }
             else if (cmd == "PPUX_RAM_READ")
             {

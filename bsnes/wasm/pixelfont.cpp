@@ -84,11 +84,11 @@ uint32_t Font::find_glyph(uint32_t codePoint) const {
   auto it = std::lower_bound(
     m_index.begin(),
     m_index.end(),
-    Index(codePoint),
-    [](const Index& first, const Index& last) {
-      return first.m_maxCodePoint < last.m_maxCodePoint;
+    codePoint,
+    [](const Index& first, uint32_t value) {
+      return first.m_maxCodePoint < value;
     }
-    );
+  );
   if (it == m_index.end()) {
     return UINT32_MAX;
   }

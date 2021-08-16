@@ -41,12 +41,11 @@ void WASMInterface::link_module(const std::shared_ptr<WASM::Module>& module) {
   link(snes_bus_write);
 
   link(ppux_reset);
-  link(ppux_sprite_reset);
-  link(ppux_sprite_read);
-  link(ppux_sprite_write);
+  link(ppux_vram_reset);
+  link(ppux_cgram_reset);
+  link(ppux_draw_list_reset);
   link(ppux_ram_read);
   link(ppux_ram_write);
-  link(ppux_draw_list_clear);
   link(ppux_draw_list_append);
 
 #undef link
@@ -115,101 +114,15 @@ wasm_binding(ppux_reset, "v()") {
 }
 
 //void ppux_sprite_reset();
-wasm_binding(ppux_sprite_reset, "v()") {
-  SNES::ppu.ppux_sprite_reset();
+wasm_binding(ppux_vram_reset, "v()") {
+  SNES::ppu.ppux_vram_reset();
   m3ApiSuccess();
 }
 
-//int32_t ppux_sprite_read(uint32_t i_index, struct ppux_sprite *o_spr);
-wasm_binding(ppux_sprite_read, "i(i*)") {
-  m3ApiReturnType(int32_t);
-
-  m3ApiGetArg   (uint32_t,             i_index);
-  m3ApiGetArgMem(struct ppux_sprite *, o_spr);
-
-  m3ApiCheckMem(o_spr, sizeof(struct ppux_sprite));
-
-  if (i_index >= SNES::PPU::extra_count) {
-    m3ApiReturn(-1);
-  }
-
-  if (!o_spr) {
-    m3ApiReturn(-2);
-  }
-
-  auto &t = SNES::ppu.extra_list[i_index];
-
-  o_spr->enabled = t.enabled;
-
-  o_spr->x = t.x;
-  o_spr->y = t.y;
-  o_spr->hflip = t.hflip;
-  o_spr->vflip = t.vflip;
-
-  o_spr->vram_space = t.vram_space;
-  o_spr->vram_addr = t.vram_addr;
-  o_spr->cgram_space = t.cgram_space;
-  o_spr->palette = t.palette;
-
-  o_spr->layer = t.layer;
-  o_spr->priority = t.priority;
-  o_spr->color_exemption = t.color_exemption;
-
-  o_spr->bpp = t.bpp;
-  o_spr->width = t.width;
-  o_spr->height = t.height;
-
-  m3ApiReturn(0);
-}
-
-//int32_t ppux_sprite_write(uint32_t i_index, struct ppux_sprite *i_spr);
-wasm_binding(ppux_sprite_write, "i(i*)") {
-  m3ApiReturnType(int32_t);
-
-  m3ApiGetArg(uint32_t, i_index);
-  m3ApiGetArgMem(struct ppux_sprite *, i_spr);
-
-  m3ApiCheckMem(i_spr, sizeof(struct ppux_sprite));
-
-  if (i_index >= SNES::PPU::extra_count) {
-    m3ApiReturn(-1);
-  }
-
-  if (!i_spr) {
-    m3ApiReturn(-2);
-  }
-
-  if (i_spr->vram_space >= SNES::PPU::extra_spaces) {
-    m3ApiReturn(-3);
-  }
-
-  if (i_spr->cgram_space >= SNES::PPU::extra_spaces) {
-    m3ApiReturn(-4);
-  }
-
-  auto &t = SNES::ppu.extra_list[i_index];
-
-  t.enabled = i_spr->enabled;
-
-  t.x = i_spr->x;
-  t.y = i_spr->y;
-  t.hflip = i_spr->hflip;
-  t.vflip = i_spr->vflip;
-
-  t.vram_space = i_spr->vram_space;
-  t.vram_addr = i_spr->vram_addr;
-  t.cgram_space = i_spr->cgram_space;
-  t.palette = i_spr->palette;
-
-  t.layer = i_spr->layer;
-  t.priority = i_spr->priority;
-  t.color_exemption = i_spr->color_exemption;
-
-  t.bpp = i_spr->bpp;
-  t.width = i_spr->width;
-  t.height = i_spr->height;
-
-  m3ApiReturn(0);
+//void ppux_sprite_reset();
+wasm_binding(ppux_cgram_reset, "v()") {
+  SNES::ppu.ppux_cgram_reset();
+  m3ApiSuccess();
 }
 
 //int32_t ppux_ram_write(enum ppux_memory_type i_memory, uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
@@ -351,8 +264,8 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   m3ApiSuccess();
 }
 
-wasm_binding(ppux_draw_list_clear, "v()") {
-  SNES::ppu.ppux_draw_lists.clear();
+wasm_binding(ppux_draw_list_reset, "v()") {
+  SNES::ppu.ppux_draw_list_reset();
 
   m3ApiSuccess();
 }

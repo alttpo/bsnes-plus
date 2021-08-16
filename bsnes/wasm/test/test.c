@@ -91,9 +91,7 @@ void on_msg_recv() {
 }
 
 void draw_message() {
-  uint32_t spr_index = 1024 - 32;
-  struct ppux_sprite spr;
-
+#if 0
   spr.enabled = 1;
   spr.vram_space = 0;
   spr.cgram_space = 0;
@@ -149,6 +147,7 @@ void draw_message() {
     spr.enabled = 0;
     ppux_sprite_write(spr_index, &spr);
   }
+#endif
 }
 
 uint32_t get_graphics_addr(uint8_t index) {
@@ -278,8 +277,6 @@ uint16_t expand3to4bpp(uint8_t *src, uint8_t *dest, uint16_t count, uint16_t x, 
 }
 
 void decompress_sprites() {
-  struct ppux_sprite spr;
-
   memset(sprites, 0, 0x2000);
 
   // copy link 4bpp body sprites:
@@ -310,19 +307,6 @@ void decompress_sprites() {
   addr = get_graphics_addr(0x00);
   snes_bus_read(addr, buf, 0x1000);
 
-  // draw our 3bpp sprites:
-  spr.enabled = 1;
-  spr.cgram_space = 0;
-  spr.palette = 0xC0;
-  spr.bpp = 4;
-  spr.height = 8;
-  spr.color_exemption = 0;
-  spr.hflip = 0;
-  spr.vflip = 0;
-  spr.layer = 4;
-  spr.priority = 6;
-  spr.vram_space = 1;
-
   uint16_t t0C = 0;
 
   uint32_t x = 0x0480;
@@ -332,54 +316,27 @@ void decompress_sprites() {
 
   // ice/fire rod:
   y = 0x7;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(512, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(buf, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(513, &spr);
   xx += y*8;
   x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
   // hammer:
   y = 0x7;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(514, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(buf, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(515, &spr);
   xx += y*8;
   x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
   // bow:
   y = 0x3;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(516, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(buf, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(517, &spr);
   xx += y*8;
   x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
   t0C += 2;
@@ -388,54 +345,27 @@ void decompress_sprites() {
 
   // shovel:
   y = 0x4;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(518, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(519, &spr);
   xx += y*8;
   x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
   // Zzz and music notes:
   y = 0x3;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(520, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(521, &spr);
   xx += y*8;
   x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
   // dash dust:
   y = 0x1;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(522, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(523, &spr);
   xx += y*8;
   x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
   t0C += 2;
@@ -444,18 +374,9 @@ void decompress_sprites() {
 
   // hookshot:
   y = 0x4;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 64;
-  ppux_sprite_write(524, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(buf, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 64+8;
-  ppux_sprite_write(525, &spr);
   xx += y*8;
   x = expand3to4bpp(buf, sprites, y, x, s00 + 0x180);
   t0C += 2;
@@ -470,59 +391,31 @@ void decompress_sprites() {
   // bug net:
   xx = 0;
   y = 0xE;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 80;
-  ppux_sprite_write(526, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(pak60, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 80+8;
-  ppux_sprite_write(527, &spr);
   xx += y*8;
   x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
   // cane:
   y = 0x7;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 80;
-  ppux_sprite_write(528, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(pak60, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 80+8;
-  ppux_sprite_write(529, &spr);
   xx += y*8;
   x = expand3to4bpp(pak60, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
   // book opened:
   y = 0x2;
-  spr.vram_addr = 0x9000 + x;
-  spr.width = y * 0x08;
-  spr.x = 16+xx;
-  spr.y = 80;
-  ppux_sprite_write(530, &spr);
   s00 = bus_read_u16(0x00D21D + t0C);
   x = expand3to4bpp(pak5f, sprites, y, x, s00);
 
-  spr.vram_addr = 0x9000 + x;
-  spr.x = 16+xx;
-  spr.y = 80+8;
-  ppux_sprite_write(531, &spr);
   xx += y*8;
   x = expand3to4bpp(pak5f, sprites, y, x, s00 + 0x180);
   t0C += 2;
 
-  ppux_sprite_reset();
   //hexdump(sprites, 0x2000);
 }
 
@@ -624,7 +517,7 @@ void on_frame_present() {
     }
   }
 
-  ppux_draw_list_clear();
+  ppux_draw_list_reset();
   ppux_draw_list_append(0 | 0x80, 9 | 0x80, sizeof(cmd), cmd);
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
@@ -687,6 +580,11 @@ void on_frame_present() {
 
     ppux_draw_list_append(4, priority, sizeof(dl), dl);
   }
+
+  if (msgs != last_msgs) {
+    draw_message();
+    last_msgs = msgs;
+  }
 }
 
 // called on NMI:
@@ -696,8 +594,6 @@ void on_nmi() {
 
   if (!copied) {
     copied = 1;
-    ppux_sprite_reset();
-
     decompress_sprites();
   }
 
@@ -739,11 +635,6 @@ void on_nmi() {
 
     last_shield = curr_shield;
     last_sword = curr_sword;
-  }
-
-  if (msgs != last_msgs) {
-    draw_message();
-    last_msgs = msgs;
   }
 
   link_oam_start = bus_read_u16(0x7E0352);

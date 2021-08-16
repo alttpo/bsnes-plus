@@ -38,12 +38,11 @@ public:
   decl_binding(snes_bus_write);
 
   decl_binding(ppux_reset);
-  decl_binding(ppux_sprite_reset);
-  decl_binding(ppux_sprite_read);
-  decl_binding(ppux_sprite_write);
+  decl_binding(ppux_vram_reset);
+  decl_binding(ppux_cgram_reset);
+  decl_binding(ppux_draw_list_reset);
   decl_binding(ppux_ram_write);
   decl_binding(ppux_ram_read);
-  decl_binding(ppux_draw_list_clear);
   decl_binding(ppux_draw_list_append);
 
 #undef decl_binding

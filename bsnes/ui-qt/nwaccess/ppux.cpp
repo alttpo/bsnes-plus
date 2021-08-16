@@ -5,146 +5,16 @@ QByteArray NWAccess::cmdPpuxReset(QByteArray args)
   return makeOkReply();
 }
 
-QByteArray NWAccess::cmdPpuxSpriteReset(QByteArray args)
+QByteArray NWAccess::cmdPpuxVramReset(QByteArray args)
 {
-  SNES::ppu.ppux_sprite_reset();
+  SNES::ppu.ppux_vram_reset();
   return makeOkReply();
 }
 
-QByteArray NWAccess::cmdPpuxSpriteWrite(QByteArray args)
+QByteArray NWAccess::cmdPpuxCgramReset(QByteArray args)
 {
-  QStringList sprs = QString::fromUtf8(args).split('|');
-
-  QString reply;
-  while (!sprs.isEmpty()) {
-    QStringList sargs = sprs.takeFirst().split(';');
-    if (sargs.isEmpty()) continue;
-
-    QString arg = sargs.takeFirst();
-    auto index = toInt(arg);
-    if (index < 0 || index >= SNES::PPU::extra_count)
-      return makeErrorReply(QString("index must be 0..%1").arg(SNES::PPU::extra_count-1));
-
-    if (!reply.isEmpty()) reply.append("\n");
-    reply += QString("index:%1").arg(index);
-
-    auto t = &SNES::ppu.extra_list[index];
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //bool   enabled;
-      t->enabled = toInt(arg);
-    }
-    reply += QString("\nenabled:%1").arg(t->enabled);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //uint16 x;
-      t->x = toInt(arg);
-    }
-    reply += QString("\nx:%1").arg(t->x);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //uint16 y;
-      t->y = toInt(arg);
-    }
-    reply += QString("\ny:%1").arg(t->y);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //bool   hflip;
-      t->hflip = toInt(arg);
-    }
-    reply += QString("\nhflip:%1").arg(t->hflip);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //bool   vflip;
-      t->vflip = toInt(arg);
-    }
-    reply += QString("\nvflip:%1").arg(t->vflip);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      uint8_t vram_space;
-      vram_space = toInt(arg);
-      if (vram_space < 0 || vram_space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("vram_space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
-      t->vram_space = vram_space;
-    }
-    reply += QString("\nvram_space:%1").arg(t->vram_space);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //uint16 vram_addr;
-      t->vram_addr = toInt(arg);
-    }
-    reply += QString("\nvram_addr:%1").arg(t->vram_addr);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      uint8_t cgram_space;
-      cgram_space = toInt(arg);
-      if (cgram_space < 0 || cgram_space >= SNES::PPU::extra_spaces) return makeErrorReply(QString("cgram_space must be 0..%1").arg(SNES::PPU::extra_spaces-1));
-      t->cgram_space = cgram_space;
-    }
-    reply += QString("\ncgram_space:%1").arg(t->cgram_space);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //uint8 palette;
-      t->palette = toInt(arg);
-    }
-    reply += QString("\npalette:%1").arg(t->palette);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      uint8_t  layer;    // 0..4;  BG1 = 0, BG2 = 1, BG3 = 2, BG4 = 3, OAM = 4
-      layer = toInt(arg);
-      t->layer = layer;
-    }
-    reply += QString("\nlayer:%1").arg(t->layer);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      uint8_t  priority; // 1..12
-      priority = toInt(arg);
-      t->priority = priority;
-    }
-    reply += QString("\npriority:%1").arg(t->priority);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //bool   color_exemption;
-      t->color_exemption = toInt(arg);
-    }
-    reply += QString("\ncolor_exemption:%1").arg(t->color_exemption);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      uint8_t  bpp;
-      bpp = toInt(arg);
-      if (bpp != 2 && bpp != 4 && bpp != 8) return makeErrorReply("bpp can only be one of [2, 4, 8]");
-      t->bpp = bpp;
-    }
-    reply += QString("\nbpp:%1").arg(t->bpp);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //uint16 width;
-      t->width = toInt(arg);
-    }
-    reply += QString("\nwidth:%1").arg(t->width);
-
-    arg = sargs.isEmpty() ? QString() : sargs.takeFirst();
-    if (!arg.isEmpty()) {
-      //uint16 height;
-      t->height = toInt(arg);
-    }
-    reply += QString("\nheight:%1").arg(t->height);
-  }
-
-  return makeHashReply(reply);
+  SNES::ppu.ppux_cgram_reset();
+  return makeOkReply();
 }
 
 QByteArray NWAccess::cmdPpuxRamWrite(QByteArray args, QByteArray data)
