@@ -16,14 +16,31 @@ void hexdump(const uint8_t *i_data, uint32_t i_size);
 
 // ppux:
 
+enum draw_color_kind {
+  COLOR_STROKE,
+  COLOR_FILL,
+  COLOR_OUTLINE,
+
+  COLOR_MAX
+};
+
+const uint16_t color_none = 0x8000;
+
 enum draw_cmd {
-  CMD_PIXEL,
+  // commands which ignore color state:
+  CMD_VRAM_TILE,
   CMD_IMAGE,
+  // commands which affect color state:
+  CMD_SET_COLOR,
+  CMD_SET_COLOR_PAL,
+  // commands which read color state:
+  CMD_TEXT_UTF8,
+  CMD_PIXEL,
   CMD_HLINE,
   CMD_VLINE,
+  CMD_LINE,
   CMD_RECT,
-  CMD_TEXT_UTF8,
-  CMD_VRAM_TILE
+  CMD_RECT_FILL
 };
 
 __attribute__((import_module("env"), import_name("ppux_reset")))

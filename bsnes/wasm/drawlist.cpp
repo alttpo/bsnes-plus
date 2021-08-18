@@ -1,6 +1,8 @@
 
 namespace DrawList {
 
+inline bool is_color_visible(uint16_t c) { return c < 0x8000; }
+
 Target::Target(
   unsigned p_width,
   unsigned p_height,
@@ -21,6 +23,70 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
   uint32_t  end = cmdlist.size()>>1;
   uint16_t* p = start;
 
+  uint16_t colorstate[COLOR_MAX] = { 0x7fff, };
+  uint16_t& stroke_color  = colorstate[COLOR_STROKE];
+  uint16_t& fill_color    = colorstate[COLOR_FILL];
+  uint16_t& outline_color = colorstate[COLOR_OUTLINE];
+
+  stroke_color = 0x7fff;
+  fill_color = color_none;
+  outline_color = color_none;
+
+  auto draw_outlined_stroked = [&](const std::function<void(const plot& px)>& draw) {
+    if (!is_color_visible(stroke_color) && !is_color_visible(outline_color)) {
+      return;
+    }
+
+    // record all stroked points from the shape:
+    std::set<int> stroked;
+    draw([&](int x, int y) {
+      if (y < 0) return;
+      if (y >= m_target.height) return;
+      if (x < 0) return;
+      if (x >= m_target.width) return;
+
+      stroked.emplace(y*1024+x);
+    });
+
+    // now outline all stroked points without overdraw:
+    for (auto it = stroked.begin(); it != stroked.end(); it++) {
+      int y = *it / 1024;
+      int x = *it & 1023;
+      if (is_color_visible(stroke_color)) {
+        m_target.px(x, y, stroke_color);
+      }
+
+      if (is_color_visible(outline_color)) {
+        if (stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
+          m_target.px(x-1, y-1, outline_color);
+        }
+        if (stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
+          m_target.px(x+0, y-1, outline_color);
+        }
+        if (stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
+          m_target.px(x+1, y-1, outline_color);
+        }
+
+        if (stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
+          m_target.px(x-1, y+0, outline_color);
+        }
+        if (stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
+          m_target.px(x+1, y+0, outline_color);
+        }
+
+        if (stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
+          m_target.px(x-1, y+1, outline_color);
+        }
+        if (stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
+          m_target.px(x+0, y+1, outline_color);
+        }
+        if (stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
+          m_target.px(x+1, y+1, outline_color);
+        }
+      }
+    }
+  };
+
   while ((p - start) < end) {
     // every command starts with the number of 16-bit words in length, including command, arguments, and inline data:
     uint16_t len = *p++;
@@ -29,128 +95,9 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
 
     uint16_t cmd = *d++;
 
-    uint16_t color, fillcolor, outlinecolor;
     int16_t  x0, y0, w, h;
+    int16_t  x1, y1;
     switch (cmd) {
-      case CMD_PIXEL:
-        color = *d++;
-        if (color >= 0x8000) {
-          break;
-        }
-
-        x0 = *d++;
-        y0 = *d++;
-
-        draw_pixel(x0, y0, color);
-        break;
-      case CMD_IMAGE:
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
-        h  = (int16_t)*d++;
-        for (int16_t y = y0; y < y0+h; y++) {
-          if (y < 0) continue;
-          if (y >= m_target.height) break;
-
-          for (int16_t x = x0; x < x0+w; x++) {
-            if (x < 0) continue;
-            if (x >= m_target.width) break;
-
-            color = *d++;
-            if (color >= 0x8000) continue;
-
-            draw_pixel(x, y, color);
-          }
-        }
-        break;
-      case CMD_HLINE:
-        color = *d++;
-        if (color >= 0x8000) {
-          break;
-        }
-
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
-
-        draw_hline(x0, y0, w, color);
-        break;
-      case CMD_VLINE:
-        color = *d++;
-        if (color >= 0x8000) {
-          break;
-        }
-
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        h  = (int16_t)*d++;
-
-        draw_vline(x0, y0, h, color);
-        break;
-      case CMD_RECT:
-        color = *d++;
-        fillcolor = *d++;
-
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
-        h  = (int16_t)*d++;
-
-        if (fillcolor < 0x8000) {
-          for (int16_t y = y0; y < y0+h; y++) {
-            if (y < 0) continue;
-            if (y >= m_target.height) break;
-
-            for (int16_t x = x0; x < x0+w; x++) {
-              if (x < 0) continue;
-              if (x >= m_target.width) break;
-
-              m_target.px(x, y, fillcolor);
-            }
-          }
-        }
-        if (color < 0x8000) {
-          draw_hline(x0, y0, w, color);
-          draw_hline(x0, y0+h-1, w, color);
-          draw_vline(x0, y0, h, color);
-          draw_vline(x0+w-1, y0, h, color);
-        }
-        break;
-      case CMD_TEXT_UTF8: {
-        // stroke color:
-        color = *d++;
-        // 1px outline color:
-        outlinecolor = *d++;
-
-        // select font:
-        uint16_t fontindex = *d++;
-        if (fontindex >= fonts.size()) {
-          break;
-        }
-
-        const auto& font = *fonts[fontindex];
-
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-
-        uint16_t textlen = (len - 6) << 1;
-
-        if (outlinecolor < 0x8000) {
-          font.draw_text_utf8((uint8_t*)d, textlen, x0, y0, [=](int rx, int ry) {
-            draw_hline(rx-1, ry-1, 3, outlinecolor);
-            draw_pixel(rx-1, ry, outlinecolor);
-            draw_pixel(rx+1, ry, outlinecolor);
-            draw_hline(rx-1, ry+1, 3, outlinecolor);
-          });
-        }
-        if (color < 0x8000) {
-          font.draw_text_utf8((uint8_t*)d, textlen, x0, y0, [=](int rx, int ry) {
-            draw_pixel(rx, ry, color);
-          });
-        }
-
-        break;
-      }
       case CMD_VRAM_TILE: {
         x0 = (int16_t)*d++;
         y0 = (int16_t)*d++;
@@ -256,6 +203,144 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<s
 
         break;
       }
+      case CMD_IMAGE: {
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+        h  = (int16_t)*d++;
+        for (int16_t y = y0; y < y0+h; y++) {
+          if (y < 0) continue;
+          if (y >= m_target.height) break;
+
+          for (int16_t x = x0; x < x0+w; x++) {
+            if (x < 0) continue;
+            if (x >= m_target.width) break;
+
+            uint16_t c = *d++;
+            if (!is_color_visible(c)) continue;
+
+            m_target.px(x, y, c);
+          }
+        }
+        break;
+      }
+      case CMD_SET_COLOR: {
+        uint16_t index = *d++;
+        if (index >= COLOR_MAX) break;
+
+        colorstate[index] = *d++;
+
+        break;
+      }
+      case CMD_SET_COLOR_PAL: {
+        uint16_t index = *d++;
+        if (index >= COLOR_MAX) break;
+
+        uint16_t space = *d++;
+
+        uint8_t* cgram = m_target.get_cgram_space(space);
+        if(!cgram) break;
+
+        // read litle-endian 16-bit color from CGRAM:
+        unsigned addr = ((uint16_t)*d++) << 1;
+        colorstate[index] = cgram[addr] + (cgram[addr + 1] << 8);
+
+        break;
+      }
+      case CMD_TEXT_UTF8: {
+        // select font:
+        uint16_t fontindex = *d++;
+        if (fontindex >= fonts.size()) {
+          break;
+        }
+
+        const auto& font = *fonts[fontindex];
+
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        uint16_t textlen = *d++;
+
+        draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
+          font.draw_text_utf8((uint8_t*)d, textlen, x0, y0, px);
+        });
+
+        break;
+      }
+      case CMD_PIXEL: {
+        x0 = *d++;
+        y0 = *d++;
+
+        draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
+          px(x0, y0);
+        });
+        break;
+      }
+      case CMD_HLINE: {
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+
+        draw_outlined_stroked([=](const plot& px) {
+          draw_hline(x0, y0, w, px);
+        });
+        break;
+      }
+      case CMD_VLINE: {
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        h  = (int16_t)*d++;
+
+        draw_outlined_stroked([=](const plot& px) {
+          draw_vline(x0, y0, h, px);
+        });
+        break;
+      }
+      case CMD_LINE: {
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        x1 = (int16_t)*d++;
+        y1 = (int16_t)*d++;
+
+        draw_outlined_stroked([=](const plot& px) {
+          draw_line(x0, y0, x1, y1, px);
+        });
+        break;
+      }
+      case CMD_RECT: {
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+        h  = (int16_t)*d++;
+
+        draw_outlined_stroked([=](const plot& px) {
+          draw_hline(x0,     y0,     w,   px);
+          draw_hline(x0,     y0+h-1, w,   px);
+          draw_vline(x0,     y0+1,   h-2, px);
+          draw_vline(x0+w-1, y0+1,   h-2, px);
+        });
+        break;
+      }
+      case CMD_RECT_FILL: {
+        x0 = (int16_t)*d++;
+        y0 = (int16_t)*d++;
+        w  = (int16_t)*d++;
+        h  = (int16_t)*d++;
+
+        if (is_color_visible(fill_color)) {
+          for (int16_t y = y0; y < y0+h; y++) {
+            if (y < 0) continue;
+            if (y >= m_target.height) break;
+
+            for (int16_t x = x0; x < x0+w; x++) {
+              if (x < 0) continue;
+              if (x >= m_target.width) break;
+
+              m_target.px(x, y, fill_color);
+            }
+          }
+        }
+        break;
+      }
     }
 
     p += len;
@@ -271,7 +356,7 @@ inline void Context::draw_pixel(int x0, int y0, uint16_t color) {
   m_target.px(x0, y0, color);
 }
 
-inline void Context::draw_hline(int x0, int y0, int w, uint16_t color) {
+inline void Context::draw_hline(int x0, int y0, int w, const plot& px) {
   if (y0 < 0) return;
   if (y0 >= m_target.height) return;
 
@@ -279,11 +364,11 @@ inline void Context::draw_hline(int x0, int y0, int w, uint16_t color) {
     if (x < 0) continue;
     if (x >= m_target.width) return;
 
-    m_target.px(x, y0, color);
+    px(x, y0);
   }
 }
 
-inline void Context::draw_vline(int x0, int y0, int h, uint16_t color) {
+inline void Context::draw_vline(int x0, int y0, int h, const plot& px) {
   if (x0 < 0) return;
   if (x0 >= m_target.width) return;
 
@@ -291,8 +376,31 @@ inline void Context::draw_vline(int x0, int y0, int h, uint16_t color) {
     if (y < 0) continue;
     if (y >= m_target.height) break;
 
-    m_target.px(x0, y, color);
+    px(x0, y);
   }
 }
+
+inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
+  int m   = 2 * (y2 - y1);
+  int err = m - (x2 - x1);
+
+  int x = x1;
+  int y = y1;
+  for (; x <= x2; x++) {
+    if (x >= 0 && x < m_target.width &&
+        y >= 0 && y < m_target.height)
+    {
+      px(x, y);
+    }
+
+    err += m;
+
+    if (err >= 0) {
+      y++;
+      err  -= 2 * (x2 - x1);
+    }
+  }
+}
+
 
 }
