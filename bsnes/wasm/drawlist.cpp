@@ -469,23 +469,90 @@ inline void Context::draw_vline(int x0, int y0, int h, const plot& px) {
 }
 
 inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
-  int m   = 2 * (y2 - y1);
-  int err = m - (x2 - x1);
+  int x, y, dx, dy, dx1, dy1, mx, my, xe, ye, i;
 
-  int x = x1;
-  int y = y1;
-  for (; x <= x2; x++) {
-    if (x >= 0 && x < m_target.width &&
-        y >= 0 && y < m_target.height)
+  dx = x2 - x1;
+  dy = y2 - y1;
+  dx1 = fabs(dx);
+  dy1 = fabs(dy);
+  mx = 2 * dy1 - dx1;
+  my = 2 * dx1 - dy1;
+
+  if (dy1 <= dx1) {
+    if (dx >= 0) {
+      x = x1;
+      y = y1;
+      xe = x2;
+    } else {
+      x = x2;
+      y = y2;
+      xe = x1;
+    }
+
+    if ((x >= 0) &&
+        (y >= 0) &&
+        (x < m_target.width) &&
+        (y < m_target.height))
     {
       px(x, y);
     }
 
-    err += m;
+    for (i = 0; x < xe; i++) {
+      x = x + 1;
+      if (mx < 0) {
+        mx = mx + 2 * dy1;
+      } else {
+        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+          y = y + 1;
+        } else {
+          y = y - 1;
+        }
+        mx = mx + 2 * (dy1 - dx1);
+      }
 
-    if (err >= 0) {
-      y++;
-      err  -= 2 * (x2 - x1);
+      if (x < 0) continue;
+      if (y < 0) continue;
+      if (x >= m_target.width) break;
+      if (y >= m_target.height) break;
+      px(x, y);
+    }
+  } else {
+    if (dy >= 0) {
+      x = x1;
+      y = y1;
+      ye = y2;
+    } else {
+      x = x2;
+      y = y2;
+      ye = y1;
+    }
+
+    if ((x >= 0) &&
+        (y >= 0) &&
+        (x < m_target.width) &&
+        (y < m_target.height))
+    {
+      px(x, y);
+    }
+
+    for (i = 0; y < ye; i++) {
+      y = y + 1;
+      if (my <= 0) {
+        my = my + 2 * dx1;
+      } else {
+        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+          x = x + 1;
+        } else {
+          x = x - 1;
+        }
+        my = my + 2 * (dx1 - dy1);
+      }
+
+      if (x < 0) continue;
+      if (y < 0) continue;
+      if (x >= m_target.width) break;
+      if (y >= m_target.height) break;
+      px(x, y);
     }
   }
 }

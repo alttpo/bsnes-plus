@@ -495,21 +495,21 @@ __attribute__((export_name("on_frame_present")))
 void on_frame_present() {
   static uint16_t cmd[] = {
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
-    3, CMD_PIXEL, 18, 18,
-    9, CMD_IMAGE, 20, 20, 2, 2,
+    3, CMD_PIXEL, 18, 118,
+    9, CMD_IMAGE, 20, 120, 2, 2,
     0x001F, 0x03E0,
     0x7C00, 0x001F,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x7FFF,
-    4, CMD_HLINE, 24, 24, 16,
-    4, CMD_VLINE, 24, 24, 16,
+    4, CMD_HLINE, 24, 124, 16,
+    4, CMD_VLINE, 24, 124, 16,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x7C00,
-    5, CMD_RECT, 32, 32, 8, 8,
+    5, CMD_RECT, 32, 132, 8, 8,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_FILL, 0x001F,
-    5, CMD_RECT_FILL, 38, 38, 16, 16,
+    5, CMD_RECT_FILL, 38, 138, 16, 16,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x03E0,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_OUTLINE, 0x001F,
-    5, CMD_LINE, 40, 40, 220, 212,
-    9, CMD_TEXT_UTF8, 0, 0, 0,
+    5, CMD_LINE, 40, 140, 220, 202,
+    9, CMD_TEXT_UTF8, 0, 0,
        7, 0, 0, 0, 0,
   };
   #define cmd_len (sizeof(cmd) / sizeof(uint16_t))
@@ -526,8 +526,13 @@ void on_frame_present() {
     }
   }
 
+  cmd[cmd_len-10]++;
+  if (cmd[cmd_len-10] >= 240) {
+    cmd[cmd_len-10] = 0;
+  }
+
   ppux_draw_list_reset();
-  ppux_draw_list_append(2, 9 | 0x80, sizeof(cmd), cmd);
+  ppux_draw_list_append(2, 15 | 0x80, sizeof(cmd), cmd);
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
 
