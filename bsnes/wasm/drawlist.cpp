@@ -3,15 +3,24 @@ namespace DrawList {
 
 inline bool is_color_visible(uint16_t c) { return c < 0x8000; }
 
-Space::Space() {}
+LocalSpace::LocalSpace() {}
 
-uint8_t* Space::vram_data() { return vram; }
-const uint32_t Space::vram_size() const { return 0x10000; }
+uint8_t* LocalSpace::vram_data() { return SNES::memory::vram.data(); }
+const uint32_t LocalSpace::vram_size() const { return 0x10000; }
 
-uint8_t* Space::cgram_data() { return cgram; }
-const uint32_t Space::cgram_size() const { return 0x200; }
+uint8_t* LocalSpace::cgram_data() { return SNES::memory::cgram.data(); }
+const uint32_t LocalSpace::cgram_size() const { return 0x200; }
+
+ExtraSpace::ExtraSpace() {}
+
+uint8_t* ExtraSpace::vram_data() { return vram; }
+const uint32_t ExtraSpace::vram_size() const { return 0x10000; }
+
+uint8_t* ExtraSpace::cgram_data() { return cgram; }
+const uint32_t ExtraSpace::cgram_size() const { return 0x200; }
 
 SpaceContainer::SpaceContainer() {
+  m_localSpace.reset(new LocalSpace());
   m_spaces.resize(MaxCount);
 }
 
@@ -20,13 +29,17 @@ void SpaceContainer::reset() {
 }
 
 std::shared_ptr<Space> SpaceContainer::operator[](int index) {
-  if (index >= MaxCount) {
+  if (index > MaxCount) {
     throw std::out_of_range("index out of range");
   }
 
-  auto& space = m_spaces[index];
+  if (index == 0) {
+    return m_localSpace;
+  }
+
+  auto& space = m_spaces[index-1];
   if (!space) {
-    space.reset(new Space());
+    space.reset(new ExtraSpace());
   }
 
   return space;

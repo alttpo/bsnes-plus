@@ -50,7 +50,25 @@ private:
 };
 
 struct Space {
-  Space();
+  virtual uint8_t* vram_data() = 0;
+  virtual const uint32_t vram_size() const = 0;
+
+  virtual uint8_t* cgram_data() = 0;
+  virtual const uint32_t cgram_size() const = 0;
+};
+
+struct LocalSpace : public Space {
+  LocalSpace();
+
+  uint8_t* vram_data();
+  const uint32_t vram_size() const;
+
+  uint8_t* cgram_data();
+  const uint32_t cgram_size() const;
+};
+
+struct ExtraSpace : public Space {
+  ExtraSpace();
 
   uint8_t* vram_data();
   const uint32_t vram_size() const;
@@ -76,6 +94,7 @@ struct SpaceContainer {
   uint8_t* get_cgram_space(int index);
 
 private:
+  std::shared_ptr<Space> m_localSpace;
   std::vector<std::shared_ptr<Space>> m_spaces;
 };
 
