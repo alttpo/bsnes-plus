@@ -38,9 +38,11 @@ void PPU::ppux_render_frame_pre() {
       px = [=](int x, int y, uint16_t color) {
         // draw to any PPU layer:
         auto offs = (y << 8) + x;
-        ppux_layer_pri[offs] = dl.priority;
-        ppux_layer_lyr[offs] = layer;
-        ppux_layer_col[offs] = color;
+        if (ppux_layer_pri[offs] == 0xFF || ppux_layer_pri[offs] <= dl.priority) {
+          ppux_layer_pri[offs] = dl.priority;
+          ppux_layer_lyr[offs] = layer;
+          ppux_layer_col[offs] = color;
+        }
       };
     }
 
