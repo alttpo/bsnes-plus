@@ -27,13 +27,17 @@ enum draw_color_kind {
 const uint16_t color_none = 0x8000;
 
 enum draw_cmd {
-  // commands which ignore color state:
+  // commands which ignore state:
   CMD_VRAM_TILE,
   CMD_IMAGE,
-  // commands which affect color state:
-  CMD_SET_COLOR,
-  CMD_SET_COLOR_PAL,
-  // commands which read color state:
+  // commands which affect state:
+  CMD_COLOR_DIRECT_BGR555,
+  CMD_COLOR_DIRECT_RGB888,
+  CMD_COLOR_PALETTED,
+  CMD_FONT_SELECT,
+  CMD_FONT_CREATE_PCF,
+  CMD_FONT_DELETE,
+  // commands which use state:
   CMD_TEXT_UTF8,
   CMD_PIXEL,
   CMD_HLINE,

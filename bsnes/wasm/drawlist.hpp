@@ -13,13 +13,17 @@ enum draw_color_kind {
 const uint16_t color_none = 0x8000;
 
 enum draw_cmd {
-  // commands which ignore color state:
+  // commands which ignore state:
   CMD_VRAM_TILE,
   CMD_IMAGE,
-  // commands which affect color state:
-  CMD_SET_COLOR,
-  CMD_SET_COLOR_PAL,
-  // commands which read color state:
+  // commands which affect state:
+  CMD_COLOR_DIRECT_BGR555,
+  CMD_COLOR_DIRECT_RGB888,
+  CMD_COLOR_PALETTED,
+  CMD_FONT_SELECT,
+  CMD_FONT_CREATE_PCF,
+  CMD_FONT_DELETE,
+  // commands which use state:
   CMD_TEXT_UTF8,
   CMD_PIXEL,
   CMD_HLINE,
@@ -33,26 +37,64 @@ inline bool is_color_visible(uint16_t c);
 
 typedef std::function<void(int x, int y)> plot;
 
+struct FontContainer {
+  void load_pcf(int fontindex, const uint8_t* pcf_data, int pcf_size);
+
+  void clear();
+  void erase(int fontindex);
+
+  std::shared_ptr<PixelFont::Font> operator[](int fontindex) const;
+
+private:
+  std::vector<std::shared_ptr<PixelFont::Font>> m_fonts;
+};
+
+struct Space {
+  Space();
+
+  uint8_t* vram_data();
+  const uint32_t vram_size() const;
+
+  uint8_t* cgram_data();
+  const uint32_t cgram_size() const;
+
+private:
+  uint8_t vram[0x10000];
+  uint8_t cgram[0x200];
+};
+
+struct SpaceContainer {
+  static const int MaxCount = 1024;
+
+  SpaceContainer();
+
+  void reset();
+
+  std::shared_ptr<Space> operator[](int index);
+
+  uint8_t* get_vram_space(int index);
+  uint8_t* get_cgram_space(int index);
+
+private:
+  std::vector<std::shared_ptr<Space>> m_spaces;
+};
+
 struct Target {
   explicit Target(
     unsigned p_width,
     unsigned p_height,
-    const std::function<void(int x, int y, uint16_t color)>& p_px,
-    const std::function<uint8_t*(int space)>& p_get_vram_space,
-    const std::function<uint8_t*(int space)>& p_get_cgram_space
+    const std::function<void(int x, int y, uint16_t color)>& p_px
   );
 
   unsigned width;
   unsigned height;
-  const std::function<void(int x, int y, uint16_t color)> px;
-  const std::function<uint8_t*(int space)> get_vram_space;
-  const std::function<uint8_t*(int space)> get_cgram_space;
+  const std::function<void(int x, int y, uint16_t color)> px;;
 };
 
 struct Context {
-  Context(const Target& target);
+  Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces);
 
-  void draw_list(const std::vector<uint8_t>& cmdlist, const std::vector<std::shared_ptr<PixelFont::Font>>& fonts);
+  void draw_list(const std::vector<uint8_t>& cmdlist);
   inline void draw_pixel(int x, int y, uint16_t color);
 
   inline void draw_hline(int x, int y, int w, const plot& px);
@@ -61,6 +103,8 @@ struct Context {
 
 private:
   const Target& m_target;
+  FontContainer& m_fonts;
+  SpaceContainer& m_spaces;
 };
 
 }

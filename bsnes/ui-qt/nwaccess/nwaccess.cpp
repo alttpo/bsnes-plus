@@ -234,18 +234,6 @@ void NWAccess::clientDataReady()
             {
                 socket->write(cmdWasmInvoke(args));
             }
-            else if (cmd == "PPUX_RESET")
-            {
-                socket->write(cmdPpuxReset(args));
-            }
-            else if (cmd == "PPUX_VRAM_RESET")
-            {
-                socket->write(cmdPpuxVramReset(args));
-            }
-            else if (cmd == "PPUX_CGRAM_RESET")
-            {
-                socket->write(cmdPpuxCgramReset(args));
-            }
             else if (cmd == "PPUX_FONT_SET_PCF")
             {
               if (data.length()-p-1 < 1) break; // did not receive binary start

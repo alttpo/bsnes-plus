@@ -1,77 +1,11 @@
 #ifdef PPU_CPP
 
-inline uint16 PPU::get_palette_space(uint8 space, uint8 index) {
-  const unsigned addr = index << 1;
-  uint8 *cgram = get_cgram_space(space);
-  return cgram[addr] + (cgram[addr + 1] << 8);
-}
-
-uint8* PPU::get_vram_space(uint8 space) {
-  if (space == 0) {
-    return memory::vram.data();
-  } else if (space <= extra_spaces) {
-    StaticRAM *ram = vram_space[space-1];
-    if (!ram) {
-      // allocate on demand:
-      vram_space[space-1] = ram = new StaticRAM(0x10000);
-    }
-    return ram->data();
-  } else {
-    return nullptr;
-  }
-}
-
-uint8* PPU::get_cgram_space(uint8 space) {
-  if (space == 0) {
-    return memory::cgram.data();
-  } else if (space <= extra_spaces) {
-    StaticRAM *ram = cgram_space[space-1];
-    if (!ram) {
-      // allocate on demand:
-      cgram_space[space-1] = ram = new StaticRAM(0x200);
-    }
-    return ram->data();
-  } else {
-    return nullptr;
-  }
-}
-
-uint8* PPU::get_oam_space(uint8 space) {
-  if (space == 0) {
-    return memory::oam.data();
-  } else {
-    // NOTE: this method is just here for consistency with VRAM/CGRAM. no plans to support extra OAM since
-    // the draw_list API takes care of drawing extra tiles for us.
-    return nullptr;
-  }
+uint8* PPU::ppux_get_oam() {
+  return memory::oam.data();
 }
 
 void PPU::ppux_draw_list_reset() {
   ppux_draw_lists.clear();
-}
-
-void PPU::ppux_vram_reset() {
-  for (unsigned i = 0; i < extra_spaces; i++) {
-    if (vram_space[i]) {
-      delete vram_space[i];
-      vram_space[i] = nullptr;
-    }
-  }
-}
-
-void PPU::ppux_cgram_reset() {
-  for (unsigned i = 0; i < extra_spaces; i++) {
-    if (cgram_space[i]) {
-      delete cgram_space[i];
-      cgram_space[i] = nullptr;
-    }
-  }
-}
-
-void PPU::ppux_reset() {
-  ppux_draw_list_reset();
-  ppux_vram_reset();
-  ppux_cgram_reset();
 }
 
 void PPU::ppux_render_frame_pre() {
@@ -110,16 +44,10 @@ void PPU::ppux_render_frame_pre() {
       };
     }
 
-    DrawList::Target target(
-      width,
-      height,
-      px,
-      [&](int space) { return get_vram_space(space); },
-      [&](int space) { return get_cgram_space(space); }
-    );
-    DrawList::Context context(target);
+    DrawList::Target  target(width, height, px);
+    DrawList::Context context(target, *dl.fonts, *dl.spaces);
 
-    context.draw_list(dl.cmdlist, wasmInterface.fonts);
+    context.draw_list(dl.cmdlist);
   }
 }
 

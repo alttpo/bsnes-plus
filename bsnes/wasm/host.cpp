@@ -344,7 +344,7 @@ void Runtime::each_module(const std::function<void(const std::shared_ptr<Module>
 Host::Host(size_t stack_size_bytes) : default_stack_size_bytes(stack_size_bytes) {
   m_env.reset(m3_NewEnvironment(), m3_FreeEnvironment);
   if (m_env == nullptr) {
-    throw std::bad_alloc();
+    throw std::runtime_error("Host::Host(): m_env is null");
   }
 }
 

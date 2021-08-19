@@ -37,9 +37,7 @@ public:
   decl_binding(snes_bus_read);
   decl_binding(snes_bus_write);
 
-  decl_binding(ppux_reset);
-  decl_binding(ppux_vram_reset);
-  decl_binding(ppux_cgram_reset);
+  decl_binding(ppux_spaces_reset);
   decl_binding(ppux_draw_list_reset);
   decl_binding(ppux_draw_list_append);
 
@@ -54,7 +52,8 @@ public:
 #undef decl_binding
 
 public:
-  std::vector<std::shared_ptr<PixelFont::Font>> fonts;
+  DrawList::FontContainer  fonts;
+  DrawList::SpaceContainer spaces;
 };
 
 extern WASMInterface wasmInterface;

@@ -361,7 +361,7 @@ void PPU::reset() {
   memset(sprite_list, 0, sizeof(sprite_list));
   sprite_list_valid = false;
 
-  ppux_reset();
+  ppux_draw_list_reset();
 
   //open bus support
   regs.ppu1_mdr = 0xff;

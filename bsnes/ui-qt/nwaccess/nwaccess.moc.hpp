@@ -49,9 +49,6 @@ protected:
     QByteArray cmdWasmInvoke(QByteArray args);
     QByteArray cmdWasmMsgEnqueue(QByteArray args, QByteArray data);
 
-    QByteArray cmdPpuxReset(QByteArray args);
-    QByteArray cmdPpuxVramReset(QByteArray args);
-    QByteArray cmdPpuxCgramReset(QByteArray args);
     QByteArray cmdPpuxFontUpload(QByteArray args, QByteArray data);
 
 public slots:
