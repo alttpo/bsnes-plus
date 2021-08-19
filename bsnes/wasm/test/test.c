@@ -511,7 +511,7 @@ void on_frame_present() {
     5, CMD_LINE, 10, 90, 220, 202,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x03E0,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_OUTLINE, 0x001F,
-    9, CMD_TEXT_UTF8, 0, 0,
+    8, CMD_TEXT_UTF8, 0, 0,
        7, 0, 0, 0, 0,
   };
   #define cmd_len (sizeof(cmd) / sizeof(uint16_t))

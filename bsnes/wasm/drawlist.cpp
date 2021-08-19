@@ -135,184 +135,254 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
     }
   };
 
+  // process all commands:
   while ((p - start) < end) {
     // every command starts with the number of 16-bit words in length, including command, arguments, and inline data:
     uint16_t len = *p++;
 
     uint16_t* d = p;
+    p += len;
 
     uint16_t cmd = *d++;
+
+    // set start to start of arguments of command and adjust len to concern only arguments:
+    uint16_t* args = d;
+    len--;
 
     int16_t  x0, y0, w, h;
     int16_t  x1, y1;
     switch (cmd) {
       case CMD_VRAM_TILE: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        bool   hflip = (bool)*d++;
-        bool   vflip = (bool)*d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 11) {
+            fprintf(stderr, "draw_list: CMD_VRAM_TILE: incomplete command; %ld < %d\n", len-(d-args), 11);
+            break;
+          }
 
-        uint8_t  vram_space = *d++;       //     0 ..   255; 0 = local, 1..255 = extra
-        uint16_t vram_addr = *d++;        // $0000 .. $FFFF (byte address)
-        uint8_t  cgram_space = *d++;      //     0 ..   255; 0 = local, 1..255 = extra
-        uint8_t  palette = *d++;          //     0 ..   255
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          bool   hflip = (bool)*d++;
+          bool   vflip = (bool)*d++;
 
-        uint8_t  bpp = *d++;              // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
-        uint16_t width = *d++;            // number of pixels width
-        uint16_t height = *d++;           // number of pixels high
+          uint8_t  vram_space = *d++;       //     0 ..   255; 0 = local, 1..255 = extra
+          uint16_t vram_addr = *d++;        // $0000 .. $FFFF (byte address)
+          uint8_t  cgram_space = *d++;      //     0 ..   255; 0 = local, 1..255 = extra
+          uint8_t  palette = *d++;          //     0 ..   255
 
-        uint8_t* vram = m_spaces[vram_space]->vram_data();
-        if (!vram) break;
+          uint8_t  bpp = *d++;              // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
+          uint16_t width = *d++;            // number of pixels width
+          uint16_t height = *d++;           // number of pixels high
 
-        uint8_t* cgram = m_spaces[cgram_space]->cgram_data();
-        if(!cgram) break;
+          uint8_t* vram = m_spaces[vram_space]->vram_data();
+          if (!vram) {
+            fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad VRAM space; %d\n", vram_space);
+            continue;
+          }
 
-        // draw tile:
-        unsigned sy = y0;
-        for (unsigned ty = 0; ty < height; ty++, sy++) {
-          sy &= 255;
+          uint8_t* cgram = m_spaces[cgram_space]->cgram_data();
+          if (!cgram) {
+            fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad CGRAM space; %d\n", cgram_space);
+            continue;
+          }
 
-          unsigned sx = x0;
-          unsigned y = (vflip == false) ? (ty) : (height-1 - ty);
+          // draw tile:
+          unsigned sy = y0;
+          for (unsigned ty = 0; ty < height; ty++, sy++) {
+            sy &= 255;
 
-          for(unsigned tx = 0; tx < width; tx++, sx++) {
-            sx &= 511;
-            if(sx >= 256) continue;
+            unsigned sx = x0;
+            unsigned y = (vflip == false) ? (ty) : (height-1 - ty);
 
-            unsigned x = ((hflip == false) ? tx : (width-1 - tx));
+            for(unsigned tx = 0; tx < width; tx++, sx++) {
+              sx &= 511;
+              if(sx >= 256) continue;
 
-            uint8_t col, d0, d1, d2, d3, d4, d5, d6, d7;
-            uint8_t mask = 1 << (7-(x&7));
-            uint8_t *tile_ptr = vram + vram_addr;
+              unsigned x = ((hflip == false) ? tx : (width-1 - tx));
 
-            switch (bpp) {
-              case 2:
-                // 16 bytes per 8x8 tile
-                tile_ptr += ((x >> 3) << 4);
-                tile_ptr += ((y >> 3) << 8);
-                tile_ptr += (y & 7) << 1;
-                d0 = *(tile_ptr    );
-                d1 = *(tile_ptr + 1);
-                col  = !!(d0 & mask) << 0;
-                col += !!(d1 & mask) << 1;
-                break;
-              case 4:
-                // 32 bytes per 8x8 tile
-                tile_ptr += ((x >> 3) << 5);
-                tile_ptr += ((y >> 3) << 9);
-                tile_ptr += (y & 7) << 1;
-                d0 = *(tile_ptr     );
-                d1 = *(tile_ptr +  1);
-                d2 = *(tile_ptr + 16);
-                d3 = *(tile_ptr + 17);
-                col  = !!(d0 & mask) << 0;
-                col += !!(d1 & mask) << 1;
-                col += !!(d2 & mask) << 2;
-                col += !!(d3 & mask) << 3;
-                break;
-              case 8:
-                // 64 bytes per 8x8 tile
-                tile_ptr += ((x >> 3) << 6);
-                tile_ptr += ((y >> 3) << 10);
-                tile_ptr += (y & 7) << 1;
-                d0 = *(tile_ptr     );
-                d1 = *(tile_ptr +  1);
-                d2 = *(tile_ptr + 16);
-                d3 = *(tile_ptr + 17);
-                d4 = *(tile_ptr + 32);
-                d5 = *(tile_ptr + 33);
-                d6 = *(tile_ptr + 48);
-                d7 = *(tile_ptr + 49);
-                col  = !!(d0 & mask) << 0;
-                col += !!(d1 & mask) << 1;
-                col += !!(d2 & mask) << 2;
-                col += !!(d3 & mask) << 3;
-                col += !!(d4 & mask) << 4;
-                col += !!(d5 & mask) << 5;
-                col += !!(d6 & mask) << 6;
-                col += !!(d7 & mask) << 7;
-                break;
-              default:
-                // TODO: warn
-                break;
+              uint8_t col, d0, d1, d2, d3, d4, d5, d6, d7;
+              uint8_t mask = 1 << (7-(x&7));
+              uint8_t *tile_ptr = vram + vram_addr;
+
+              switch (bpp) {
+                case 2:
+                  // 16 bytes per 8x8 tile
+                  tile_ptr += ((x >> 3) << 4);
+                  tile_ptr += ((y >> 3) << 8);
+                  tile_ptr += (y & 7) << 1;
+                  d0 = *(tile_ptr    );
+                  d1 = *(tile_ptr + 1);
+                  col  = !!(d0 & mask) << 0;
+                  col += !!(d1 & mask) << 1;
+                  break;
+                case 4:
+                  // 32 bytes per 8x8 tile
+                  tile_ptr += ((x >> 3) << 5);
+                  tile_ptr += ((y >> 3) << 9);
+                  tile_ptr += (y & 7) << 1;
+                  d0 = *(tile_ptr     );
+                  d1 = *(tile_ptr +  1);
+                  d2 = *(tile_ptr + 16);
+                  d3 = *(tile_ptr + 17);
+                  col  = !!(d0 & mask) << 0;
+                  col += !!(d1 & mask) << 1;
+                  col += !!(d2 & mask) << 2;
+                  col += !!(d3 & mask) << 3;
+                  break;
+                case 8:
+                  // 64 bytes per 8x8 tile
+                  tile_ptr += ((x >> 3) << 6);
+                  tile_ptr += ((y >> 3) << 10);
+                  tile_ptr += (y & 7) << 1;
+                  d0 = *(tile_ptr     );
+                  d1 = *(tile_ptr +  1);
+                  d2 = *(tile_ptr + 16);
+                  d3 = *(tile_ptr + 17);
+                  d4 = *(tile_ptr + 32);
+                  d5 = *(tile_ptr + 33);
+                  d6 = *(tile_ptr + 48);
+                  d7 = *(tile_ptr + 49);
+                  col  = !!(d0 & mask) << 0;
+                  col += !!(d1 & mask) << 1;
+                  col += !!(d2 & mask) << 2;
+                  col += !!(d3 & mask) << 3;
+                  col += !!(d4 & mask) << 4;
+                  col += !!(d5 & mask) << 5;
+                  col += !!(d6 & mask) << 6;
+                  col += !!(d7 & mask) << 7;
+                  break;
+                default:
+                  // TODO: warn
+                  break;
+              }
+
+              // color 0 is always transparent:
+              if(col == 0) continue;
+
+              col += palette;
+
+              // look up color in cgram:
+              uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
+
+              m_target.px(sx, sy, bgr);
             }
-
-            // color 0 is always transparent:
-            if(col == 0) continue;
-
-            col += palette;
-
-            // look up color in cgram:
-            uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
-
-            m_target.px(sx, sy, bgr);
           }
         }
-
         break;
       }
       case CMD_IMAGE: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
-        h  = (int16_t)*d++;
-        for (int16_t y = y0; y < y0+h; y++) {
-          if (y < 0) continue;
-          if (y >= m_target.height) break;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 4) {
+            fprintf(stderr, "draw_list: CMD_IMAGE: incomplete command; %ld < %d\n", len-(d-args), 4);
+            break;
+          }
 
-          for (int16_t x = x0; x < x0+w; x++) {
-            if (x < 0) continue;
-            if (x >= m_target.width) break;
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          w  = (int16_t)*d++;
+          h  = (int16_t)*d++;
 
-            uint16_t c = *d++;
-            if (!is_color_visible(c)) continue;
+          // check again after getting width and height:
+          if (len - (d - args) < w*h) {
+            fprintf(stderr, "draw_list: CMD_IMAGE: incomplete command; %ld < %d\n", len-(d-args), w*h);
+            break;
+          }
 
-            m_target.px(x, y, c);
+          for (int16_t y = y0; y < y0+h; y++) {
+            if (y < 0) continue;
+            if (y >= m_target.height) break;
+
+            for (int16_t x = x0; x < x0+w; x++) {
+              if (x < 0) continue;
+              if (x >= m_target.width) break;
+
+              uint16_t c = *d++;
+              if (!is_color_visible(c)) continue;
+
+              m_target.px(x, y, c);
+            }
           }
         }
         break;
       }
       case CMD_COLOR_DIRECT_BGR555: {
-        uint16_t index = *d++;
-        if (index >= COLOR_MAX) break;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 2) {
+            fprintf(stderr, "draw_list: CMD_COLOR_DIRECT_BGR555: incomplete command; %ld < %d\n", len-(d-args), 2);
+            break;
+          }
 
-        colorstate[index] = *d++;
+          uint16_t index = *d++;
+          uint16_t color = *d++;
 
+          if (index >= COLOR_MAX) {
+            fprintf(stderr, "draw_list: CMD_COLOR_DIRECT_BGR555: bad COLOR_TYPE index; %hu >= %d\n", index, COLOR_MAX);
+            continue;
+          }
+
+          colorstate[index] = color;
+        }
         break;
       }
       case CMD_COLOR_DIRECT_RGB888: {
-        uint16_t index = *d++;
-        if (index >= COLOR_MAX) break;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 3) {
+            fprintf(stderr, "draw_list: CMD_COLOR_DIRECT_RGB888: incomplete command; %ld < %d\n", len-(d-args), 3);
+            break;
+          }
 
-        // 0bAAAAAAAARRRRRRRR
-        uint16_t ar = *d++;
-        // 0bGGGGGGGGBBBBBBBB
-        uint16_t gb = *d++;
+          uint16_t index = *d++;
 
-        // convert to BGR555:
-        colorstate[index] =
-          // blue
-          (((gb >> 3) & 0x1F) << 10)
-          // green
-          | (((gb >> 11) & 0x1F) << 5)
-          // red
-          | (ar & 0x1F);
+          // 0bAAAAAAAARRRRRRRR
+          uint16_t ar = *d++;
+          // 0bGGGGGGGGBBBBBBBB
+          uint16_t gb = *d++;
 
+          if (index >= COLOR_MAX) {
+            fprintf(stderr, "draw_list: CMD_COLOR_DIRECT_RGB888: bad COLOR_TYPE index; %hu >= %d\n", index, COLOR_MAX);
+            continue;
+          }
+
+          // convert to BGR555:
+          colorstate[index] =
+            // blue
+            (((gb >> 3) & 0x1F) << 10)
+            // green
+            | (((gb >> 11) & 0x1F) << 5)
+            // red
+            | (ar & 0x1F);
+        }
         break;
       }
       case CMD_COLOR_PALETTED: {
-        uint16_t index = *d++;
-        if (index >= COLOR_MAX) break;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 3) {
+            fprintf(stderr, "draw_list: CMD_COLOR_PALETTED: incomplete command; %ld < %d\n", len-(d-args), 3);
+            break;
+          }
 
-        uint16_t space = *d++;
+          uint16_t index = *d++;
+          uint16_t space = *d++;
+          unsigned addr = ((uint16_t)*d++) << 1;
 
-        uint8_t* cgram = m_spaces[space]->cgram_data();
-        if(!cgram) break;
+          if (index >= COLOR_MAX) {
+            fprintf(stderr, "draw_list: CMD_COLOR_PALETTED: bad COLOR_TYPE index; %hu >= %d\n", index, COLOR_MAX);
+            continue;
+          }
 
-        // read litle-endian 16-bit color from CGRAM:
-        unsigned addr = ((uint16_t)*d++) << 1;
-        colorstate[index] = cgram[addr] + (cgram[addr + 1] << 8);
+          uint8_t* cgram = m_spaces[space]->cgram_data();
+          if(!cgram) {
+            fprintf(stderr, "draw_list: CMD_COLOR_PALETTED: bad CGRAM space; %d\n", space);
+            continue;
+          }
 
+          // read litle-endian 16-bit color from CGRAM:
+          colorstate[index] = cgram[addr] + (cgram[addr + 1] << 8);
+        }
         break;
       }
       case CMD_FONT_SELECT: {
@@ -327,111 +397,192 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
         try {
           m_fonts.load_pcf(fontindex, (const uint8_t*)d, size);
         } catch (std::runtime_error& err) {
-          fprintf(stderr, "draw_list: font_create_pcf: %s\n", err.what());
+          fprintf(stderr, "draw_list: CMD_FONT_CREATE_PCF: %s\n", err.what());
         }
         break;
       }
       case CMD_FONT_DELETE: {
-        // delete a font:
-        fontindex = *d++;
-        m_fonts.erase(fontindex);
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 1) {
+            fprintf(stderr, "draw_list: CMD_FONT_DELETE: incomplete command; %ld < %d", len-(d-args), 1);
+            break;
+          }
+
+          // delete a font:
+          fontindex = *d++;
+          m_fonts.erase(fontindex);
+        }
         break;
       }
       case CMD_TEXT_UTF8: {
-        // find font:
-        const auto font = m_fonts[fontindex];
-        if (!font) {
-          break;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 3) {
+            fprintf(stderr, "draw_list: CMD_TEXT_UTF8: incomplete command; %ld < %d\n", len-(d-args), 3);
+            break;
+          }
+
+          // find font:
+          const auto font = m_fonts[fontindex];
+
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          uint16_t textchars = *d++;
+
+          uint8_t* str = (uint8_t*)d;
+
+          uint16_t textwords = textchars;
+
+          // include the last pad byte if odd sized:
+          if (textwords & 1) {
+            textwords++;
+          }
+          textwords >>= 1;
+
+          // need a complete command:
+          if (len - (d - args) < textwords) {
+            fprintf(stderr, "draw_list: CMD_TEXT_UTF8: incomplete text data; %ld < %d\n", len-(d-args), textwords);
+            break;
+          }
+
+          d += textwords;
+
+          if (!font) {
+            continue;
+          }
+
+          draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
+            font->draw_text_utf8(str, textchars, x0, y0, px);
+          });
+
         }
-
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        uint16_t textlen = *d++;
-
-        draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
-          font->draw_text_utf8((uint8_t*)d, textlen, x0, y0, px);
-        });
-
         break;
       }
       case CMD_PIXEL: {
-        x0 = *d++;
-        y0 = *d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 2) {
+            fprintf(stderr, "draw_list: CMD_PIXEL: incomplete command; %ld < %d\n", len-(d-args), 2);
+            break;
+          }
 
-        draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
-          px(x0, y0);
-        });
+          x0 = *d++;
+          y0 = *d++;
+
+          draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
+            px(x0, y0);
+          });
+        }
         break;
       }
       case CMD_HLINE: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 3) {
+            fprintf(stderr, "draw_list: CMD_HLINE: incomplete command; %ld < %d\n", len-(d-args), 3);
+            break;
+          }
 
-        draw_outlined_stroked([=](const plot& px) {
-          draw_hline(x0, y0, w, px);
-        });
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          w  = (int16_t)*d++;
+
+          draw_outlined_stroked([=](const plot& px) {
+            draw_hline(x0, y0, w, px);
+          });
+        }
         break;
       }
       case CMD_VLINE: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        h  = (int16_t)*d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 3) {
+            fprintf(stderr, "draw_list: CMD_VLINE: incomplete command; %ld < %d\n", len-(d-args), 3);
+            break;
+          }
 
-        draw_outlined_stroked([=](const plot& px) {
-          draw_vline(x0, y0, h, px);
-        });
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          h  = (int16_t)*d++;
+
+          draw_outlined_stroked([=](const plot& px) {
+            draw_vline(x0, y0, h, px);
+          });
+        }
         break;
       }
       case CMD_LINE: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        x1 = (int16_t)*d++;
-        y1 = (int16_t)*d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 4) {
+            fprintf(stderr, "draw_list: CMD_LINE: incomplete command; %ld < %d\n", len-(d-args), 4);
+            break;
+          }
 
-        draw_outlined_stroked([=](const plot& px) {
-          draw_line(x0, y0, x1, y1, px);
-        });
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          x1 = (int16_t)*d++;
+          y1 = (int16_t)*d++;
+
+          draw_outlined_stroked([=](const plot& px) {
+            draw_line(x0, y0, x1, y1, px);
+          });
+        }
         break;
       }
       case CMD_RECT: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
-        h  = (int16_t)*d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 4) {
+            fprintf(stderr, "draw_list: CMD_RECT: incomplete command; %ld < %d\n", len-(d-args), 4);
+            break;
+          }
 
-        draw_outlined_stroked([=](const plot& px) {
-          draw_hline(x0,     y0,     w,   px);
-          draw_hline(x0,     y0+h-1, w,   px);
-          draw_vline(x0,     y0+1,   h-2, px);
-          draw_vline(x0+w-1, y0+1,   h-2, px);
-        });
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          w  = (int16_t)*d++;
+          h  = (int16_t)*d++;
+
+          draw_outlined_stroked([=](const plot& px) {
+            draw_hline(x0,     y0,     w,   px);
+            draw_hline(x0,     y0+h-1, w,   px);
+            draw_vline(x0,     y0+1,   h-2, px);
+            draw_vline(x0+w-1, y0+1,   h-2, px);
+          });
+        }
         break;
       }
       case CMD_RECT_FILL: {
-        x0 = (int16_t)*d++;
-        y0 = (int16_t)*d++;
-        w  = (int16_t)*d++;
-        h  = (int16_t)*d++;
+        while (d - args < len) {
+          // need a complete command:
+          if (len - (d - args) < 4) {
+            fprintf(stderr, "draw_list: CMD_RECT_FILL: incomplete command; %ld < %d\n", len-(d-args), 4);
+            break;
+          }
 
-        if (is_color_visible(fill_color)) {
-          for (int16_t y = y0; y < y0+h; y++) {
-            if (y < 0) continue;
-            if (y >= m_target.height) break;
+          x0 = (int16_t)*d++;
+          y0 = (int16_t)*d++;
+          w  = (int16_t)*d++;
+          h  = (int16_t)*d++;
 
-            for (int16_t x = x0; x < x0+w; x++) {
-              if (x < 0) continue;
-              if (x >= m_target.width) break;
+          if (is_color_visible(fill_color)) {
+            for (int16_t y = y0; y < y0+h; y++) {
+              if (y < 0) continue;
+              if (y >= m_target.height) break;
 
-              m_target.px(x, y, fill_color);
+              for (int16_t x = x0; x < x0+w; x++) {
+                if (x < 0) continue;
+                if (x >= m_target.width) break;
+
+                m_target.px(x, y, fill_color);
+              }
             }
           }
         }
         break;
       }
     }
-
-    p += len;
   }
 }
 
