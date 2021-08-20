@@ -65,6 +65,14 @@ Context::Context(const Target& target, FontContainer& fonts, SpaceContainer& spa
   : m_target(target), m_fonts(fonts), m_spaces(spaces)
 {}
 
+inline bool Context::in_bounds(int x, int y) {
+  if (y < 0) return false;
+  if (y >= m_target.height) return false;
+  if (x < 0) return false;
+  if (x >= m_target.width) return false;
+  return true;
+}
+
 void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
   uint16_t* start = (uint16_t*) cmdlist.data();
   uint32_t  end = cmdlist.size()>>1;
@@ -105,30 +113,30 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
       }
 
       if (is_color_visible(outline_color)) {
-        if (stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
+        if (in_bounds(x-1, y-1) && stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
           m_target.px(x-1, y-1, outline_color);
         }
-        if (stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
+        if (in_bounds(x+0, y-1) && stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
           m_target.px(x+0, y-1, outline_color);
         }
-        if (stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
+        if (in_bounds(x+1, y-1) && stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
           m_target.px(x+1, y-1, outline_color);
         }
 
-        if (stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
+        if (in_bounds(x-1, y+0) && stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
           m_target.px(x-1, y+0, outline_color);
         }
-        if (stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
+        if (in_bounds(x+1, y+0) && stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
           m_target.px(x+1, y+0, outline_color);
         }
 
-        if (stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
+        if (in_bounds(x-1, y+1) && stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
           m_target.px(x-1, y+1, outline_color);
         }
-        if (stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
+        if (in_bounds(x+0, y+1) && stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
           m_target.px(x+0, y+1, outline_color);
         }
-        if (stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
+        if (in_bounds(x+1, y+1) && stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
           m_target.px(x+1, y+1, outline_color);
         }
       }
@@ -139,6 +147,11 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
   while ((p - start) < end) {
     // every command starts with the number of 16-bit words in length, including command, arguments, and inline data:
     uint16_t len = *p++;
+
+    if (p + len - start > end) {
+      fprintf(stderr, "draw_list: command length at index %ld exceeds size of command list; %lu > %u", p - start, p + len - start, end);
+      break;
+    }
 
     uint16_t* d = p;
     p += len;
@@ -587,10 +600,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 }
 
 inline void Context::draw_pixel(int x0, int y0, uint16_t color) {
-  if (y0 < 0) return;
-  if (y0 >= m_target.height) return;
-  if (x0 < 0) return;
-  if (x0 >= m_target.width) return;
+  if (!in_bounds(x0, y0)) return;
 
   m_target.px(x0, y0, color);
 }
@@ -640,11 +650,7 @@ inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
       xe = x1;
     }
 
-    if ((x >= 0) &&
-        (y >= 0) &&
-        (x < m_target.width) &&
-        (y < m_target.height))
-    {
+    if (in_bounds(x, y)) {
       px(x, y);
     }
 
@@ -678,11 +684,7 @@ inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
       ye = y1;
     }
 
-    if ((x >= 0) &&
-        (y >= 0) &&
-        (x < m_target.width) &&
-        (y < m_target.height))
-    {
+    if (in_bounds(x, y)) {
       px(x, y);
     }
 

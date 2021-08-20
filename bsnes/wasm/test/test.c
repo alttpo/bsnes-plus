@@ -506,11 +506,19 @@ void on_frame_present() {
     5, CMD_RECT, 32, 132, 8, 8,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_FILL, 0x001F,
     5, CMD_RECT_FILL, 38, 138, 16, 16,
-    3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1C4E,
-    3, CMD_COLOR_DIRECT_BGR555, COLOR_OUTLINE, 0x0C27,
-    5, CMD_LINE, 10, 90, 220, 202,
-    3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x03E0,
-    3, CMD_COLOR_DIRECT_BGR555, COLOR_OUTLINE, 0x001F,
+    4, CMD_COLOR_PALETTED, COLOR_FILL, 0, 0xF0,
+    5, CMD_RECT_FILL, 80, 0, 4, 4,
+    4, CMD_COLOR_PALETTED, COLOR_FILL, 0, 0xF1,
+    5, CMD_RECT_FILL, 84, 0, 4, 4,
+    4, CMD_COLOR_PALETTED, COLOR_FILL, 0, 0xF2,
+    5, CMD_RECT_FILL, 88, 0, 4, 4,
+    4, CMD_COLOR_PALETTED, COLOR_FILL, 0, 0xF3,
+    5, CMD_RECT_FILL, 92, 0, 4, 4,
+    5, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1C4E, COLOR_OUTLINE, 0x0C27,
+    5, CMD_LINE, 10, -12, 260, 239,
+    // -17
+    7, CMD_COLOR_DIRECT_RGB888, COLOR_STROKE, 0x0000, 0xFF00, COLOR_OUTLINE, 0x00FF, 0x0000,
+    // -9
     8, CMD_TEXT_UTF8, 0, 0,
        7, 0, 0, 0, 0,
   };
@@ -528,13 +536,14 @@ void on_frame_present() {
     }
   }
 
+  // CMD_LINE y:
   cmd[cmd_len-18]++;
   if (cmd[cmd_len-18] >= 240) {
     cmd[cmd_len-18] = 0;
   }
 
   ppux_draw_list_reset();
-  ppux_draw_list_append(4, 15 | 0x80, sizeof(cmd), cmd);
+  ppux_draw_list_append(4, 15, sizeof(cmd), cmd);
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
 

@@ -22,6 +22,7 @@ void PPU::ppux_render_frame_pre() {
 
     // select pixel-drawing function:
     uint8 layer = dl.layer & 0x7f;
+    uint8 priority = dl.priority & 0x7f;
     int width = 256, height = 256;
     if (dl.layer & 0x80) {
       width = 1024;
@@ -38,7 +39,7 @@ void PPU::ppux_render_frame_pre() {
       px = [=](int x, int y, uint16_t color) {
         // draw to any PPU layer:
         auto offs = (y << 8) + x;
-        if (ppux_layer_pri[offs] == 0xFF || ppux_layer_pri[offs] <= dl.priority) {
+        if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= priority)) {
           ppux_layer_pri[offs] = dl.priority;
           ppux_layer_lyr[offs] = layer;
           ppux_layer_col[offs] = color;

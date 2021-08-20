@@ -120,6 +120,8 @@ struct Context {
   inline void draw_vline(int x, int y, int h, const plot& px);
   inline void draw_line(int x1, int y1, int x2, int y2, const plot& px);
 
+  inline bool in_bounds(int x, int y);
+
 private:
   const Target& m_target;
   FontContainer& m_fonts;
