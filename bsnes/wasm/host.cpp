@@ -374,6 +374,7 @@ void Host::with_runtime(const std::string& key, const std::function<void(const s
   if (it == m_runtimes.end()) {
     std::shared_ptr<Runtime> runtime(new Runtime(key, m_env, default_stack_size_bytes));
     m_runtimes.emplace(key, runtime);
+    m_runtimes_by_ptr.emplace(runtime->m_runtime, runtime);
     with(runtime);
   } else {
     with(it->second);
