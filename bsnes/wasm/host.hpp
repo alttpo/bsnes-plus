@@ -1,14 +1,5 @@
 #pragma once
 
-#include <functional>
-#include <optional>
-#include <map>
-#include <string>
-#include <queue>
-#include <memory>
-#include <stdexcept>
-#include "wasm3.h"
-
 namespace WASM {
 
 struct error : public std::runtime_error {
@@ -118,6 +109,9 @@ public:
 
   std::map<std::string, std::shared_ptr<Module>>  m_modules;
   std::map<IM3Module, std::shared_ptr<Module>>    m_modules_by_ptr;
+
+  DrawList::FontContainer  fonts;
+  DrawList::SpaceContainer spaces;
 };
 
 // A Host contains multiple Runtimes in a single Environment

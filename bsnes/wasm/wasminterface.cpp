@@ -1,7 +1,9 @@
-#include <snes/snes.hpp>
-#include <algorithm>
-#include <set>
+
 #include "wasminterface.hpp"
+
+#include <snes/snes.hpp>
+
+#include "host.cpp"
 
 WASMInterface wasmInterface(WASM::host);
 

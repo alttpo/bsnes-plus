@@ -113,7 +113,7 @@ QByteArray NWAccess::cmdWasmMsgEnqueue(QByteArray args, QByteArray data) {
   }
   QString name = items.takeFirst();
 
-  QString reply = "name:";
+  QString reply = "runtime:";
   reply += name;
 
   try {

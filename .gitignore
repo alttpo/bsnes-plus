@@ -11,3 +11,8 @@
 *.rar
 */out
 */bin
+.DS_Store
+bsnes+.app/
+.idea/
+*.pcf
+bsnes/ui-qt/state/

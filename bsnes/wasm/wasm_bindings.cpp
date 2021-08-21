@@ -86,7 +86,11 @@ wasm_binding(msg_recv, "i(*i)") {
 
 //void ppux_spaces_reset();
 wasm_binding(ppux_spaces_reset, "v()") {
-  spaces.reset();
+  // get the runtime instance caller:
+  auto m_runtime = WASM::host.get_runtime(runtime);
+
+  m_runtime->spaces.reset();
+
   m3ApiSuccess();
 }
 
@@ -107,9 +111,12 @@ wasm_binding(ppux_vram_write, "i(ii*i)") {
     m3ApiReturn(-2);
   }
 
+  // get the runtime instance caller:
+  auto m_runtime = WASM::host.get_runtime(runtime);
+
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_vram_space(i_space);
+  t = m_runtime->spaces.get_vram_space(i_space);
   maxSize = 0x10000;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -152,9 +159,12 @@ wasm_binding(ppux_cgram_write, "i(ii*i)") {
     m3ApiReturn(-2);
   }
 
+  // get the runtime instance caller:
+  auto m_runtime = WASM::host.get_runtime(runtime);
+
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_cgram_space(i_space);
+  t = m_runtime->spaces.get_cgram_space(i_space);
   maxSize = 0x200;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -238,9 +248,12 @@ wasm_binding(ppux_vram_read, "i(ii*i)") {
     m3ApiReturn(-2);
   }
 
+  // get the runtime instance caller:
+  auto m_runtime = WASM::host.get_runtime(runtime);
+
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_vram_space(i_space);
+  t = m_runtime->spaces.get_vram_space(i_space);
   maxSize = 0x10000;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -283,9 +296,12 @@ wasm_binding(ppux_cgram_read, "i(ii*i)") {
     m3ApiReturn(-2);
   }
 
+  // get the runtime instance caller:
+  auto m_runtime = WASM::host.get_runtime(runtime);
+
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_cgram_space(i_space);
+  t = m_runtime->spaces.get_cgram_space(i_space);
   maxSize = 0x200;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -398,18 +414,23 @@ wasm_binding(ppux_draw_list_append, "v(iii*)") {
     m3ApiTrap("ppux_draw_list_append: i_size must be even");
   }
 
+  // get the runtime instance caller:
+  auto m_runtime = WASM::host.get_runtime(runtime);
+
   // extend ppux_draw_lists vector:
   int n = SNES::ppu.ppux_draw_lists.size();
   SNES::ppu.ppux_draw_lists.resize(n + 1);
 
+  // fill in the new cmdlist:
   auto& dl = SNES::ppu.ppux_draw_lists[n];
   dl.layer = i_layer;
   dl.priority = i_priority;
-  dl.fonts = &fonts;
-  dl.spaces = &spaces;
-  dl.cmdlist.resize(i_size);
+  // refer to the runtime instance's fonts and spaces collections:
+  dl.fonts = &m_runtime->fonts;
+  dl.spaces = &m_runtime->spaces;
 
   // copy cmdlist data in:
+  dl.cmdlist.resize(i_size);
   void* dst = (void *)(dl.cmdlist.data());
   memcpy(dst, (const void *)i_cmdlist, i_size);
 

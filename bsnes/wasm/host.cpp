@@ -1,5 +1,3 @@
-#include "host.hpp"
-#include "m3_api_libc.h"
 
 namespace WASM {
 

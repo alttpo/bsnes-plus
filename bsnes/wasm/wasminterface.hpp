@@ -1,8 +1,21 @@
 #pragma once
 
-#include "host.hpp"
+#include <functional>
+#include <optional>
+#include <map>
+#include <string>
+#include <queue>
+#include <memory>
+#include <stdexcept>
+#include <algorithm>
+#include <set>
+#include "wasm3.h"
+#include "m3_api_libc.h"
+
 #include "pixelfont.hpp"
 #include "drawlist.hpp"
+
+#include "host.hpp"
 
 struct WASMInterface {
   WASMInterface(WASM::Host &host);
@@ -50,10 +63,6 @@ public:
   decl_binding(ppux_oam_read);
 
 #undef decl_binding
-
-public:
-  DrawList::FontContainer  fonts;
-  DrawList::SpaceContainer spaces;
 };
 
 extern WASMInterface wasmInterface;
