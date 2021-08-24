@@ -1,5 +1,8 @@
 #pragma once
 
+#define MINIZ_NO_STDIO
+#include "miniz.h"
+
 namespace WASM {
 
 struct error : public std::runtime_error {
@@ -109,6 +112,8 @@ public:
 
   std::map<std::string, std::shared_ptr<Module>>  m_modules;
   std::map<IM3Module, std::shared_ptr<Module>>    m_modules_by_ptr;
+
+  mz_zip_archive zip_archive;
 
   DrawList::FontContainer  fonts;
   DrawList::SpaceContainer spaces;
