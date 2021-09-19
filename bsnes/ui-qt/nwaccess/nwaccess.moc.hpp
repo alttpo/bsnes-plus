@@ -46,10 +46,7 @@ protected:
     QByteArray cmdWasmReset(QByteArray args);
     QByteArray cmdWasmLoad(QByteArray args, QByteArray data);
     QByteArray cmdWasmUnload(QByteArray args);
-    QByteArray cmdWasmInvoke(QByteArray args);
     QByteArray cmdWasmMsgEnqueue(QByteArray args, QByteArray data);
-
-    QByteArray cmdPpuxFontUpload(QByteArray args, QByteArray data);
 
 public slots:
     void newConnection();

@@ -192,11 +192,11 @@ void NWAccess::clientDataReady()
             {
                 socket->write(cmdWasmReset(args));
             }
-            else if (cmd == "WASM_UNLOAD")
+            else if (cmd == "WASM_ZIP_UNLOAD")
             {
                 socket->write(cmdWasmUnload(args));
             }
-            else if (cmd == "WASM_LOAD")
+            else if (cmd == "WASM_ZIP_LOAD")
             {
                 if (data.length()-p-1 < 1) break; // did not receive binary start
                 if (data[p+1] != '\0') { // no binary data
@@ -230,27 +230,6 @@ void NWAccess::clientDataReady()
                     continue;
                 }
             }
-            else if (cmd == "WASM_INVOKE")
-            {
-                socket->write(cmdWasmInvoke(args));
-            }
-            else if (cmd == "PPUX_FONT_SET_PCF")
-            {
-              if (data.length()-p-1 < 1) break; // did not receive binary start
-              if (data[p+1] != '\0') { // no binary data
-                socket->write(makeErrorReply("no data"));
-              } else {
-                if (data.length()-p-1 < 5) break; // did not receive binary header yet
-                quint32 len = qFromBigEndian<quint32>(data.constData()+p+1+1);
-                if ((unsigned)data.length()-p-1-5 < len) break; // did not receive complete binary data yet
-
-                QByteArray wr = data.mid(p+1+5, len);
-                socket->write(cmdPpuxFontUpload(args, wr));
-
-                data = data.mid(p+1+5+len); // remove wr data from buffer
-                continue;
-              }
-            }
             else
             {
                 socket->write("\nerror:unsupported command\n\n");
@@ -265,5 +244,4 @@ void NWAccess::clientDataReady()
 }
 
 #include "commands.cpp"
-#include "ppux.cpp"
 #include "wasm.cpp"

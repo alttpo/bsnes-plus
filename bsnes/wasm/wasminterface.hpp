@@ -9,18 +9,32 @@
 #include <stdexcept>
 #include <algorithm>
 #include <set>
+
+#define WASM_USE_M3
+
+#ifdef WASM_USE_M3
 #include "wasm3.h"
 #include "m3_api_libc.h"
+#else
+// TODO: wasmer
+#endif
 
 #include "pixelfont.hpp"
 #include "drawlist.hpp"
 
-#include "host.hpp"
+#define MINIZ_NO_STDIO
+#include "miniz.h"
+
+struct WASMTrapError : public std::runtime_error {
+  explicit WASMTrapError(const char* err) : std::runtime_error(err) {}
+};
+
+struct WASMInterface;
+
+#include "wasminstance.hpp"
 
 struct WASMInterface {
-  WASMInterface(WASM::Host &host);
-
-  WASM::Host &m_host;
+  WASMInterface();
 
 public:
   void on_nmi();
@@ -33,36 +47,16 @@ public:
   std::function<void()> m_do_continue;
 
 public:
-  // link functions:
-  void link_module(const std::shared_ptr<WASM::Module>& module);
+  void reset();
 
-  // wasm bindings:
-#define decl_binding(name) \
-  static const char *wa_sig_##name; \
-  m3ApiRawFunction(wa_fun_##name)
+  // load a ZIP containing a main.wasm module and embedded resources:
+  void load_zip(const std::string& instanceKey, const uint8_t *data, size_t size);
+  void unload_zip(const std::string& instanceKey);
 
-  decl_binding(debugger_break);
-  decl_binding(debugger_continue);
+  void msg_enqueue(const std::string& instanceKey, const uint8_t *data, size_t size);
 
-  decl_binding(msg_recv);
-  decl_binding(msg_size);
-
-  decl_binding(snes_bus_read);
-  decl_binding(snes_bus_write);
-
-  decl_binding(ppux_spaces_reset);
-  decl_binding(ppux_draw_list_reset);
-  decl_binding(ppux_draw_list_append);
-
-  decl_binding(ppux_vram_write);
-  decl_binding(ppux_cgram_write);
-  decl_binding(ppux_oam_write);
-
-  decl_binding(ppux_vram_read);
-  decl_binding(ppux_cgram_read);
-  decl_binding(ppux_oam_read);
-
-#undef decl_binding
+private:
+  std::map<std::string, std::shared_ptr<WASMInstanceBase>> m_instances;
 };
 
 extern WASMInterface wasmInterface;

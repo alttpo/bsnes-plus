@@ -3,11 +3,9 @@
 
 #include <snes/snes.hpp>
 
-#include "host.cpp"
+WASMInterface wasmInterface;
 
-WASMInterface wasmInterface(WASM::host);
-
-WASMInterface::WASMInterface(WASM::Host &host) : m_host(host) {}
+WASMInterface::WASMInterface() = default;
 
 void WASMInterface::register_debugger(const std::function<void()>& do_break, const std::function<void()>& do_continue) {
   m_do_break = do_break;
@@ -15,35 +13,44 @@ void WASMInterface::register_debugger(const std::function<void()>& do_break, con
 }
 
 void WASMInterface::on_nmi() {
-  m_host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
-    M3Result res = runtime->with_function("on_nmi", [&](WASM::Function &f) {
-      M3Result res = f.callv(0);
-      if (res != m3Err_none) {
-        return;
-      }
-    });
-
-    // warn about the result only once per runtime:
-    runtime->warn(res, "on_nmi");
-  });
+  for (auto &instance : m_instances) {
+    instance.second->invoke("on_nmi", nullptr);
+  }
 }
 
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
-  // call 'on_frame_present':
-  m_host.each_runtime([&](const std::shared_ptr<WASM::Runtime>& runtime) {
-    M3Result res = runtime->with_function("on_frame_present", [&](WASM::Function &f) {
-      M3Result res = f.callv(0);
-      if (res != m3Err_none) {
-        return;
-      }
-    });
-
-    // warn about the result only once per module:
-    runtime->warn(res, "on_frame_present");
-  });
+  for (auto &instance : m_instances) {
+    instance.second->invoke("on_frame_present", nullptr);
+  }
 
   return data;
 }
+
+void WASMInterface::reset() {
+  m_instances.clear();
+}
+
+void WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data, size_t size) {
+  std::shared_ptr<ZipArchive> za(new ZipArchive(data, size));
+  m_instances.emplace(
+    instanceKey,
+    std::shared_ptr<WASMInstanceBase>(new WASMInstanceM3(this, instanceKey, za))
+  );
+}
+
+void WASMInterface::unload_zip(const std::string &instanceKey) {
+  m_instances.erase(instanceKey);
+}
+
+void WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *data, size_t size) {
+  auto it = m_instances.find(instanceKey);
+  if (it == m_instances.end()) {
+    return;
+  }
+  it->second->msg_enqueue(std::shared_ptr<WASMMessage>(new WASMMessage(data, size)));
+}
+
+#include "wasminstance.cpp"
 
 #include "pixelfont.cpp"
 #include "drawlist.cpp"
