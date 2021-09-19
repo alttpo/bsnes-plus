@@ -42,6 +42,7 @@ struct FontContainer {
 
   void clear();
   void erase(int fontindex);
+  int size() const;
 
   std::shared_ptr<PixelFont::Font> operator[](int fontindex) const;
 

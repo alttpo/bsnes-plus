@@ -1,4 +1,6 @@
 
+#include "drawlist.hpp"
+
 namespace DrawList {
 
 inline bool is_color_visible(uint16_t c) { return c < 0x8000; }
@@ -436,9 +438,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             break;
           }
 
-          // find font:
-          const auto font = m_fonts[fontindex];
-
           x0 = (int16_t)*d++;
           y0 = (int16_t)*d++;
           uint16_t textchars = *d++;
@@ -461,6 +460,11 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           d += textwords;
 
+          // find font:
+          if (fontindex >= m_fonts.size()) {
+            continue;
+          }
+          const auto font = m_fonts[fontindex];
           if (!font) {
             continue;
           }
@@ -720,6 +724,10 @@ void FontContainer::erase(int fontindex) {
 
 std::shared_ptr<PixelFont::Font> FontContainer::operator[](int fontindex) const {
   return m_fonts[fontindex];
+}
+
+int FontContainer::size() const {
+  return m_fonts.size();
 }
 
 struct ByteArray {
