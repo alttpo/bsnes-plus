@@ -7,5 +7,7 @@
   -fno-builtin \
   -Wl,--no-entry \
   -Wl,-z,stack-size=$[32768] \
-  -o "test.wasm" \
+  -o "main.wasm" \
   test.c
+
+zip test.zip main.wasm kakwafont-12-n.pcf
