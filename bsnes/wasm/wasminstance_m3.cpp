@@ -141,7 +141,43 @@ uint64_t WASMInstanceM3::memory_size() {
   return m3_GetMemorySize(m_runtime);
 }
 
-void WASMInstanceM3::invoke(const std::string &i_name, uint64_t *io_stack) {
-  // TODO
-  throw std::runtime_error("TODO");
+WASMFunctionM3::WASMFunctionM3(const std::string& name, IM3Function m3fn)
+  : WASMFunction(name), m_fn(m3fn)
+{
+}
+
+WASMFunctionM3::operator bool() const { return m_fn != nullptr; }
+
+std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_name) {
+  IM3Function m3fn = nullptr;
+
+  M3Result err;
+  err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
+  if (err != m3Err_none) {
+    return std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, nullptr));
+  }
+
+  return std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));
+}
+
+void WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) {
+  auto m3fn = (WASMFunctionM3*)fn.get();
+
+  const void** argptrs = new const void*[i_retc + i_argc];
+
+  for (uint32_t i = 0; i < i_retc; i++) {
+    argptrs[i] = (const void*)&io_stack[i];
+  }
+  for (uint32_t i = 0; i < i_argc; i++) {
+    argptrs[i] = (const void*)&io_stack[i_retc + i];
+  }
+
+  M3Result err;
+  err = m3_Call(m3fn->m_fn, i_argc, argptrs + i_retc);
+  check_error(err);
+
+  err = m3_GetResults(m3fn->m_fn, i_retc, argptrs);
+  check_error(err);
+
+  delete[] argptrs;
 }

@@ -14,13 +14,15 @@ void WASMInterface::register_debugger(const std::function<void()>& do_break, con
 
 void WASMInterface::on_nmi() {
   for (auto &instance : m_instances) {
-    instance.second->invoke("on_nmi", nullptr);
+    auto fn = instance.second->func_find("on_nmi");
+    instance.second->func_invoke(fn, 0, 0, nullptr);
   }
 }
 
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
   for (auto &instance : m_instances) {
-    instance.second->invoke("on_frame_present", nullptr);
+    auto fn = instance.second->func_find("on_frame_present");
+    instance.second->func_invoke(fn, 0, 0, nullptr);
   }
 
   return data;

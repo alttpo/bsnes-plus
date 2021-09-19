@@ -1,4 +1,7 @@
 
+// WASMMessage:
+//////////
+
 WASMMessage::WASMMessage(const uint8_t * const data, uint16_t size) : m_data(new uint8_t[size]), m_size(size) {
   memcpy((void *)m_data, (const void *)data, size);
 }
@@ -6,6 +9,14 @@ WASMMessage::WASMMessage(const uint8_t * const data, uint16_t size) : m_data(new
 WASMMessage::~WASMMessage() {
   delete[] m_data;
 }
+
+// WASMFunction:
+//////////
+
+WASMFunction::WASMFunction(const std::string &name) : m_name(name) {
+}
+
+const char *WASMFunction::name() const { return m_name.c_str(); }
 
 // ZipArchive:
 //////////
@@ -81,7 +92,8 @@ void WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
   //printf("msg_enqueue(%p, %u)\n", msg->m_data, msg->m_size);
   m_msgs.push(msg);
 
-  invoke("on_msg_recv", nullptr);
+  auto fn = func_find("on_msg_recv");
+  func_invoke(fn, 0, 0, nullptr);
 }
 
 std::shared_ptr<WASMMessage> WASMInstanceBase::msg_dequeue() {

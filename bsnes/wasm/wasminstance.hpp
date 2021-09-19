@@ -28,6 +28,16 @@ struct WASMMessage {
   uint16_t m_size;
 };
 
+struct WASMFunction {
+  virtual explicit operator bool() const = 0;
+  virtual const char* name() const;
+
+  const std::string m_name;
+
+protected:
+  explicit WASMFunction(const std::string& name);
+};
+
 struct WASMInstanceBase {
   explicit WASMInstanceBase(WASMInterface* interface, const std::string& key, const std::shared_ptr<ZipArchive>& za);
   virtual ~WASMInstanceBase();
@@ -38,7 +48,8 @@ public:
   bool msg_size(uint16_t *o_size);
 
 public:
-  virtual void invoke(const std::string& i_name, uint64_t* io_stack) = 0;
+  virtual std::shared_ptr<WASMFunction> func_find(const std::string& i_name) = 0;
+  virtual void func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
   virtual uint64_t memory_size() = 0;
 
 public:
