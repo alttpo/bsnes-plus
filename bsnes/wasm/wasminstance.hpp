@@ -16,6 +16,8 @@ struct ZipArchive {
   bool file_size(FileHandle fh, uint64_t* o_size);
   bool file_extract(FileHandle fh, void *o_data, size_t i_size);
 
+  void check_error(const std::string& name);
+
 private:
   mz_zip_archive m_zar;
 };

@@ -2,6 +2,8 @@
 // WASMMessage:
 //////////
 
+#include "wasminstance.hpp"
+
 WASMMessage::WASMMessage(const uint8_t * const data, uint16_t size) : m_data(new uint8_t[size]), m_size(size) {
   memcpy((void *)m_data, (const void *)data, size);
 }
@@ -22,11 +24,16 @@ const char *WASMFunction::name() const { return m_name.c_str(); }
 //////////
 
 ZipArchive::ZipArchive(const uint8_t *data, size_t size) {
-  mz_zip_reader_init_mem(&m_zar, (const void *) data, size, 0);
+  mz_zip_zero_struct(&m_zar);
+  if (!mz_zip_reader_init_mem(&m_zar, (const void *) data, size, 0)) {
+    check_error("mz_zip_reader_init_mem");
+  }
 }
 
 ZipArchive::~ZipArchive() {
-  mz_zip_reader_end(&m_zar);
+  if (!mz_zip_reader_end(&m_zar)) {
+    check_error("mz_zip_reader_end");
+  }
 }
 
 ZipArchive::FileHandle::FileHandle(int index) : m_index(index) {}
@@ -42,16 +49,20 @@ ZipArchive::FileHandle::operator int() const {
 ZipArchive::FileHandle ZipArchive::file_locate(const char *pFilename) {
   mz_uint32 h;
   if (!mz_zip_reader_locate_file_v2(&m_zar, pFilename, nullptr, 0, &h)) {
-    return ZipArchive::FileHandle(-1);
+    check_error("mz_zip_reader_locate_file_v2");
   }
 
   return ZipArchive::FileHandle(h);
 }
 
 bool ZipArchive::file_size(ZipArchive::FileHandle fh, uint64_t *o_size) {
-  mz_zip_archive_file_stat s;
-  if (!mz_zip_reader_file_stat(&m_zar, fh, &s)) {
+  if (!fh) {
     return false;
+  }
+
+  mz_zip_archive_file_stat s;
+  if (!mz_zip_reader_file_stat(&m_zar, (mz_uint)(int)fh, &s)) {
+    check_error("mz_zip_reader_file_stat");
   }
 
   *o_size = s.m_uncomp_size;
@@ -59,7 +70,25 @@ bool ZipArchive::file_size(ZipArchive::FileHandle fh, uint64_t *o_size) {
 }
 
 bool ZipArchive::file_extract(ZipArchive::FileHandle fh, void *o_data, size_t i_size) {
-  return mz_zip_reader_extract_to_mem(&m_zar, fh, o_data, i_size, 0) == 0;
+  if (!fh) {
+    return false;
+  }
+
+  if (!mz_zip_reader_extract_to_mem(&m_zar, (mz_uint)(int)fh, o_data, i_size, 0)) {
+    check_error("mz_zip_reader_extract_to_mem");
+  }
+
+  return true;
+}
+
+void ZipArchive::check_error(const std::string& name) {
+  mz_zip_error err = mz_zip_get_last_error(&m_zar);
+  if (err != MZ_ZIP_NO_ERROR) {
+    std::string errtxt(name);
+    errtxt.append(": ");
+    errtxt.append(mz_zip_get_error_string(err));
+    throw std::runtime_error(errtxt);
+  }
 }
 
 // Base:
