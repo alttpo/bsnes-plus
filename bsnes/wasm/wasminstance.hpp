@@ -63,6 +63,10 @@ public:
   decl_binding(debugger_break);
   decl_binding(debugger_continue);
 
+  decl_binding(za_file_locate);
+  decl_binding(za_file_size);
+  decl_binding(za_file_extract);
+
   decl_binding(msg_recv);
   decl_binding(msg_size);
 

@@ -19,6 +19,56 @@ wasm_binding(debugger_continue, "v()") {
   wa_success();
 }
 
+//int32_t za_file_locate(const char *i_filename);
+wasm_binding(za_file_locate, "i(*)") {
+  wa_return_type(int32_t);
+
+  wa_arg_mem(const char*, i_filename);
+
+  wa_check_mem(i_filename, 0);
+  // TODO: upper bounds check
+
+  auto fh = m_za->file_locate(i_filename);
+  if (!fh) {
+    wa_return(-1);
+  }
+
+  wa_return((int32_t)fh);
+}
+
+//int32_t za_file_size(int32_t fh, uint64_t* o_size);
+wasm_binding(za_file_size, "i(i*)") {
+  wa_return_type(int32_t);
+
+  wa_arg    (int32_t,   i_fh);
+  wa_arg_mem(uint64_t*, o_size);
+
+  wa_check_mem(o_size, sizeof(uint64_t));
+
+  if (!m_za->file_size(ZipArchive::FileHandle(i_fh), o_size)) {
+    wa_return(0);
+  }
+
+  wa_return(1);
+}
+
+//int32_t za_file_extract(int32_t fh, void *o_data, size_t i_size);
+wasm_binding(za_file_extract, "i(i*i)") {
+  wa_return_type(int32_t);
+
+  wa_arg    (int32_t,   i_fh);
+  wa_arg_mem(void*, o_data);
+  wa_arg_mem(uint64_t, i_size);
+
+  wa_check_mem(o_data, i_size);
+
+  if (!m_za->file_extract(ZipArchive::FileHandle(i_fh), o_data, i_size)) {
+    wa_return(0);
+  }
+
+  wa_return(1);
+}
+
 //int32_t msg_size(uint16_t *o_size);
 wasm_binding(msg_size, "i(*)") {
   wa_return_type(int32_t);
