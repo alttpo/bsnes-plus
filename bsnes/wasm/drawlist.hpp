@@ -21,8 +21,6 @@ enum draw_cmd {
   CMD_COLOR_DIRECT_RGB888,
   CMD_COLOR_PALETTED,
   CMD_FONT_SELECT,
-  CMD_FONT_CREATE_PCF,
-  CMD_FONT_DELETE,
   // commands which use state:
   CMD_TEXT_UTF8,
   CMD_PIXEL,
@@ -112,7 +110,7 @@ struct Target {
 };
 
 struct Context {
-  Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces);
+  Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces, ZipArchive& za);
 
   void draw_list(const std::vector<uint8_t>& cmdlist);
   inline void draw_pixel(int x, int y, uint16_t color);
@@ -127,6 +125,7 @@ private:
   const Target& m_target;
   FontContainer& m_fonts;
   SpaceContainer& m_spaces;
+  ZipArchive& m_za;
 };
 
 }

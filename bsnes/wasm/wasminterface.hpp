@@ -19,11 +19,12 @@
 // TODO: wasmer
 #endif
 
-#include "pixelfont.hpp"
-#include "drawlist.hpp"
-
 #define MINIZ_NO_STDIO
 #include "miniz.h"
+
+#include "ziparchive.hpp"
+#include "pixelfont.hpp"
+#include "drawlist.hpp"
 
 struct WASMTrapError : public std::runtime_error {
   explicit WASMTrapError(const char* err) : std::runtime_error(err) {}

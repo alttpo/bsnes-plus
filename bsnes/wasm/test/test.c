@@ -620,6 +620,10 @@ void on_nmi() {
   if (!copied) {
     copied = 1;
     decompress_sprites();
+
+    // load PCF font from ZIP archive:
+    int32_t fh = za_file_locate("kakwafont-12-n.pcf");
+    ppux_font_load_za(0, fh);
   }
 
   uint8_t curr_sword = bus_read_u8(0x7EF359);

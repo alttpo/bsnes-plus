@@ -52,13 +52,13 @@ wasm_binding(za_file_size, "i(i*)") {
   wa_return(1);
 }
 
-//int32_t za_file_extract(int32_t fh, void *o_data, size_t i_size);
-wasm_binding(za_file_extract, "i(i*i)") {
+//int32_t za_file_extract(int32_t fh, void *o_data, uint64_t i_size);
+wasm_binding(za_file_extract, "i(i*I)") {
   wa_return_type(int32_t);
 
   wa_arg    (int32_t,   i_fh);
   wa_arg_mem(void*, o_data);
-  wa_arg_mem(uint64_t, i_size);
+  wa_arg    (uint64_t, i_size);
 
   wa_check_mem(o_data, i_size);
 
@@ -73,7 +73,7 @@ wasm_binding(za_file_extract, "i(i*i)") {
 wasm_binding(msg_size, "i(*)") {
   wa_return_type(int32_t);
 
-  wa_arg_mem(uint16_t *, o_size);
+  wa_arg_mem(uint16_t*, o_size);
 
   wa_check_mem(o_size, sizeof(uint16_t));
 
@@ -107,6 +107,46 @@ wasm_binding(msg_recv, "i(*i)") {
 wasm_binding(ppux_spaces_reset, "v()") {
   // get the runtime instance caller:
   spaces.reset();
+
+  wa_success();
+}
+
+//void ppux_font_load_za(int32_t i_fontindex, int32_t i_za_fh);
+wasm_binding(ppux_font_load_za, "v(ii)") {
+  wa_arg(int32_t, i_fontindex);
+  wa_arg(int32_t, i_za_fh);
+
+  auto fh = ZipArchive::FileHandle(i_za_fh);
+  if (!fh) {
+    wa_trap("invalid zip archive file handle");
+  }
+
+  // set a font using pcf format data:
+  try {
+    // measure file size:
+    uint64_t size;
+    if (m_za->file_size(fh, &size)) {
+      // allocate buffer and extract:
+      std::vector<char> data(size);
+
+      if (m_za->file_extract(fh, data.data(), size)) {
+        // load pcf data:
+        fonts.load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
+      }
+    }
+  } catch (std::runtime_error& err) {
+    wa_trap( err.what());
+  }
+
+  wa_success();
+}
+
+//void ppux_font_delete(int32_t i_fontindex);
+wasm_binding(ppux_font_delete, "v(i)") {
+  wa_arg(int32_t, i_fontindex);
+
+  // delete a font:
+  fonts.erase(i_fontindex);
 
   wa_success();
 }

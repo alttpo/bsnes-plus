@@ -48,7 +48,7 @@ void PPU::ppux_render_frame_pre() {
     }
 
     DrawList::Target  target(width, height, px);
-    DrawList::Context context(target, *dl.fonts, *dl.spaces);
+    DrawList::Context context(target, *dl.fonts, *dl.spaces, *dl.za);
 
     context.draw_list(dl.cmdlist);
   }

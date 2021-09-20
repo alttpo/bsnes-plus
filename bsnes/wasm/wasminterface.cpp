@@ -54,6 +54,7 @@ void WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *d
 
 #include "wasminstance.cpp"
 
+#include "ziparchive.cpp"
 #include "pixelfont.cpp"
 #include "drawlist.cpp"
 #include "wasm_bindings.cpp"

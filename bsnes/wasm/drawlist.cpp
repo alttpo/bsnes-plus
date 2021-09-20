@@ -63,8 +63,8 @@ Target::Target(
     px(p_px)
 {}
 
-Context::Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces)
-  : m_target(target), m_fonts(fonts), m_spaces(spaces)
+Context::Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces, ZipArchive& za)
+  : m_target(target), m_fonts(fonts), m_spaces(spaces), m_za(za)
 {}
 
 inline bool Context::in_bounds(int x, int y) {
@@ -403,31 +403,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
       case CMD_FONT_SELECT: {
         // select font:
         fontindex = *d++;
-        break;
-      }
-      case CMD_FONT_CREATE_PCF: {
-        // set a font using pcf format data:
-        fontindex = *d++;
-        uint16_t size = *d++;
-        try {
-          m_fonts.load_pcf(fontindex, (const uint8_t*)d, size);
-        } catch (std::runtime_error& err) {
-          fprintf(stderr, "draw_list: CMD_FONT_CREATE_PCF: %s\n", err.what());
-        }
-        break;
-      }
-      case CMD_FONT_DELETE: {
-        while (d - args < len) {
-          // need a complete command:
-          if (len - (d - args) < 1) {
-            fprintf(stderr, "draw_list: CMD_FONT_DELETE: incomplete command; %ld < %d", len-(d-args), 1);
-            break;
-          }
-
-          // delete a font:
-          fontindex = *d++;
-          m_fonts.erase(fontindex);
-        }
         break;
       }
       case CMD_TEXT_UTF8: {

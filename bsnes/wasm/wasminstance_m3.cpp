@@ -116,6 +116,10 @@ void WASMInstanceM3::link_module() {
   wasm_link(debugger_break);
   wasm_link(debugger_continue);
 
+  wasm_link(za_file_locate);
+  wasm_link(za_file_size);
+  wasm_link(za_file_extract);
+
   wasm_link(msg_recv);
   wasm_link(msg_size);
 
@@ -123,6 +127,10 @@ void WASMInstanceM3::link_module() {
   wasm_link(snes_bus_write);
 
   wasm_link(ppux_spaces_reset);
+
+  wasm_link(ppux_font_load_za);
+  wasm_link(ppux_font_delete);
+
   wasm_link(ppux_draw_list_reset);
   wasm_link(ppux_draw_list_append);
 
