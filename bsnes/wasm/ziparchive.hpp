@@ -20,4 +20,6 @@ struct ZipArchive {
 
 private:
   mz_zip_archive m_zar;
+  uint8_t* m_data;
+  size_t m_size;
 };
