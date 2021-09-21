@@ -172,12 +172,8 @@ void WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32
   auto m3fn = (WASMFunctionM3*)fn.get();
 
   const void** argptrs = new const void*[i_retc + i_argc];
-
-  for (uint32_t i = 0; i < i_retc; i++) {
+  for (uint32_t i = 0; i < i_retc + i_argc; i++) {
     argptrs[i] = (const void*)&io_stack[i];
-  }
-  for (uint32_t i = 0; i < i_argc; i++) {
-    argptrs[i] = (const void*)&io_stack[i_retc + i];
   }
 
   M3Result err;
