@@ -24,7 +24,8 @@ const char *WASMFunction::name() const { return m_name.c_str(); }
 //////////
 
 WASMInstanceBase::WASMInstanceBase(WASMInterface* interface, const std::string &key, const std::shared_ptr<ZipArchive> &za)
-  : m_interface(interface), m_key(key), m_za(za), m_data(nullptr), m_size(0)
+  : m_interface(interface), m_key(key), m_za(za), m_data(nullptr), m_size(0),
+    m_fonts(new DrawList::FontContainer()), m_spaces(new DrawList::SpaceContainer())
 {
   auto fh = m_za->file_locate("main.wasm");
   if (!fh) {

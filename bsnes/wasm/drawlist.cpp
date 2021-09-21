@@ -63,8 +63,12 @@ Target::Target(
     px(p_px)
 {}
 
-Context::Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces, ZipArchive& za)
-  : m_target(target), m_fonts(fonts), m_spaces(spaces), m_za(za)
+Context::Context(
+  const Target& target,
+  const std::shared_ptr<FontContainer>& fonts,
+  const std::shared_ptr<SpaceContainer>& spaces
+)
+  : m_target(target), m_fonts(fonts), m_spaces(spaces)
 {}
 
 inline bool Context::in_bounds(int x, int y) {
@@ -189,13 +193,13 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           uint16_t width = *d++;            // number of pixels width
           uint16_t height = *d++;           // number of pixels high
 
-          uint8_t* vram = m_spaces[vram_space]->vram_data();
+          uint8_t* vram = (*m_spaces)[vram_space]->vram_data();
           if (!vram) {
             fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad VRAM space; %d\n", vram_space);
             continue;
           }
 
-          uint8_t* cgram = m_spaces[cgram_space]->cgram_data();
+          uint8_t* cgram = (*m_spaces)[cgram_space]->cgram_data();
           if (!cgram) {
             fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad CGRAM space; %d\n", cgram_space);
             continue;
@@ -389,7 +393,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             continue;
           }
 
-          uint8_t* cgram = m_spaces[space]->cgram_data();
+          uint8_t* cgram = (*m_spaces)[space]->cgram_data();
           if(!cgram) {
             fprintf(stderr, "draw_list: CMD_COLOR_PALETTED: bad CGRAM space; %d\n", space);
             continue;
@@ -436,10 +440,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           d += textwords;
 
           // find font:
-          if (fontindex >= m_fonts.size()) {
+          if (fontindex >= m_fonts->size()) {
             continue;
           }
-          const auto font = m_fonts[fontindex];
+          const auto font = (*m_fonts)[fontindex];
           if (!font) {
             continue;
           }

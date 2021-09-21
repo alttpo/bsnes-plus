@@ -106,7 +106,7 @@ wasm_binding(msg_recv, "i(*i)") {
 //void ppux_spaces_reset();
 wasm_binding(ppux_spaces_reset, "v()") {
   // get the runtime instance caller:
-  spaces.reset();
+  m_spaces->reset();
 
   wa_success();
 }
@@ -131,7 +131,7 @@ wasm_binding(ppux_font_load_za, "v(ii)") {
 
       if (m_za->file_extract(fh, data.data(), size)) {
         // load pcf data:
-        fonts.load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
+        m_fonts->load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
       }
     }
   } catch (std::runtime_error& err) {
@@ -146,7 +146,7 @@ wasm_binding(ppux_font_delete, "v(i)") {
   wa_arg(int32_t, i_fontindex);
 
   // delete a font:
-  fonts.erase(i_fontindex);
+  m_fonts->erase(i_fontindex);
 
   wa_success();
 }
@@ -170,7 +170,7 @@ wasm_binding(ppux_vram_write, "i(ii*i)") {
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_vram_space(i_space);
+  t = m_spaces->get_vram_space(i_space);
   maxSize = 0x10000;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -215,7 +215,7 @@ wasm_binding(ppux_cgram_write, "i(ii*i)") {
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_cgram_space(i_space);
+  t = m_spaces->get_cgram_space(i_space);
   maxSize = 0x200;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -301,7 +301,7 @@ wasm_binding(ppux_vram_read, "i(ii*i)") {
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_vram_space(i_space);
+  t = m_spaces->get_vram_space(i_space);
   maxSize = 0x10000;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -346,7 +346,7 @@ wasm_binding(ppux_cgram_read, "i(ii*i)") {
 
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
-  t = spaces.get_cgram_space(i_space);
+  t = m_spaces->get_cgram_space(i_space);
   maxSize = 0x200;
   if (!t) {
     //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
@@ -468,8 +468,8 @@ wasm_binding(ppux_draw_list_append, "v(iii*)") {
   dl.layer = i_layer;
   dl.priority = i_priority;
   // refer to the runtime instance's fonts and spaces collections:
-  dl.fonts = &fonts;
-  dl.spaces = &spaces;
+  dl.fonts = m_fonts;
+  dl.spaces = m_spaces;
 
   // copy cmdlist data in:
   dl.cmdlist.resize(i_size);

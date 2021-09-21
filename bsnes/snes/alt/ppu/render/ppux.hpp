@@ -8,9 +8,8 @@ uint8  ppux_layer_lyr[256 * 256];
 struct ppux_draw_layer {
   uint8 layer;
   uint8 priority;
-  DrawList::FontContainer* fonts;
-  DrawList::SpaceContainer* spaces;
-  ZipArchive* za;
+  std::shared_ptr<DrawList::FontContainer> fonts;
+  std::shared_ptr<DrawList::SpaceContainer> spaces;
   std::vector<uint8_t> cmdlist;
 };
 std::vector<ppux_draw_layer> ppux_draw_lists;

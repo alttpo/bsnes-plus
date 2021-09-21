@@ -79,8 +79,8 @@ public:
 
   std::queue<std::shared_ptr<WASMMessage>> m_msgs;
 
-  DrawList::FontContainer  fonts;
-  DrawList::SpaceContainer spaces;
+  std::shared_ptr<DrawList::FontContainer>  m_fonts;
+  std::shared_ptr<DrawList::SpaceContainer> m_spaces;
 };
 
 #define wa_offset_to_ptr(offset)  (void*)((uint8_t*)_mem + (uint32_t)(offset))

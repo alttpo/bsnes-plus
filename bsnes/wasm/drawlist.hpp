@@ -110,7 +110,11 @@ struct Target {
 };
 
 struct Context {
-  Context(const Target& target, FontContainer& fonts, SpaceContainer& spaces, ZipArchive& za);
+  Context(
+    const Target& target,
+    const std::shared_ptr<FontContainer>& fonts,
+    const std::shared_ptr<SpaceContainer>& spaces
+  );
 
   void draw_list(const std::vector<uint8_t>& cmdlist);
   inline void draw_pixel(int x, int y, uint16_t color);
@@ -123,9 +127,8 @@ struct Context {
 
 private:
   const Target& m_target;
-  FontContainer& m_fonts;
-  SpaceContainer& m_spaces;
-  ZipArchive& m_za;
+  const std::shared_ptr<FontContainer> m_fonts;
+  const std::shared_ptr<SpaceContainer> m_spaces;
 };
 
 }
