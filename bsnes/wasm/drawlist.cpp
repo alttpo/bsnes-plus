@@ -184,9 +184,9 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           bool   hflip = (bool)*d++;
           bool   vflip = (bool)*d++;
 
-          uint8_t  vram_space = *d++;       //     0 ..   255; 0 = local, 1..255 = extra
+          uint16_t vram_space = *d++;       //     0 ..  1023; 0 = local, 1..1023 = extra
           uint16_t vram_addr = *d++;        // $0000 .. $FFFF (byte address)
-          uint8_t  cgram_space = *d++;      //     0 ..   255; 0 = local, 1..255 = extra
+          uint16_t cgram_space = *d++;      //     0 ..  1023; 0 = local, 1..1023 = extra
           uint8_t  palette = *d++;          //     0 ..   255
 
           uint8_t  bpp = *d++;              // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
