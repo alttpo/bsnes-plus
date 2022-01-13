@@ -8,7 +8,7 @@ struct WASMFunctionM3 : public WASMFunction {
 };
 
 struct WASMInstanceM3 : public WASMInstanceBase {
-  explicit WASMInstanceM3(WASMInterface* interface, const std::string &key, const std::shared_ptr<ZipArchive> &za);
+  explicit WASMInstanceM3(WASMInterface* intf, const std::string &key, const std::shared_ptr<ZipArchive> &za);
   ~WASMInstanceM3();
 
   void link_module();

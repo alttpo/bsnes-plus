@@ -19,7 +19,7 @@ protected:
 };
 
 struct WASMInstanceBase {
-  explicit WASMInstanceBase(WASMInterface* interface, const std::string& key, const std::shared_ptr<ZipArchive>& za);
+  explicit WASMInstanceBase(WASMInterface* intf, const std::string& key, const std::shared_ptr<ZipArchive>& za);
   virtual ~WASMInstanceBase();
 
 public:
