@@ -34,6 +34,7 @@ endif
 
 ifeq ($(DEBUG), 1)
   flags += -O0 -g
+  link += -g
 else
   flags += -O3 -fomit-frame-pointer
   ifeq ($(platform),osx)
