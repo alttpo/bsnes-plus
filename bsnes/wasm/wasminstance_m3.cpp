@@ -152,6 +152,8 @@ uint64_t WASMInstanceM3::memory_size() {
 WASMFunctionM3::WASMFunctionM3(const std::string& name, IM3Function m3fn)
   : WASMFunction(name), m_fn(m3fn)
 {
+  if (!m3fn)
+    throw std::invalid_argument("m3fn");
 }
 
 WASMFunctionM3::operator bool() const { return m_fn != nullptr; }
@@ -162,14 +164,22 @@ std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_nam
   M3Result err;
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
   if (err != m3Err_none) {
-    return std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, nullptr));
+    // not found:
+    return std::shared_ptr<WASMFunction>();
   }
 
   return std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));
 }
 
 void WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) {
+  if (!fn) {
+    return;
+  }
+
   auto m3fn = (WASMFunctionM3*)fn.get();
+  if (!*m3fn) {
+    return;
+  }
 
   const void** argptrs = new const void*[i_retc + i_argc];
   for (uint32_t i = 0; i < i_retc + i_argc; i++) {
