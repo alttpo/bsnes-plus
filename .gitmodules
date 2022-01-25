@@ -3,7 +3,7 @@
 	url = https://github.com/devinacker/bsnes-plus-ext-qt.git
 [submodule "external/wasm3"]
 	path = external/wasm3
-	url = https://github.com/wasm3/wasm3.git
+	url = https://github.com/alttpo/wasm3.git
 [submodule "external/printf"]
 	path = external/printf
 	url = https://github.com/eyalroz/printf.git
