@@ -54,9 +54,6 @@ int32_t za_file_size(int32_t fh, uint64_t* o_size);
 __attribute__((import_module("env"), import_name("za_file_extract")))
 int32_t za_file_extract(int32_t fh, void *o_data, uint64_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_reset")))
-void ppux_reset();
-
 __attribute__((import_module("env"), import_name("ppux_font_load_za")))
 void ppux_font_load_za(int32_t i_fontindex, int32_t i_za_fh);
 
