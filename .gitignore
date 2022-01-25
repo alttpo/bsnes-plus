@@ -16,3 +16,7 @@ bsnes+.app/
 .idea/
 *.pcf
 bsnes/ui-qt/state/
+/bsnes/wasm/test/*.wasm
+/bsnes/wasm/test/*.zip
+/bsnes/wasm/test2/*.wasm
+/bsnes/wasm/test2/*.zip
