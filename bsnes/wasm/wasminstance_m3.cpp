@@ -81,6 +81,8 @@ WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key,
   check_error(err);
 
   link_module();
+
+  m3_PrintRuntimeInfo(m_runtime);
 }
 
 WASMInstanceM3::~WASMInstanceM3() {
@@ -165,6 +167,7 @@ std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_nam
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
   if (err != m3Err_none) {
     // not found:
+    fprintf(stderr, "func_find(\"%s\") failed: %s\n", i_name.c_str(), err);
     return std::shared_ptr<WASMFunction>();
   }
 
@@ -172,12 +175,14 @@ std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_nam
 }
 
 void WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) {
-  if (!fn) {
+  if (!(bool)fn) {
+    //fprintf(stderr, "func_invoke() called with fn == nullptr\n");
     return;
   }
 
   auto m3fn = (WASMFunctionM3*)fn.get();
   if (!*m3fn) {
+    fprintf(stderr, "func_invoke() called with shared_ptr dereferencing to nullptr\n");
     return;
   }
 
