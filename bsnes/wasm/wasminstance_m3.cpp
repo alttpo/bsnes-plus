@@ -167,7 +167,9 @@ std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_nam
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
   if (err != m3Err_none) {
     // not found:
-    fprintf(stderr, "func_find(\"%s\") failed: %s\n", i_name.c_str(), err);
+    M3ErrorInfo errInfo;
+    m3_GetErrorInfo(m_runtime, &errInfo);
+    fprintf(stderr, "func_find(\"%s\") failed: %s; %s\n", i_name.c_str(), err, errInfo.message);
     return std::shared_ptr<WASMFunction>();
   }
 
