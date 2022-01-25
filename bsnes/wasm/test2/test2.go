@@ -2,9 +2,6 @@ package main
 
 import "unsafe"
 
-//export ppux_reset
-func ppux_reset()
-
 //export ppux_draw_list_reset
 func ppux_draw_list_reset()
 
@@ -45,15 +42,16 @@ func snes_bus_read(i_address uint32, i_data unsafe.Pointer, i_size uint32)
 
 //export on_nmi
 func on_nmi() {
-	ppux_reset()
-
 	var module uint8
 	snes_bus_read(0x7E0010, unsafe.Pointer(&module), 1)
 
 	var cmd [8]uint16 = [8]uint16{
 		3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
-		3, CMD_PIXEL, 18, 118,
+		3, CMD_PIXEL, 12, 118,
 	}
 	ppux_draw_list_reset()
-	ppux_draw_list_append(4, 15, uint32(len(cmd)), unsafe.Pointer(&cmd))
+	ppux_draw_list_append(4, 15, uint32(len(cmd)) * 2, unsafe.Pointer(&cmd))
+}
+
+func main() {
 }
