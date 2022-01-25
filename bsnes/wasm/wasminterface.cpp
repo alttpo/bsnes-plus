@@ -33,8 +33,18 @@ void WASMInterface::reset() {
 }
 
 void WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data, size_t size) {
+  auto it = m_instances.find(instanceKey);
+  if (it != m_instances.end()) {
+    // existing instance found so erase it:
+    fprintf(stderr, "load_zip(): erasing existing instance key \"%s\"\n", instanceKey.c_str());
+    m_instances.erase(it);
+  }
+
+  // emplace a new instance of the module:
   std::shared_ptr<ZipArchive> za(new ZipArchive(data, size));
-  m_instances.emplace(
+  fprintf(stderr, "load_zip(): inserting new instance key \"%s\"\n", instanceKey.c_str());
+  m_instances.emplace_hint(
+    it,
     instanceKey,
     std::shared_ptr<WASMInstanceBase>(new WASMInstanceM3(this, instanceKey, za))
   );
