@@ -1,7 +1,9 @@
 
-/usr/local/opt/llvm/bin/clang \
+#/usr/local/opt/llvm/bin/clang
+
+clang \
   --target=wasm32 \
-  -O3 \
+  -g \
   -nostdlib \
   -nostartfiles \
   -fno-builtin \
@@ -10,4 +12,4 @@
   -o "main.wasm" \
   test.c
 
-zip test.zip main.wasm kakwafont-12-n.pcf
+zip test.zip main.wasm kakwafont-12-n.pcf || /c/Program\ Files/7-Zip/7z.exe u test.zip main.wasm kakwafont-12-n.pcf
