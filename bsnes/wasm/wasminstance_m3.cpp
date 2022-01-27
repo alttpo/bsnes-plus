@@ -1,8 +1,28 @@
 
-static void check_error(M3Result err) {
-  if (err != m3Err_none) {
-    throw std::runtime_error(err);
+void WASMInstanceM3::check_error(M3Result err) {
+  if (err == m3Err_none) {
+    return;
   }
+
+  // get error info:
+  M3ErrorInfo errInfo;
+  m3_GetErrorInfo(m_runtime, &errInfo);
+
+  // get backtrace info from last frame:
+  const char *moduleName = m3_GetModuleName(m_module);
+  IM3BacktraceInfo backtrace = m3_GetBacktrace(m_runtime);
+  IM3BacktraceFrame lastFrame = backtrace->lastFrame;
+  const char *functionName = m3_GetFunctionName(lastFrame->function);
+  uint32_t moduleOffset = lastFrame->moduleOffset;
+
+  throw WASMError(
+    err,
+    moduleName,
+    errInfo.message,
+    errInfo.file,
+    errInfo.line,
+    functionName,
+    moduleOffset);
 }
 
 m3ApiRawFunction(hexdump) {
@@ -51,9 +71,11 @@ WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key,
   //printf("m3_ParseModule(%p, %p, %p, %zu)\n", m_env, &m_module, m_data, m_size);
   err = m3_ParseModule(m_env, &m_module, m_data, m_size);
   if (err != m3Err_none) {
+    std::string moduleName = m3_GetModuleName(m_module);
     m3_FreeModule(m_module);
     m_module = nullptr;
-    throw std::runtime_error(err);
+
+    throw WASMError(err, moduleName);
   }
 
   m3_SetModuleName(m_module, m_key.c_str());
@@ -94,18 +116,18 @@ void WASMInstanceM3::link_module() {
   M3Result err;
 
 // link wasm_bindings.cpp member functions:
-#define wasm_link(name) \
+#define wasm_link_full(name, namestr) \
   err = m3_LinkRawFunctionEx( \
     m_module,      \
     "*",           \
-    #name,         \
+    namestr,       \
     wa_sig_##name, \
     [](IM3Runtime runtime, IM3ImportContext _ctx, uint64_t * _sp, void * _mem) -> const void* { \
       WASMInstanceM3 *self = ((WASMInstanceM3 *)_ctx->userdata); \
       try { \
         return self->wa_fun_##name(_mem, _sp); \
-      } catch (std::runtime_error& e) { \
-        return e.what(); \
+      } catch (WASMError& e) { \
+        return e.m_result; \
       } \
     }, \
     (const void *)this \
@@ -114,6 +136,10 @@ void WASMInstanceM3::link_module() {
     err = m3Err_none; \
   } \
   check_error(err);
+
+#define wasm_link(name) wasm_link_full(name, #name)
+
+  wasm_link_full(runtime_alloc, "runtime.alloc");
 
   wasm_link(debugger_break);
   wasm_link(debugger_continue);
@@ -160,6 +186,10 @@ WASMFunctionM3::WASMFunctionM3(const std::string& name, IM3Function m3fn)
 
 WASMFunctionM3::operator bool() const { return m_fn != nullptr; }
 
+void WASMInstanceM3::warn(const WASMError& err) {
+  fprintf(stderr, "%s\n", err.what().c_str());
+}
+
 std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_name) {
   IM3Function m3fn = nullptr;
 
@@ -167,10 +197,7 @@ std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_nam
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
   if (err != m3Err_none) {
     // not found:
-    M3ErrorInfo errInfo;
-    m3_GetErrorInfo(m_runtime, &errInfo);
-    fprintf(stderr, "func_find(\"%s\") failed: %s; %s\n", i_name.c_str(), err, errInfo.message);
-    return std::shared_ptr<WASMFunction>();
+    check_error(err);
   }
 
   return std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));

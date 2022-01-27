@@ -30,8 +30,8 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
     //});
 
     reply = makeOkReply();
-  } catch (WASMTrapError& err) {
-    reply = makeErrorReply(err.what());
+  } catch (WASMError& err) {
+    reply = makeErrorReply(err.what().c_str());
   }
 
   return reply;
@@ -50,8 +50,8 @@ QByteArray NWAccess::cmdWasmUnload(QByteArray args)
     wasmInterface.unload_zip(instanceKey);
 
     reply = makeOkReply();
-  } catch (WASMTrapError& err) {
-    reply = makeErrorReply(err.what());
+  } catch (WASMError& err) {
+    reply = makeErrorReply(err.what().c_str());
   }
 
   return reply;

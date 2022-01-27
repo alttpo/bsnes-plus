@@ -13,10 +13,14 @@ struct WASMInstanceM3 : public WASMInstanceBase {
 
   void link_module();
 
+private:
+  void check_error(M3Result err);
+
 public:
   std::shared_ptr<WASMFunction> func_find(const std::string &i_name) override;
   void func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) override;
   uint64_t memory_size() override;
+  void warn(const WASMError& err) override;
 
 public:
   static const int stack_size_bytes = 1048576;

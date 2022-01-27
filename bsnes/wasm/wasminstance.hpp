@@ -18,6 +18,42 @@ protected:
   explicit WASMFunction(const std::string& name);
 };
 
+struct WASMError {
+  explicit WASMError(
+    const char *result,
+    const std::string& moduleName);
+
+  explicit WASMError(
+    const char *result,
+    const std::string& moduleName,
+    const std::string& message,
+    const std::string& file,
+    uint32_t line);
+
+  explicit WASMError(
+    const char *result,
+    const std::string& moduleName,
+    const std::string& message,
+    const std::string& file,
+    uint32_t line,
+    const std::string& functionName,
+    uint32_t moduleOffset);
+
+  std::string what() const;
+
+public:
+  // this is `const char *` to maintain reference identity
+  const char *m_result;
+  std::string m_moduleName;
+
+  std::string m_message;
+  std::string m_file;
+  uint32_t    m_line;
+
+  std::string m_functionName;
+  uint32_t    m_moduleOffset;
+};
+
 struct WASMInstanceBase {
   explicit WASMInstanceBase(WASMInterface* intf, const std::string& key, const std::shared_ptr<ZipArchive>& za);
   virtual ~WASMInstanceBase();
@@ -31,12 +67,15 @@ public:
   virtual std::shared_ptr<WASMFunction> func_find(const std::string& i_name) = 0;
   virtual void func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
   virtual uint64_t memory_size() = 0;
+  virtual void warn(const WASMError& err) = 0;
 
 public:
   // wasm bindings:
 #define decl_binding(name) \
   static const char *wa_sig_##name; \
   const char* wa_fun_##name(void* _mem, uint64_t* _sp)
+
+  decl_binding(runtime_alloc);
 
   decl_binding(debugger_break);
   decl_binding(debugger_continue);
@@ -95,7 +134,7 @@ public:
 #define wa_success()              { return nullptr; }
 
 #define wa_ptr_is_null(addr)      ((void*)(addr) <= _mem)
-#define wa_check_mem(addr, len)   { if (wa_ptr_is_null(addr) || ((uint64_t)(uintptr_t)(addr) + (len)) > ((uint64_t)(uintptr_t)(_mem) + memory_size())) wa_trap("out of bounds memory access"); }
+#define wa_check_mem(addr, len)   { if (wa_ptr_is_null(addr) || ((uint64_t)(uintptr_t)(addr) + (len)) > ((uint64_t)(uintptr_t)(_mem) + memory_size())) wa_trap("out of bounds memory access from " __FILE__ ":" M3_STR(__LINE__)); }
 
 #ifdef WASM_USE_M3
 #  include "wasminstance_m3.hpp"

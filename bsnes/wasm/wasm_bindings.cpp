@@ -5,6 +5,13 @@
   const char* WASMInstanceBase::wa_sig_##name = sig; \
   const char* WASMInstanceBase::wa_fun_##name(void* _mem, uint64_t* _sp)
 
+//i32 runtime_alloc(i32, i32, i32, i32)
+wasm_binding(runtime_alloc, "i(iiii)") {
+  wa_return_type(int32_t);
+
+  wa_return(0);
+}
+
 //void debugger_break();
 wasm_binding(debugger_break, "v()") {
   m_interface->m_do_break();

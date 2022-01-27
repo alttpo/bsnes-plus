@@ -26,10 +26,6 @@
 #include "pixelfont.hpp"
 #include "drawlist.hpp"
 
-struct WASMTrapError : public std::runtime_error {
-  explicit WASMTrapError(const char* err) : std::runtime_error(err) {}
-};
-
 struct WASMInterface;
 
 #include "wasminstance.hpp"

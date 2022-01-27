@@ -20,6 +20,58 @@ WASMFunction::WASMFunction(const std::string &name) : m_name(name) {
 
 const char *WASMFunction::name() const { return m_name.c_str(); }
 
+// WASMError:
+//////////
+
+WASMError::WASMError(
+  const char *result,
+  const std::string& moduleName) :
+  m_result(result),
+  m_moduleName(moduleName)
+{
+}
+
+WASMError::WASMError(
+  const char *result,
+  const std::string& moduleName,
+  const std::string& message,
+  const std::string& file,
+  uint32_t line) :
+    m_result(result),
+    m_moduleName(moduleName),
+    m_message(message),
+    m_file(file),
+    m_line(line)
+{
+}
+
+WASMError::WASMError(
+  const char *result,
+  const std::string& moduleName,
+  const std::string& message,
+  const std::string& file,
+  uint32_t line,
+  const std::string& functionName,
+  uint32_t moduleOffset) :
+    m_result(result),
+    m_moduleName(moduleName),
+    m_message(message),
+    m_file(file),
+    m_line(line),
+    m_functionName(functionName),
+    m_moduleOffset(moduleOffset)
+{
+}
+
+std::string WASMError::what() const {
+  char buff[1024];
+  snprintf(buff, sizeof(buff), "(%s:%d) %s: %s at %s::%s (offset %u)",
+           m_file.c_str(), m_line, m_result, m_message.c_str(), m_moduleName.c_str(), m_functionName.c_str(),
+           m_moduleOffset);
+  std::string estr = buff;
+  return estr;
+}
+
 // Base:
 //////////
 
@@ -51,8 +103,12 @@ void WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
   //printf("msg_enqueue(%p, %u)\n", msg->m_data, msg->m_size);
   m_msgs.push(msg);
 
-  auto fn = func_find("on_msg_recv");
-  func_invoke(fn, 0, 0, nullptr);
+  try {
+    auto fn = func_find("on_msg_recv");
+    func_invoke(fn, 0, 0, nullptr);
+  } catch (WASMError& err) {
+    warn(err);
+  }
 }
 
 std::shared_ptr<WASMMessage> WASMInstanceBase::msg_dequeue() {
