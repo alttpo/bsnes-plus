@@ -1,7 +1,7 @@
 
-void WASMInstanceM3::check_error(M3Result err) {
+bool WASMInstanceM3::_catch(M3Result err) {
   if (err == m3Err_none) {
-    return;
+    return false;
   }
 
   // get error info:
@@ -9,20 +9,20 @@ void WASMInstanceM3::check_error(M3Result err) {
   m3_GetErrorInfo(m_runtime, &errInfo);
 
   // get backtrace info from last frame:
-  const char *moduleName = m3_GetModuleName(m_module);
   IM3BacktraceInfo backtrace = m3_GetBacktrace(m_runtime);
   IM3BacktraceFrame lastFrame = backtrace->lastFrame;
   const char *functionName = m3_GetFunctionName(lastFrame->function);
   uint32_t moduleOffset = lastFrame->moduleOffset;
 
-  throw WASMError(
+  m_err = WASMError(
     err,
-    moduleName,
+    m_key,
     errInfo.message,
     errInfo.file,
     errInfo.line,
     functionName,
     moduleOffset);
+  return true;
 }
 
 m3ApiRawFunction(hexdump) {
@@ -71,40 +71,40 @@ WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key,
   //printf("m3_ParseModule(%p, %p, %p, %zu)\n", m_env, &m_module, m_data, m_size);
   err = m3_ParseModule(m_env, &m_module, m_data, m_size);
   if (err != m3Err_none) {
-    std::string moduleName = m3_GetModuleName(m_module);
     m3_FreeModule(m_module);
     m_module = nullptr;
 
-    throw WASMError(err, moduleName);
+    m_err = WASMError(err, m_key);
+    return;
   }
 
   m3_SetModuleName(m_module, m_key.c_str());
 
   // load module:
   err = m3_LoadModule(m_runtime, m_module);
-  check_error(err);
+  if (_catch(err)) return;
 
   // link in libc API:
   err = m3_LinkLibC(m_module);
-  check_error(err);
+  if (_catch(err)) return;
 
   // link puts function:
   err = m3_LinkRawFunction(m_module, "env", "puts", "i(*)", m3puts);
   if (err == m3Err_functionLookupFailed) {
     err = nullptr;
   }
-  check_error(err);
+  if (_catch(err)) return;
 
   // link hexdump function:
   err = m3_LinkRawFunction(m_module, "env", "hexdump", "v(*i)", hexdump);
   if (err == m3Err_functionLookupFailed) {
     err = nullptr;
   }
-  check_error(err);
+  if (_catch(err)) return;
 
   link_module();
 
-  m3_PrintRuntimeInfo(m_runtime);
+  //m3_PrintRuntimeInfo(m_runtime);
 }
 
 WASMInstanceM3::~WASMInstanceM3() {
@@ -124,18 +124,14 @@ void WASMInstanceM3::link_module() {
     wa_sig_##name, \
     [](IM3Runtime runtime, IM3ImportContext _ctx, uint64_t * _sp, void * _mem) -> const void* { \
       WASMInstanceM3 *self = ((WASMInstanceM3 *)_ctx->userdata); \
-      try { \
-        return self->wa_fun_##name(_mem, _sp); \
-      } catch (WASMError& e) { \
-        return e.m_result; \
-      } \
+      return self->wa_fun_##name(_mem, _sp); \
     }, \
     (const void *)this \
   ); \
   if (err == m3Err_functionLookupFailed) { \
     err = m3Err_none; \
   } \
-  check_error(err);
+  if (_catch(err)) return;
 
 #define wasm_link(name) wasm_link_full(name, #name)
 
@@ -186,33 +182,30 @@ WASMFunctionM3::WASMFunctionM3(const std::string& name, IM3Function m3fn)
 
 WASMFunctionM3::operator bool() const { return m_fn != nullptr; }
 
-void WASMInstanceM3::warn(const WASMError& err) {
-  fprintf(stderr, "%s\n", err.what().c_str());
-}
-
-std::shared_ptr<WASMFunction> WASMInstanceM3::func_find(const std::string &i_name) {
+bool WASMInstanceM3::func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) {
   IM3Function m3fn = nullptr;
 
   M3Result err;
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
   if (err != m3Err_none) {
     // not found:
-    check_error(err);
+    if (_catch(err)) return false;
   }
 
-  return std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));
+  o_func = std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));
+  return true;
 }
 
-void WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) {
+bool WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) {
   if (!(bool)fn) {
     //fprintf(stderr, "func_invoke() called with fn == nullptr\n");
-    return;
+    return false;
   }
 
   auto m3fn = (WASMFunctionM3*)fn.get();
   if (!*m3fn) {
     fprintf(stderr, "func_invoke() called with shared_ptr dereferencing to nullptr\n");
-    return;
+    return false;
   }
 
   const void** argptrs = new const void*[i_retc + i_argc];
@@ -222,10 +215,12 @@ void WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32
 
   M3Result err;
   err = m3_Call(m3fn->m_fn, i_argc, argptrs + i_retc);
-  check_error(err);
+  if (_catch(err)) return false;
 
   err = m3_GetResults(m3fn->m_fn, i_retc, argptrs);
-  check_error(err);
+  if (_catch(err)) return false;
 
   delete[] argptrs;
+
+  return true;
 }

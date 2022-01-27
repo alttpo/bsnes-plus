@@ -50,7 +50,7 @@ public:
   void load_zip(const std::string& instanceKey, const uint8_t *data, size_t size);
   void unload_zip(const std::string& instanceKey);
 
-  void msg_enqueue(const std::string& instanceKey, const uint8_t *data, size_t size);
+  bool msg_enqueue(const std::string& instanceKey, const uint8_t *data, size_t size);
 
 private:
   std::map<std::string, std::shared_ptr<WASMInstanceBase>> m_instances;

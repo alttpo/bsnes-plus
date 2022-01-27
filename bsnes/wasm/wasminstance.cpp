@@ -23,6 +23,10 @@ const char *WASMFunction::name() const { return m_name.c_str(); }
 // WASMError:
 //////////
 
+WASMError::WASMError() : m_result(NULL), m_moduleName()
+{
+}
+
 WASMError::WASMError(
   const char *result,
   const std::string& moduleName) :
@@ -63,6 +67,10 @@ WASMError::WASMError(
 {
 }
 
+WASMError::operator bool() const {
+  return m_result != NULL;
+}
+
 std::string WASMError::what() const {
   char buff[1024];
   snprintf(buff, sizeof(buff), "(%s:%d) %s: %s at %s::%s (offset %u)",
@@ -99,16 +107,28 @@ WASMInstanceBase::~WASMInstanceBase() {
   delete[] m_data;
 }
 
-void WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
+void WASMInstanceBase::warn() {
+  if (!m_err)
+    return;
+
+  fprintf(stderr, "%s\n", m_err.what().c_str());
+  fflush(stderr);
+}
+
+bool WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
   //printf("msg_enqueue(%p, %u)\n", msg->m_data, msg->m_size);
   m_msgs.push(msg);
 
-  try {
-    auto fn = func_find("on_msg_recv");
-    func_invoke(fn, 0, 0, nullptr);
-  } catch (WASMError& err) {
-    warn(err);
+  std::shared_ptr<WASMFunction> fn;
+  if (!func_find("on_msg_recv", fn))
+    return false;
+
+  if (!func_invoke(fn, 0, 0, nullptr)) {
+    warn();
+    return false;
   }
+
+  return true;
 }
 
 std::shared_ptr<WASMMessage> WASMInstanceBase::msg_dequeue() {

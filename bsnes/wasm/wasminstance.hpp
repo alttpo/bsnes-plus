@@ -19,6 +19,8 @@ protected:
 };
 
 struct WASMError {
+  WASMError();
+
   explicit WASMError(
     const char *result,
     const std::string& moduleName);
@@ -39,6 +41,7 @@ struct WASMError {
     const std::string& functionName,
     uint32_t moduleOffset);
 
+  operator bool() const;
   std::string what() const;
 
 public:
@@ -59,15 +62,15 @@ struct WASMInstanceBase {
   virtual ~WASMInstanceBase();
 
 public:
-  void msg_enqueue(const std::shared_ptr<WASMMessage>& msg);
+  bool msg_enqueue(const std::shared_ptr<WASMMessage>& msg);
   std::shared_ptr<WASMMessage> msg_dequeue();
   bool msg_size(uint16_t *o_size);
 
 public:
-  virtual std::shared_ptr<WASMFunction> func_find(const std::string& i_name) = 0;
-  virtual void func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
+  virtual bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) = 0;
+  virtual bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
   virtual uint64_t memory_size() = 0;
-  virtual void warn(const WASMError& err) = 0;
+  virtual void warn();
 
 public:
   // wasm bindings:
@@ -112,6 +115,8 @@ public:
   WASMInterface* m_interface;
   const std::string m_key;
   const std::shared_ptr<ZipArchive> m_za;
+
+  WASMError m_err;
 
   uint8_t*  m_data;
   uint64_t  m_size;

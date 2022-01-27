@@ -16,26 +16,26 @@ void WASMInterface::register_debugger(const std::function<void()>& do_break, con
 void WASMInterface::on_nmi() {
   for (auto &it : m_instances) {
     auto &instance = it.second;
-    try {
-      auto fn = instance->func_find("on_nmi");
-      instance->func_invoke(fn, 0, 0, nullptr);
-    } catch (const WASMError& err) {
-      instance->warn(err);
-    } catch (...) {
-      fprintf(stderr, "catch-all!\n");
-    }
+
+    std::shared_ptr<WASMFunction> fn;
+    if (!instance->func_find("on_nmi", fn))
+      continue;
+
+    if (!instance->func_invoke(fn, 0, 0, nullptr))
+      instance->warn();
   }
 }
 
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
   for (auto &it : m_instances) {
     auto &instance = it.second;
-    try {
-      auto fn = instance->func_find("on_frame_present");
-      instance->func_invoke(fn, 0, 0, nullptr);
-    } catch (const WASMError& err) {
-      instance->warn(err);
-    }
+
+    std::shared_ptr<WASMFunction> fn;
+    if (!instance->func_find("on_frame_present", fn))
+      continue;
+
+    if (!instance->func_invoke(fn, 0, 0, nullptr))
+      instance->warn();
   }
 
   return data;
@@ -67,18 +67,14 @@ void WASMInterface::unload_zip(const std::string &instanceKey) {
   m_instances.erase(instanceKey);
 }
 
-void WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *data, size_t size) {
+bool WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *data, size_t size) {
   auto it = m_instances.find(instanceKey);
   if (it == m_instances.end()) {
-    return;
+    return false;
   }
 
   auto &instance = it->second;
-  try {
-    instance->msg_enqueue(std::make_shared<WASMMessage>(data, size));
-  } catch (WASMError& err) {
-    instance->warn(err);
-  }
+  return instance->msg_enqueue(std::make_shared<WASMMessage>(data, size));
 }
 
 #include "wasminstance.cpp"
