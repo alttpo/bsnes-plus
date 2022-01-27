@@ -20,6 +20,7 @@ public:
   bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) final;
   bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) final;
   uint64_t memory_size() final;
+  void warn() final;
 
 public:
   static const int stack_size_bytes = 1048576;
@@ -27,4 +28,6 @@ public:
   IM3Environment m_env;
   IM3Runtime m_runtime;
   IM3Module m_module;
+
+  std::set<std::string> m_warnings;
 };

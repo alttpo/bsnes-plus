@@ -4,15 +4,25 @@ bool WASMInstanceM3::_catch(M3Result err) {
     return false;
   }
 
+  std::string functionName;
+  uint32_t moduleOffset;
+
   // get error info:
   M3ErrorInfo errInfo;
   m3_GetErrorInfo(m_runtime, &errInfo);
+  if (errInfo.function) {
+     functionName = m3_GetFunctionName(errInfo.function);
+  }
 
   // get backtrace info from last frame:
   IM3BacktraceInfo backtrace = m3_GetBacktrace(m_runtime);
-  IM3BacktraceFrame lastFrame = backtrace->lastFrame;
-  const char *functionName = m3_GetFunctionName(lastFrame->function);
-  uint32_t moduleOffset = lastFrame->moduleOffset;
+  if (backtrace) {
+    IM3BacktraceFrame lastFrame = backtrace->lastFrame;
+    if (lastFrame) {
+      functionName = m3_GetFunctionName(lastFrame->function);
+      moduleOffset = lastFrame->moduleOffset;
+    }
+  }
 
   m_err = WASMError(
     err,
@@ -22,6 +32,7 @@ bool WASMInstanceM3::_catch(M3Result err) {
     errInfo.line,
     functionName,
     moduleOffset);
+
   return true;
 }
 
@@ -223,4 +234,20 @@ bool WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32
   delete[] argptrs;
 
   return true;
+}
+
+void WASMInstanceM3::warn() {
+  if (!m_err)
+    return;
+
+  // prevent redundant warnings:
+  const std::string &key = m_err.m_message;
+
+  const std::set<std::string>::iterator &it = m_warnings.find(key);
+  if (it != m_warnings.end())
+    return;
+
+  m_warnings.emplace_hint(it, key);
+
+  WASMInstanceBase::warn();
 }

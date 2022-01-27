@@ -73,7 +73,7 @@ WASMError::operator bool() const {
 
 std::string WASMError::what() const {
   char buff[1024];
-  snprintf(buff, sizeof(buff), "%s: %s at %s::%s (offset %u) (%s:%d)",
+  snprintf(buff, sizeof(buff), "%s: %s in module '%s', function '%s' (offset %u) (%s:%d)",
            m_result, m_message.c_str(), m_moduleName.c_str(), m_functionName.c_str(), m_moduleOffset,
            m_file.c_str(), m_line);
   std::string estr = buff;

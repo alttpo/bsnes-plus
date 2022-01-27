@@ -18,11 +18,15 @@ void WASMInterface::on_nmi() {
     auto &instance = it.second;
 
     std::shared_ptr<WASMFunction> fn;
-    if (!instance->func_find("on_nmi", fn))
-      continue;
-
-    if (!instance->func_invoke(fn, 0, 0, nullptr))
+    if (!instance->func_find("on_nmi", fn)) {
       instance->warn();
+      continue;
+    }
+
+    if (!instance->func_invoke(fn, 0, 0, nullptr)) {
+      instance->warn();
+      continue;
+    }
   }
 }
 
@@ -31,11 +35,15 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
     auto &instance = it.second;
 
     std::shared_ptr<WASMFunction> fn;
-    if (!instance->func_find("on_frame_present", fn))
-      continue;
-
-    if (!instance->func_invoke(fn, 0, 0, nullptr))
+    if (!instance->func_find("on_frame_present", fn)) {
       instance->warn();
+      continue;
+    }
+
+    if (!instance->func_invoke(fn, 0, 0, nullptr)) {
+      instance->warn();
+      continue;
+    }
   }
 
   return data;
