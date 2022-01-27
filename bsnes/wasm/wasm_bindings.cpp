@@ -453,10 +453,10 @@ wasm_binding(ppux_draw_list_reset, "v()") {
 }
 
 wasm_binding(ppux_draw_list_append, "v(iii*)") {
-  wa_arg   (uint8_t,   i_layer);
-  wa_arg   (uint8_t,   i_priority);
+  wa_arg    (uint8_t,   i_layer);
+  wa_arg    (uint8_t,   i_priority);
 
-  wa_arg   (uint32_t,  i_size);
+  wa_arg    (uint32_t,  i_size);
   wa_arg_mem(uint8_t*,  i_cmdlist);
 
   wa_check_mem(i_cmdlist, i_size);

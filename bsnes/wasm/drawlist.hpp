@@ -59,21 +59,21 @@ struct Space {
 struct LocalSpace : public Space {
   LocalSpace();
 
-  uint8_t* vram_data();
-  const uint32_t vram_size() const;
+  uint8_t* vram_data() final;
+  const uint32_t vram_size() const final;
 
-  uint8_t* cgram_data();
-  const uint32_t cgram_size() const;
+  uint8_t* cgram_data() final;
+  const uint32_t cgram_size() const final;
 };
 
 struct ExtraSpace : public Space {
   ExtraSpace();
 
-  uint8_t* vram_data();
-  const uint32_t vram_size() const;
+  uint8_t* vram_data() final;
+  const uint32_t vram_size() const final;
 
-  uint8_t* cgram_data();
-  const uint32_t cgram_size() const;
+  uint8_t* cgram_data() final;
+  const uint32_t cgram_size() const final;
 
 private:
   uint8_t vram[0x10000];
