@@ -113,6 +113,9 @@ void WASMInstanceBase::warn() {
 
   fprintf(stderr, "%s\n", m_err.what().c_str());
   fflush(stderr);
+
+  // clear error:
+  m_err = WASMError();
 }
 
 bool WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
