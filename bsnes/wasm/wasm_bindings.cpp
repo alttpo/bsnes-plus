@@ -452,10 +452,8 @@ wasm_binding(ppux_draw_list_reset, "v()") {
   wa_success();
 }
 
-wasm_binding(ppux_draw_list_append, "v(iii*)") {
-  wa_arg    (uint8_t,   i_layer);
-  wa_arg    (uint8_t,   i_priority);
-
+wasm_binding(ppux_draw_list_append, "v(i*)") {
+  // size in bytes:
   wa_arg    (uint32_t,  i_size);
   wa_arg_mem(uint8_t*,  i_cmdlist);
 
@@ -472,8 +470,6 @@ wasm_binding(ppux_draw_list_append, "v(iii*)") {
 
   // fill in the new cmdlist:
   auto& dl = SNES::ppu.ppux_draw_lists[n];
-  dl.layer = i_layer;
-  dl.priority = i_priority;
   // refer to the runtime instance's fonts and spaces collections:
   dl.fonts = m_fonts;
   dl.spaces = m_spaces;

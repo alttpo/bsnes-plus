@@ -18,38 +18,46 @@ void PPU::ppux_render_frame_pre() {
   // pre-render ppux draw_lists to frame buffers:
   memset(ppux_layer_pri, 0xFF, sizeof(ppux_layer_pri));
   for (const auto& dl : ppux_draw_lists) {
-    std::function<void(int x, int y, uint16_t color)> px;
+    // this function is called from CMD_TARGET draw list command to switch drawing target:
+    DrawList::ChangeTarget changeTarget = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, DrawList::Target& o_target) {
+      // select pixel-drawing function:
+      if (i_pre_mode7_transform) {
+        // pre-mode7-transform drawing (will be stretched/scaled):
+        o_target = DrawList::Target(1024, 1024, [=](int x, int y, uint16_t color) {
+          // draw to mode7 pre-transform BG1 (layer=0x80) or BG2 (layer=0x81):
+          if (i_layer > DrawList::BG1) return;
 
-    // select pixel-drawing function:
-    uint8 layer = dl.layer & 0x7f;
-    uint8 priority = dl.priority & 0x7f;
-    int width = 256, height = 256;
-    if (dl.layer & 0x80) {
-      width = 1024;
-      height = 1024;
-      px = [=](int x, int y, uint16_t color) {
-        // draw to mode7 pre-transform BG1 (layer=0x80) or BG2 (layer=0x81):
-        if (layer > 1) return;
+          auto offs = (y << 10) + x;
+          ppux_mode7_col[i_layer][offs] = color;
+        });
+      } else {
+        // regular screen drawing:
+        o_target = DrawList::Target(256, 256, [=](int x, int y, uint16_t color) {
+          // draw to any PPU layer:
+          auto offs = (y << 8) + x;
+          if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= i_priority)) {
+            ppux_layer_pri[offs] = i_priority;
+            ppux_layer_lyr[offs] = i_layer;
+            ppux_layer_col[offs] = color;
+          }
+        });
+      }
+    };
 
-        auto offs = (y << 10) + x;
-        ppux_mode7_col[layer][offs] = color;
-        // TODO: capture priority from (dl.priority & 0x7f)
-      };
-    } else {
-      px = [=](int x, int y, uint16_t color) {
-        // draw to any PPU layer:
-        auto offs = (y << 8) + x;
-        if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= priority)) {
-          ppux_layer_pri[offs] = dl.priority;
-          ppux_layer_lyr[offs] = layer;
-          ppux_layer_col[offs] = color;
-        }
-      };
-    }
+    // default to OAM layer target:
+    DrawList::Target target(256, 256, [=](int x, int y, uint16_t color) {
+      // draw to any PPU layer:
+      auto offs = (y << 8) + x;
+      if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= 15)) {
+        ppux_layer_pri[offs] = 15;
+        ppux_layer_lyr[offs] = DrawList::OAM;
+        ppux_layer_col[offs] = color;
+      }
+    });
 
-    DrawList::Target  target(width, height, px);
-    DrawList::Context context(target, dl.fonts, dl.spaces);
+    DrawList::Context context(target, changeTarget, dl.fonts, dl.spaces);
 
+    // render the draw_list:
     context.draw_list(dl.cmdlist);
   }
 }

@@ -73,10 +73,11 @@ Target::Target(
 
 Context::Context(
   const Target& target,
+  const ChangeTarget& changeTarget,
   const std::shared_ptr<FontContainer>& fonts,
   const std::shared_ptr<SpaceContainer>& spaces
 )
-  : m_target(target), m_fonts(fonts), m_spaces(spaces)
+  : m_target(target), m_changeTarget(changeTarget), m_fonts(fonts), m_spaces(spaces)
 {}
 
 inline bool Context::in_bounds(int x, int y) {
@@ -179,6 +180,14 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
     int16_t  x0, y0, w, h;
     int16_t  x1, y1;
     switch (cmd) {
+      case CMD_TARGET: {
+        draw_layer layer = (draw_layer) *d++;
+        bool pre_mode7_transform = *d++;
+        uint8_t priority = *d++;
+
+        m_changeTarget(layer, pre_mode7_transform, priority, m_target);
+        break;
+      }
       case CMD_VRAM_TILE: {
         while (d - args < len) {
           // need a complete command:

@@ -26,23 +26,39 @@ enum draw_color_kind {
 
 const uint16_t color_none = 0x8000;
 
-enum draw_cmd {
-  // commands which ignore state:
-  CMD_VRAM_TILE,
-  CMD_IMAGE,
+enum draw_cmd : uint16_t {
   // commands which affect state:
+  ///////////////////////////////
+  CMD_TARGET = 1,
   CMD_COLOR_DIRECT_BGR555,
   CMD_COLOR_DIRECT_RGB888,
   CMD_COLOR_PALETTED,
   CMD_FONT_SELECT,
+
   // commands which use state:
-  CMD_TEXT_UTF8,
+  ///////////////////////////////
+  CMD_TEXT_UTF8 = 0x40,
   CMD_PIXEL,
   CMD_HLINE,
   CMD_VLINE,
   CMD_LINE,
   CMD_RECT,
-  CMD_RECT_FILL
+  CMD_RECT_FILL,
+
+  // commands which ignore state:
+  ///////////////////////////////
+  CMD_VRAM_TILE = 0x80,
+  CMD_IMAGE,
+};
+
+enum draw_layer : uint16_t {
+  BG1 = 0,
+  BG2 = 1,
+  BG3 = 2,
+  BG4 = 3,
+  OAM = 4,
+  BACK = 5,
+  COL = 5
 };
 
 __attribute__((import_module("env"), import_name("za_file_locate")))
@@ -88,7 +104,7 @@ __attribute__((import_module("env"), import_name("ppux_draw_list_reset")))
 void ppux_draw_list_reset();
 
 __attribute__((import_module("env"), import_name("ppux_draw_list_append")))
-void ppux_draw_list_append(uint8_t layer, uint8_t priority, uint32_t size, uint16_t* cmdlist);
+void ppux_draw_list_append(uint32_t size, uint16_t* cmdlist);
 
 // snes:
 

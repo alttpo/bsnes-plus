@@ -1,3 +1,5 @@
+// This code only works with ALTTP US 1.0 ROM; adjust hard-coded ROM addresses to allow JP 1.0 usage
+
 #include <stdint.h>
 #include "wasm.h"
 #include "../../../external/printf/printf.c"
@@ -494,6 +496,7 @@ void strcpy(char *d, const char *s) {
 __attribute__((export_name("on_frame_present")))
 void on_frame_present() {
   static uint16_t cmd[] = {
+    4, CMD_TARGET, OAM, 0, 15,
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
     3, CMD_PIXEL, 18, 118,
     9, CMD_IMAGE, 20, 120, 2, 2,
@@ -543,7 +546,7 @@ void on_frame_present() {
   }
 
   ppux_draw_list_reset();
-  ppux_draw_list_append(4, 15, sizeof(cmd), cmd);
+  ppux_draw_list_append(sizeof(cmd), cmd);
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
 
@@ -564,46 +567,53 @@ void on_frame_present() {
       continue;
     }
 
-    uint16_t dl[13];
-    dl[0] = 12; // length in uint16_ts
-    dl[1] = CMD_VRAM_TILE;
-    dl[2] = x & 511;
-    dl[3] = y & 255;
-    dl[4] = locs[79][i].hflip;
-    dl[5] = locs[79][i].vflip;
-
-    dl[8] = 0;
-    dl[9] = locs[79][i].palette;
     uint8_t priority = pri_lkup[locs[79][i].priority];
 
-    dl[10] = 4;
-    dl[11] = locs[79][i].width;
-    dl[12] = locs[79][i].height;
+    uint16_t dl[1+4+1+12];
+    dl[0+0] = 4;
+    dl[0+1] = CMD_TARGET;
+    dl[0+2] = OAM;
+    dl[0+3] = 0; // pre_mode7_transform
+    dl[0+4] = priority;
+
+    dl[5+0] = 12; // length in uint16_ts
+    dl[5+1] = CMD_VRAM_TILE;
+    dl[5+2] = x & 511;
+    dl[5+3] = y & 255;
+    dl[5+4] = locs[79][i].hflip;
+    dl[5+5] = locs[79][i].vflip;
+
+    dl[5+8] = 0;
+    dl[5+9] = locs[79][i].palette;
+
+    dl[5+10] = 4;
+    dl[5+11] = locs[79][i].width;
+    dl[5+12] = locs[79][i].height;
 
     if (locs[79][i].chr < 0x20) {
-      dl[6] = 1;
-      dl[7] = locs[79][i].offs_top;
+      dl[5+6] = 1;
+      dl[5+7] = locs[79][i].offs_top;
 
-      if (locs[79][i].bpp == 3 && dl[12] == 16) {
-        dl[12] = 8;
-        if (dl[5]) {
-          dl[3] += 8;
+      if (locs[79][i].bpp == 3 && dl[5+12] == 16) {
+        dl[5+12] = 8;
+        if (dl[5+5]) {
+          dl[5+3] += 8;
         }
-        ppux_draw_list_append(4, priority, sizeof(dl), dl);
+        ppux_draw_list_append(sizeof(dl), dl);
 
-        if (dl[5]) {
-          dl[3] -= 8;
+        if (dl[5+5]) {
+          dl[5+3] -= 8;
         } else {
-          dl[3] += 8;
+          dl[5+3] += 8;
         }
-        dl[7] = locs[79][i].offs_bot;
+        dl[5+7] = locs[79][i].offs_bot;
       }
     } else {
-      dl[6] = 0;
-      dl[7] = 0x8000 + (locs[79][i].chr << 5);
+      dl[5+6] = 0;
+      dl[5+7] = 0x8000 + (locs[79][i].chr << 5);
     }
 
-    ppux_draw_list_append(4, priority, sizeof(dl), dl);
+    ppux_draw_list_append(sizeof(dl), dl);
   }
 
   if (msgs != last_msgs) {

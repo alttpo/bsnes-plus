@@ -12,28 +12,45 @@ enum draw_color_kind {
 
 const uint16_t color_none = 0x8000;
 
-enum draw_cmd {
-  // commands which ignore state:
-  CMD_VRAM_TILE,
-  CMD_IMAGE,
+enum draw_cmd : uint16_t {
   // commands which affect state:
+  ///////////////////////////////
+  CMD_TARGET = 1,
   CMD_COLOR_DIRECT_BGR555,
   CMD_COLOR_DIRECT_RGB888,
   CMD_COLOR_PALETTED,
   CMD_FONT_SELECT,
+
   // commands which use state:
-  CMD_TEXT_UTF8,
+  ///////////////////////////////
+  CMD_TEXT_UTF8 = 0x40,
   CMD_PIXEL,
   CMD_HLINE,
   CMD_VLINE,
   CMD_LINE,
   CMD_RECT,
-  CMD_RECT_FILL
+  CMD_RECT_FILL,
+
+  // commands which ignore state:
+  ///////////////////////////////
+  CMD_VRAM_TILE = 0x80,
+  CMD_IMAGE,
+};
+
+enum draw_layer : uint16_t {
+  BG1 = 0,
+  BG2 = 1,
+  BG3 = 2,
+  BG4 = 3,
+  OAM = 4,
+  BACK = 5,
+  COL = 5
 };
 
 inline bool is_color_visible(uint16_t c);
 
 typedef std::function<void(int x, int y)> plot;
+typedef std::function<void(int x, int y, uint16_t color)> PlotBGR555;
 
 struct FontContainer {
   void load_pcf(int fontindex, const uint8_t* pcf_data, int pcf_size);
@@ -101,17 +118,20 @@ struct Target {
   explicit Target(
     unsigned p_width,
     unsigned p_height,
-    const std::function<void(int x, int y, uint16_t color)>& p_px
+    const PlotBGR555& p_px
   );
 
   unsigned width;
   unsigned height;
-  const std::function<void(int x, int y, uint16_t color)> px;;
+  PlotBGR555 px;
 };
+
+typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, Target& o_target)> ChangeTarget;
 
 struct Context {
   Context(
     const Target& target,
+    const ChangeTarget& changeTarget,
     const std::shared_ptr<FontContainer>& fonts,
     const std::shared_ptr<SpaceContainer>& spaces
   );
@@ -126,7 +146,8 @@ struct Context {
   inline bool in_bounds(int x, int y);
 
 private:
-  const Target& m_target;
+  Target m_target;
+  const ChangeTarget& m_changeTarget;
   const std::shared_ptr<FontContainer> m_fonts;
   const std::shared_ptr<SpaceContainer> m_spaces;
 };
