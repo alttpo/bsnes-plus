@@ -20,7 +20,7 @@ struct LayerTarget : public DrawList::BaseTarget {
   DrawList::draw_layer layer;
   uint8_t priority;
 
-  void px(int x, int y, uint16_t color) final {
+  inline void px(int x, int y, uint16_t color) final {
     // draw to any PPU layer:
     auto offs = (y << 8) + x;
     if ((ppu.ppux_layer_pri[offs] == 0xFF) || ((ppu.ppux_layer_pri[offs]&0x7F) <= priority)) {
@@ -41,9 +41,10 @@ struct Mode7Target : public DrawList::BaseTarget {
   PPU& ppu;
   DrawList::draw_layer layer;
 
-  void px(int x, int y, uint16_t color) final {
+  inline void px(int x, int y, uint16_t color) final {
     // draw to mode7 pre-transform BG1 or BG2:
-    if (layer > DrawList::BG1) return;
+    if (layer > DrawList::BG1)
+      return;
 
     auto offs = (y << 10) + x;
     ppu.ppux_mode7_col[layer][offs] = color;

@@ -120,9 +120,34 @@ struct BaseTarget {
   BaseTarget(unsigned p_width,
              unsigned p_height);
 
-  virtual void px(int x, int y, uint16_t color) = 0;
+  inline virtual void px(int x, int y, uint16_t color) {};
 
   inline bool in_bounds(int x, int y);
+
+  inline void draw_pixel(int x, int y, uint16_t color);
+  inline void draw_rect_fill(int16_t x0, int16_t y0, int16_t w, int16_t h, uint16_t fill_color);
+  inline void draw_hline(int x, int y, int w, const plot& px);
+  inline void draw_vline(int x, int y, int h, const plot& px);
+  inline void draw_line(int x1, int y1, int x2, int y2, const plot& px);
+
+  void draw_outlined_stroked(uint16_t stroke_color, uint16_t outline_color, const std::function<void(const plot& plot)>& draw);
+
+  uint16_t* draw_image(int16_t x0, int16_t y0, int16_t w, int16_t h, uint16_t* d);
+
+  template<unsigned bpp>
+  void draw_vram_tile(
+    int16_t x0, int16_t y0,
+    bool hflip, bool vflip,
+
+    uint16_t vram_addr,
+    uint8_t  palette,
+
+    uint16_t twidth,
+    uint16_t theight,
+
+    uint8_t* vram,
+    uint8_t* cgram
+  );
 
 public:
   unsigned width;
@@ -136,7 +161,7 @@ struct Target : public BaseTarget {
     const PlotBGR555& p_px
   );
 
-  void px(int x, int y, uint16_t color) final;
+  inline void px(int x, int y, uint16_t color) final;
 
 public:
   PlotBGR555 m_px;
@@ -152,11 +177,6 @@ struct Context {
   );
 
   void draw_list(const std::vector<uint8_t>& cmdlist);
-  inline void draw_pixel(int x, int y, uint16_t color);
-
-  inline void draw_hline(int x, int y, int w, const plot& px);
-  inline void draw_vline(int x, int y, int h, const plot& px);
-  inline void draw_line(int x1, int y1, int x2, int y2, const plot& px);
 
 private:
   std::shared_ptr<BaseTarget> m_target;

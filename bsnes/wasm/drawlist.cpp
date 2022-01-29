@@ -77,6 +77,304 @@ inline bool BaseTarget::in_bounds(int x, int y) {
   return true;
 }
 
+void BaseTarget::draw_outlined_stroked(uint16_t stroke_color, uint16_t outline_color, const std::function<void(const plot& plot)>& draw) {
+  if (!is_color_visible(stroke_color) && !is_color_visible(outline_color)) {
+    return;
+  }
+
+  // record all stroked points from the shape:
+  std::set<int> stroked;
+  draw([this, &stroked](int x, int y) {
+    if (!in_bounds(x, y))
+      return;
+
+    stroked.emplace(y*1024+x);
+  });
+
+  // now outline all stroked points without overdraw:
+  for (auto it = stroked.begin(); it != stroked.end(); it++) {
+    int y = *it / 1024;
+    int x = *it & 1023;
+    if (is_color_visible(stroke_color)) {
+      px(x, y, stroke_color);
+    }
+
+    if (is_color_visible(outline_color)) {
+      if (in_bounds(x-1, y-1) && stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
+        px(x-1, y-1, outline_color);
+      }
+      if (in_bounds(x+0, y-1) && stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
+        px(x+0, y-1, outline_color);
+      }
+      if (in_bounds(x+1, y-1) && stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
+        px(x+1, y-1, outline_color);
+      }
+
+      if (in_bounds(x-1, y+0) && stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
+        px(x-1, y+0, outline_color);
+      }
+      if (in_bounds(x+1, y+0) && stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
+        px(x+1, y+0, outline_color);
+      }
+
+      if (in_bounds(x-1, y+1) && stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
+        px(x-1, y+1, outline_color);
+      }
+      if (in_bounds(x+0, y+1) && stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
+        px(x+0, y+1, outline_color);
+      }
+      if (in_bounds(x+1, y+1) && stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
+        px(x+1, y+1, outline_color);
+      }
+    }
+  }
+};
+
+inline void BaseTarget::draw_pixel(int x0, int y0, uint16_t color) {
+  if (!in_bounds(x0, y0)) return;
+
+  px(x0, y0, color);
+}
+
+inline void BaseTarget::draw_rect_fill(int16_t x0, int16_t y0, int16_t w, int16_t h, uint16_t fill_color) {
+  if (!is_color_visible(fill_color))
+    return;
+
+  for (int16_t y = y0; y < y0+h; y++) {
+    if (y < 0) continue;
+    if (y >= height) break;
+
+    for (int16_t x = x0; x < x0+w; x++) {
+      if (x < 0) continue;
+      if (x >= width) break;
+
+      px(x, y, fill_color);
+    }
+  }
+}
+
+inline void BaseTarget::draw_hline(int x0, int y0, int w, const plot& px) {
+  if (y0 < 0) return;
+  if (y0 >= height) return;
+
+  for (int x = x0; x < x0+w; x++) {
+    if (x < 0) continue;
+    if (x >= width) return;
+
+    px(x, y0);
+  }
+}
+
+inline void BaseTarget::draw_vline(int x0, int y0, int h, const plot& px) {
+  if (x0 < 0) return;
+  if (x0 >= width) return;
+
+  for (int y = y0; y < y0+h; y++) {
+    if (y < 0) continue;
+    if (y >= height) break;
+
+    px(x0, y);
+  }
+}
+
+inline void BaseTarget::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
+  int x, y, dx, dy, dx1, dy1, mx, my, xe, ye, i;
+
+  dx = x2 - x1;
+  dy = y2 - y1;
+  dx1 = fabs(dx);
+  dy1 = fabs(dy);
+  mx = 2 * dy1 - dx1;
+  my = 2 * dx1 - dy1;
+
+  if (dy1 <= dx1) {
+    if (dx >= 0) {
+      x = x1;
+      y = y1;
+      xe = x2;
+    } else {
+      x = x2;
+      y = y2;
+      xe = x1;
+    }
+
+    if (in_bounds(x, y)) {
+      px(x, y);
+    }
+
+    for (i = 0; x < xe; i++) {
+      x = x + 1;
+      if (mx < 0) {
+        mx = mx + 2 * dy1;
+      } else {
+        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+          y = y + 1;
+        } else {
+          y = y - 1;
+        }
+        mx = mx + 2 * (dy1 - dx1);
+      }
+
+      if (x < 0) continue;
+      if (y < 0) continue;
+      if (x >= width) break;
+      if (y >= height) break;
+      px(x, y);
+    }
+  } else {
+    if (dy >= 0) {
+      x = x1;
+      y = y1;
+      ye = y2;
+    } else {
+      x = x2;
+      y = y2;
+      ye = y1;
+    }
+
+    if (in_bounds(x, y)) {
+      px(x, y);
+    }
+
+    for (i = 0; y < ye; i++) {
+      y = y + 1;
+      if (my <= 0) {
+        my = my + 2 * dx1;
+      } else {
+        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+          x = x + 1;
+        } else {
+          x = x - 1;
+        }
+        my = my + 2 * (dx1 - dy1);
+      }
+
+      if (x < 0) continue;
+      if (y < 0) continue;
+      if (x >= width) break;
+      if (y >= height) break;
+      px(x, y);
+    }
+  }
+}
+
+template<unsigned bpp>
+void BaseTarget::draw_vram_tile(
+  int16_t x0, int16_t y0,
+  bool hflip, bool vflip,
+
+  uint16_t vram_addr,
+  uint8_t  palette,
+
+  uint16_t twidth,
+  uint16_t theight,
+
+  uint8_t* vram,
+  uint8_t* cgram
+) {
+  // draw tile:
+  unsigned sy = y0;
+  for (unsigned ty = 0; ty < theight; ty++, sy++) {
+    sy &= 255;
+
+    unsigned sx = x0;
+    unsigned y = (vflip == false) ? (ty) : (theight - 1 - ty);
+
+    for(unsigned tx = 0; tx < twidth; tx++, sx++) {
+      sx &= 511;
+      if(sx >= 256) continue;
+
+      unsigned x = ((hflip == false) ? tx : (twidth - 1 - tx));
+
+      uint8_t col, d0, d1, d2, d3, d4, d5, d6, d7;
+      uint8_t mask = 1 << (7-(x&7));
+      uint8_t *tile_ptr = vram + vram_addr;
+
+      switch (bpp) {
+        case 2:
+          // 16 bytes per 8x8 tile
+          tile_ptr += ((x >> 3) << 4);
+          tile_ptr += ((y >> 3) << 8);
+          tile_ptr += (y & 7) << 1;
+          d0 = *(tile_ptr    );
+          d1 = *(tile_ptr + 1);
+          col  = !!(d0 & mask) << 0;
+          col += !!(d1 & mask) << 1;
+          break;
+        case 4:
+          // 32 bytes per 8x8 tile
+          tile_ptr += ((x >> 3) << 5);
+          tile_ptr += ((y >> 3) << 9);
+          tile_ptr += (y & 7) << 1;
+          d0 = *(tile_ptr     );
+          d1 = *(tile_ptr +  1);
+          d2 = *(tile_ptr + 16);
+          d3 = *(tile_ptr + 17);
+          col  = !!(d0 & mask) << 0;
+          col += !!(d1 & mask) << 1;
+          col += !!(d2 & mask) << 2;
+          col += !!(d3 & mask) << 3;
+          break;
+        case 8:
+          // 64 bytes per 8x8 tile
+          tile_ptr += ((x >> 3) << 6);
+          tile_ptr += ((y >> 3) << 10);
+          tile_ptr += (y & 7) << 1;
+          d0 = *(tile_ptr     );
+          d1 = *(tile_ptr +  1);
+          d2 = *(tile_ptr + 16);
+          d3 = *(tile_ptr + 17);
+          d4 = *(tile_ptr + 32);
+          d5 = *(tile_ptr + 33);
+          d6 = *(tile_ptr + 48);
+          d7 = *(tile_ptr + 49);
+          col  = !!(d0 & mask) << 0;
+          col += !!(d1 & mask) << 1;
+          col += !!(d2 & mask) << 2;
+          col += !!(d3 & mask) << 3;
+          col += !!(d4 & mask) << 4;
+          col += !!(d5 & mask) << 5;
+          col += !!(d6 & mask) << 6;
+          col += !!(d7 & mask) << 7;
+          break;
+        default:
+          // TODO: warn
+          break;
+      }
+
+      // color 0 is always transparent:
+      if (col == 0)
+        continue;
+
+      col += palette;
+
+      // look up color in cgram:
+      uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
+
+      px(sx, sy, bgr);
+    }
+  }
+}
+
+uint16_t* BaseTarget::draw_image(int16_t x0, int16_t y0, int16_t w, int16_t h, uint16_t* d) {
+  for (int16_t y = y0; y < y0+h; y++) {
+    if (y < 0) continue;
+    if (y >= height) break;
+
+    for (int16_t x = x0; x < x0+w; x++) {
+      if (x < 0) continue;
+      if (x >= width) break;
+
+      uint16_t c = *d++;
+      if (!is_color_visible(c)) continue;
+
+      px(x, y, c);
+    }
+  }
+
+  return d;
+}
+
 Target::Target(
   unsigned p_width,
   unsigned p_height,
@@ -113,59 +411,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
   stroke_color = 0x7fff;
   fill_color = color_none;
   outline_color = color_none;
-
-  auto draw_outlined_stroked = [&](const std::function<void(const plot& px)>& draw) {
-    if (!is_color_visible(stroke_color) && !is_color_visible(outline_color)) {
-      return;
-    }
-
-    // record all stroked points from the shape:
-    std::set<int> stroked;
-    draw([&](int x, int y) {
-      if (!m_target->in_bounds(x, y))
-        return;
-
-      stroked.emplace(y*1024+x);
-    });
-
-    // now outline all stroked points without overdraw:
-    for (auto it = stroked.begin(); it != stroked.end(); it++) {
-      int y = *it / 1024;
-      int x = *it & 1023;
-      if (is_color_visible(stroke_color)) {
-        m_target->px(x, y, stroke_color);
-      }
-
-      if (is_color_visible(outline_color)) {
-        if (m_target->in_bounds(x-1, y-1) && stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
-          m_target->px(x-1, y-1, outline_color);
-        }
-        if (m_target->in_bounds(x+0, y-1) && stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
-          m_target->px(x+0, y-1, outline_color);
-        }
-        if (m_target->in_bounds(x+1, y-1) && stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
-          m_target->px(x+1, y-1, outline_color);
-        }
-
-        if (m_target->in_bounds(x-1, y+0) && stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
-          m_target->px(x-1, y+0, outline_color);
-        }
-        if (m_target->in_bounds(x+1, y+0) && stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
-          m_target->px(x+1, y+0, outline_color);
-        }
-
-        if (m_target->in_bounds(x-1, y+1) && stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
-          m_target->px(x-1, y+1, outline_color);
-        }
-        if (m_target->in_bounds(x+0, y+1) && stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
-          m_target->px(x+0, y+1, outline_color);
-        }
-        if (m_target->in_bounds(x+1, y+1) && stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
-          m_target->px(x+1, y+1, outline_color);
-        }
-      }
-    }
-  };
 
   // process all commands:
   while ((p - start) < end) {
@@ -216,8 +461,8 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           uint8_t  palette = *d++;          //     0 ..   255
 
           uint8_t  bpp = *d++;              // 2-, 4-, or 8-bpp tiles from vram[extra] and cgram[extra]
-          uint16_t width = *d++;            // number of pixels width
-          uint16_t height = *d++;           // number of pixels high
+          uint16_t twidth = *d++;           // number of pixels width
+          uint16_t theight = *d++;          // number of pixels high
 
           uint8_t* vram = m_spaces->get_vram_space(vram_space);
           if (!vram) {
@@ -231,91 +476,14 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             continue;
           }
 
-          if (bpp != 2 && bpp != 4 && bpp != 8) {
-            fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad bpp value %d; must be 2, 4, or 8\n", bpp);
-            continue;
-          }
-
           // draw tile:
-          unsigned sy = y0;
-          for (unsigned ty = 0; ty < height; ty++, sy++) {
-            sy &= 255;
-
-            unsigned sx = x0;
-            unsigned y = (vflip == false) ? (ty) : (height-1 - ty);
-
-            for(unsigned tx = 0; tx < width; tx++, sx++) {
-              sx &= 511;
-              if(sx >= 256) continue;
-
-              unsigned x = ((hflip == false) ? tx : (width-1 - tx));
-
-              uint8_t col, d0, d1, d2, d3, d4, d5, d6, d7;
-              uint8_t mask = 1 << (7-(x&7));
-              uint8_t *tile_ptr = vram + vram_addr;
-
-              switch (bpp) {
-                case 2:
-                  // 16 bytes per 8x8 tile
-                  tile_ptr += ((x >> 3) << 4);
-                  tile_ptr += ((y >> 3) << 8);
-                  tile_ptr += (y & 7) << 1;
-                  d0 = *(tile_ptr    );
-                  d1 = *(tile_ptr + 1);
-                  col  = !!(d0 & mask) << 0;
-                  col += !!(d1 & mask) << 1;
-                  break;
-                case 4:
-                  // 32 bytes per 8x8 tile
-                  tile_ptr += ((x >> 3) << 5);
-                  tile_ptr += ((y >> 3) << 9);
-                  tile_ptr += (y & 7) << 1;
-                  d0 = *(tile_ptr     );
-                  d1 = *(tile_ptr +  1);
-                  d2 = *(tile_ptr + 16);
-                  d3 = *(tile_ptr + 17);
-                  col  = !!(d0 & mask) << 0;
-                  col += !!(d1 & mask) << 1;
-                  col += !!(d2 & mask) << 2;
-                  col += !!(d3 & mask) << 3;
-                  break;
-                case 8:
-                  // 64 bytes per 8x8 tile
-                  tile_ptr += ((x >> 3) << 6);
-                  tile_ptr += ((y >> 3) << 10);
-                  tile_ptr += (y & 7) << 1;
-                  d0 = *(tile_ptr     );
-                  d1 = *(tile_ptr +  1);
-                  d2 = *(tile_ptr + 16);
-                  d3 = *(tile_ptr + 17);
-                  d4 = *(tile_ptr + 32);
-                  d5 = *(tile_ptr + 33);
-                  d6 = *(tile_ptr + 48);
-                  d7 = *(tile_ptr + 49);
-                  col  = !!(d0 & mask) << 0;
-                  col += !!(d1 & mask) << 1;
-                  col += !!(d2 & mask) << 2;
-                  col += !!(d3 & mask) << 3;
-                  col += !!(d4 & mask) << 4;
-                  col += !!(d5 & mask) << 5;
-                  col += !!(d6 & mask) << 6;
-                  col += !!(d7 & mask) << 7;
-                  break;
-                default:
-                  // TODO: warn
-                  break;
-              }
-
-              // color 0 is always transparent:
-              if(col == 0) continue;
-
-              col += palette;
-
-              // look up color in cgram:
-              uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
-
-              m_target->px(sx, sy, bgr);
-            }
+          switch (bpp) {
+            case 2: m_target->draw_vram_tile<2>(x0, y0, hflip, vflip, vram_addr, palette, twidth, theight, vram, cgram); break;
+            case 4: m_target->draw_vram_tile<4>(x0, y0, hflip, vflip, vram_addr, palette, twidth, theight, vram, cgram); break;
+            case 8: m_target->draw_vram_tile<8>(x0, y0, hflip, vflip, vram_addr, palette, twidth, theight, vram, cgram); break;
+            default:
+              fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad bpp value %d; must be 2, 4, or 8\n", bpp);
+              break;
           }
         }
         break;
@@ -339,20 +507,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             break;
           }
 
-          for (int16_t y = y0; y < y0+h; y++) {
-            if (y < 0) continue;
-            if (y >= m_target->height) break;
-
-            for (int16_t x = x0; x < x0+w; x++) {
-              if (x < 0) continue;
-              if (x >= m_target->width) break;
-
-              uint16_t c = *d++;
-              if (!is_color_visible(c)) continue;
-
-              m_target->px(x, y, c);
-            }
-          }
+          d = m_target->draw_image(x0, y0, w, h, d);
         }
         break;
       }
@@ -403,7 +558,9 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             // green
             | (((gb >> 11) & 0x1F) << 5)
             // red
-            | (ar & 0x1F);
+            | ((ar >> 3) & 0x1F)
+            // alpha (only MSB)
+            | ((ar >> 15) << 15);
         }
         break;
       }
@@ -484,10 +641,9 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             continue;
           }
 
-          draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
+          m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const std::function<void(int,int)>& px) {
             font->draw_text_utf8(str, textchars, x0, y0, px);
           });
-
         }
         break;
       }
@@ -502,7 +658,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           x0 = *d++;
           y0 = *d++;
 
-          draw_outlined_stroked([=](const std::function<void(int,int)>& px) {
+          m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const std::function<void(int,int)>& px) {
             px(x0, y0);
           });
         }
@@ -520,8 +676,8 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           y0 = (int16_t)*d++;
           w  = (int16_t)*d++;
 
-          draw_outlined_stroked([=](const plot& px) {
-            draw_hline(x0, y0, w, px);
+          m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
+            m_target->draw_hline(x0, y0, w, px);
           });
         }
         break;
@@ -538,8 +694,8 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           y0 = (int16_t)*d++;
           h  = (int16_t)*d++;
 
-          draw_outlined_stroked([=](const plot& px) {
-            draw_vline(x0, y0, h, px);
+          m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
+            m_target->draw_vline(x0, y0, h, px);
           });
         }
         break;
@@ -557,8 +713,8 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           x1 = (int16_t)*d++;
           y1 = (int16_t)*d++;
 
-          draw_outlined_stroked([=](const plot& px) {
-            draw_line(x0, y0, x1, y1, px);
+          m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
+            m_target->draw_line(x0, y0, x1, y1, px);
           });
         }
         break;
@@ -576,11 +732,11 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           w  = (int16_t)*d++;
           h  = (int16_t)*d++;
 
-          draw_outlined_stroked([=](const plot& px) {
-            draw_hline(x0,     y0,     w,   px);
-            draw_hline(x0,     y0+h-1, w,   px);
-            draw_vline(x0,     y0+1,   h-2, px);
-            draw_vline(x0+w-1, y0+1,   h-2, px);
+          m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
+            m_target->draw_hline(x0,     y0,     w,   px);
+            m_target->draw_hline(x0,     y0+h-1, w,   px);
+            m_target->draw_vline(x0,     y0+1,   h-2, px);
+            m_target->draw_vline(x0+w-1, y0+1,   h-2, px);
           });
         }
         break;
@@ -598,133 +754,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           w  = (int16_t)*d++;
           h  = (int16_t)*d++;
 
-          if (is_color_visible(fill_color)) {
-            for (int16_t y = y0; y < y0+h; y++) {
-              if (y < 0) continue;
-              if (y >= m_target->height) break;
-
-              for (int16_t x = x0; x < x0+w; x++) {
-                if (x < 0) continue;
-                if (x >= m_target->width) break;
-
-                m_target->px(x, y, fill_color);
-              }
-            }
-          }
+          m_target->draw_rect_fill(x0, y0, w, h, fill_color);
         }
         break;
       }
-    }
-  }
-}
-
-inline void Context::draw_pixel(int x0, int y0, uint16_t color) {
-  if (!m_target->in_bounds(x0, y0)) return;
-
-  m_target->px(x0, y0, color);
-}
-
-inline void Context::draw_hline(int x0, int y0, int w, const plot& px) {
-  if (y0 < 0) return;
-  if (y0 >= m_target->height) return;
-
-  for (int x = x0; x < x0+w; x++) {
-    if (x < 0) continue;
-    if (x >= m_target->width) return;
-
-    px(x, y0);
-  }
-}
-
-inline void Context::draw_vline(int x0, int y0, int h, const plot& px) {
-  if (x0 < 0) return;
-  if (x0 >= m_target->width) return;
-
-  for (int y = y0; y < y0+h; y++) {
-    if (y < 0) continue;
-    if (y >= m_target->height) break;
-
-    px(x0, y);
-  }
-}
-
-inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
-  int x, y, dx, dy, dx1, dy1, mx, my, xe, ye, i;
-
-  dx = x2 - x1;
-  dy = y2 - y1;
-  dx1 = fabs(dx);
-  dy1 = fabs(dy);
-  mx = 2 * dy1 - dx1;
-  my = 2 * dx1 - dy1;
-
-  if (dy1 <= dx1) {
-    if (dx >= 0) {
-      x = x1;
-      y = y1;
-      xe = x2;
-    } else {
-      x = x2;
-      y = y2;
-      xe = x1;
-    }
-
-    if (m_target->in_bounds(x, y)) {
-      px(x, y);
-    }
-
-    for (i = 0; x < xe; i++) {
-      x = x + 1;
-      if (mx < 0) {
-        mx = mx + 2 * dy1;
-      } else {
-        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
-          y = y + 1;
-        } else {
-          y = y - 1;
-        }
-        mx = mx + 2 * (dy1 - dx1);
-      }
-
-      if (x < 0) continue;
-      if (y < 0) continue;
-      if (x >= m_target->width) break;
-      if (y >= m_target->height) break;
-      px(x, y);
-    }
-  } else {
-    if (dy >= 0) {
-      x = x1;
-      y = y1;
-      ye = y2;
-    } else {
-      x = x2;
-      y = y2;
-      ye = y1;
-    }
-
-    if (m_target->in_bounds(x, y)) {
-      px(x, y);
-    }
-
-    for (i = 0; y < ye; i++) {
-      y = y + 1;
-      if (my <= 0) {
-        my = my + 2 * dx1;
-      } else {
-        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
-          x = x + 1;
-        } else {
-          x = x - 1;
-        }
-        my = my + 2 * (dx1 - dy1);
-      }
-
-      if (x < 0) continue;
-      if (y < 0) continue;
-      if (x >= m_target->width) break;
-      if (y >= m_target->height) break;
-      px(x, y);
     }
   }
 }
