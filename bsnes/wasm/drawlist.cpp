@@ -375,17 +375,6 @@ uint16_t* BaseTarget::draw_image(int16_t x0, int16_t y0, int16_t w, int16_t h, u
   return d;
 }
 
-Target::Target(
-  unsigned p_width,
-  unsigned p_height,
-  const std::function<void(int x, int y, uint16_t color)>& p_px
-) : BaseTarget(p_width, p_height), m_px(p_px)
-{}
-
-void Target::px(int x, int y, uint16_t color) {
-  m_px(x, y, color);
-}
-
 Context::Context(
   const ChangeTarget& changeTarget,
   const std::shared_ptr<FontContainer>& fonts,

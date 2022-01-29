@@ -154,19 +154,6 @@ public:
   unsigned height;
 };
 
-struct Target : public BaseTarget {
-  explicit Target(
-    unsigned p_width,
-    unsigned p_height,
-    const PlotBGR555& p_px
-  );
-
-  inline void px(int x, int y, uint16_t color) final;
-
-public:
-  PlotBGR555 m_px;
-};
-
 typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<BaseTarget>& o_target)> ChangeTarget;
 
 struct Context {
