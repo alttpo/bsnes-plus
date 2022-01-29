@@ -40,11 +40,12 @@ ifeq ($(DEBUG), 1)
     link += -pg
   endif
 else
-  flags += -O3 -fomit-frame-pointer
+  flags += -O3
   ifeq ($(PROFILER), 1)
     flags += -pg
     link += -pg
   else
+    flags += -fomit-frame-pointer
     ifeq ($(platform),osx)
       # -s is deprecated as of Apple LLVM 7.0, and using it breaks linking with some versions
     else
