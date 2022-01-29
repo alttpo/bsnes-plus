@@ -6,7 +6,7 @@ import "unsafe"
 func ppux_draw_list_reset()
 
 //export ppux_draw_list_append
-func ppux_draw_list_append(layer, priority uint8, size uint32, cmdlist unsafe.Pointer)
+func ppux_draw_list_append(size uint32, cmdlist unsafe.Pointer)
 
 const (
 	COLOR_STROKE = iota
@@ -19,22 +19,30 @@ const (
 const color_none uint16 = 0x8000
 
 const (
-	// commands which ignore state:
-	CMD_VRAM_TILE = iota
-	CMD_IMAGE
-	// commands which affect state:
-	CMD_COLOR_DIRECT_BGR555
-	CMD_COLOR_DIRECT_RGB888
-	CMD_COLOR_PALETTED
-	CMD_FONT_SELECT
-	// commands which use state:
-	CMD_TEXT_UTF8
-	CMD_PIXEL
-	CMD_HLINE
-	CMD_VLINE
-	CMD_LINE
-	CMD_RECT
-	CMD_RECT_FILL
+    // commands which affect state:
+    ///////////////////////////////
+    CMD_TARGET uint16 = iota + 1
+    CMD_COLOR_DIRECT_BGR555
+    CMD_COLOR_DIRECT_RGB888
+    CMD_COLOR_PALETTED
+    CMD_FONT_SELECT
+)
+const (
+    // commands which use state:
+    ///////////////////////////////
+    CMD_TEXT_UTF8 uint16 = iota + 0x40
+    CMD_PIXEL
+    CMD_HLINE
+    CMD_VLINE
+    CMD_LINE
+    CMD_RECT
+    CMD_RECT_FILL
+)
+const (
+    // commands which ignore state:
+    ///////////////////////////////
+    CMD_VRAM_TILE uint16 = iota + 0x80
+    CMD_IMAGE
 )
 
 //export snes_bus_read
@@ -50,7 +58,7 @@ func on_nmi() {
 		3, CMD_PIXEL, 12, 118,
 	}
 	ppux_draw_list_reset()
-	ppux_draw_list_append(4, 15, uint32(len(cmd)) * 2, unsafe.Pointer(&cmd))
+	ppux_draw_list_append(uint32(len(cmd)) * 2, unsafe.Pointer(&cmd))
 }
 
 func main() {
