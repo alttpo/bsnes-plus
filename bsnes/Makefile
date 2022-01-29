@@ -35,12 +35,22 @@ endif
 ifeq ($(DEBUG), 1)
   flags += -O0 -g
   link += -g
+  ifeq ($(PROFILER), 1)
+    flags += -pg
+    link += -pg
+  endif
 else
   flags += -O3 -fomit-frame-pointer
-  ifeq ($(platform),osx)
-    # -s is deprecated as of Apple LLVM 7.0, and using it breaks linking with some versions
+  ifeq ($(PROFILER), 1)
+    flags += -pg
+    link += -pg
   else
-    link += -s
+    ifeq ($(platform),osx)
+      # -s is deprecated as of Apple LLVM 7.0, and using it breaks linking with some versions
+    else
+      # strip symbols:
+      link += -s
+    endif
   endif
 endif
 
