@@ -20,7 +20,7 @@ struct LayerTarget : public DrawList::BaseTarget {
   DrawList::draw_layer layer;
   uint8_t priority;
 
-  void px(int x, int y, uint16_t color) override {
+  void px(int x, int y, uint16_t color) final {
     // draw to any PPU layer:
     auto offs = (y << 8) + x;
     if ((ppu.ppux_layer_pri[offs] == 0xFF) || ((ppu.ppux_layer_pri[offs]&0x7F) <= priority)) {
@@ -28,6 +28,25 @@ struct LayerTarget : public DrawList::BaseTarget {
       ppu.ppux_layer_lyr[offs] = layer;
       ppu.ppux_layer_col[offs] = color;
     }
+  }
+};
+
+struct Mode7Target : public DrawList::BaseTarget {
+  Mode7Target(PPU& p_ppu, DrawList::draw_layer p_layer)
+    : DrawList::BaseTarget(1024, 1024),
+      ppu(p_ppu),
+      layer(p_layer)
+  {}
+
+  PPU& ppu;
+  DrawList::draw_layer layer;
+
+  void px(int x, int y, uint16_t color) final {
+    // draw to mode7 pre-transform BG1 or BG2:
+    if (layer > DrawList::BG1) return;
+
+    auto offs = (y << 10) + x;
+    ppu.ppux_mode7_col[layer][offs] = color;
   }
 };
 
@@ -43,16 +62,9 @@ void PPU::ppux_render_frame_pre() {
   for (const auto& dl : ppux_draw_lists) {
     // this function is called from CMD_TARGET draw list command to switch drawing target:
     DrawList::ChangeTarget changeTarget = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::BaseTarget>& o_target) {
-      // select pixel-drawing function:
+      // select drawing target:
       if (i_pre_mode7_transform) {
-        // pre-mode7-transform drawing (will be stretched/scaled):
-        o_target = std::make_shared<DrawList::Target>(1024, 1024, [=](int x, int y, uint16_t color) {
-          // draw to mode7 pre-transform BG1 (layer=0x80) or BG2 (layer=0x81):
-          if (i_layer > DrawList::BG1) return;
-
-          auto offs = (y << 10) + x;
-          ppux_mode7_col[i_layer][offs] = color;
-        });
+        o_target = std::make_shared<Mode7Target>(*this, i_layer);
       } else {
         // regular screen drawing:
         o_target = std::make_shared<LayerTarget>(*this, i_layer, i_priority);
