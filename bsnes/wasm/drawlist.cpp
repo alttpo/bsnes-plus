@@ -62,30 +62,41 @@ uint8_t* SpaceContainer::get_cgram_space(int index) {
   return space->cgram_data();
 }
 
+BaseTarget::BaseTarget(
+  unsigned p_width,
+  unsigned p_height)
+  : width(p_width),
+    height(p_height)
+{}
+
+inline bool BaseTarget::in_bounds(int x, int y) {
+  if (y < 0) return false;
+  if (y >= height) return false;
+  if (x < 0) return false;
+  if (x >= width) return false;
+  return true;
+}
+
 Target::Target(
   unsigned p_width,
   unsigned p_height,
   const std::function<void(int x, int y, uint16_t color)>& p_px
-) : width(p_width),
-    height(p_height),
-    px(p_px)
+) : BaseTarget(p_width, p_height), m_px(p_px)
 {}
 
+void Target::px(int x, int y, uint16_t color) {
+  m_px(x, y, color);
+}
+
 Context::Context(
-  const Target& target,
   const ChangeTarget& changeTarget,
   const std::shared_ptr<FontContainer>& fonts,
   const std::shared_ptr<SpaceContainer>& spaces
 )
-  : m_target(target), m_changeTarget(changeTarget), m_fonts(fonts), m_spaces(spaces)
-{}
-
-inline bool Context::in_bounds(int x, int y) {
-  if (y < 0) return false;
-  if (y >= m_target.height) return false;
-  if (x < 0) return false;
-  if (x >= m_target.width) return false;
-  return true;
+  : m_changeTarget(changeTarget), m_fonts(fonts), m_spaces(spaces)
+{
+  // default to OAM layer target:
+  m_changeTarget(OAM, false, 15, m_target);
 }
 
 void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
@@ -111,10 +122,8 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
     // record all stroked points from the shape:
     std::set<int> stroked;
     draw([&](int x, int y) {
-      if (y < 0) return;
-      if (y >= m_target.height) return;
-      if (x < 0) return;
-      if (x >= m_target.width) return;
+      if (!m_target->in_bounds(x, y))
+        return;
 
       stroked.emplace(y*1024+x);
     });
@@ -124,35 +133,35 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
       int y = *it / 1024;
       int x = *it & 1023;
       if (is_color_visible(stroke_color)) {
-        m_target.px(x, y, stroke_color);
+        m_target->px(x, y, stroke_color);
       }
 
       if (is_color_visible(outline_color)) {
-        if (in_bounds(x-1, y-1) && stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
-          m_target.px(x-1, y-1, outline_color);
+        if (m_target->in_bounds(x-1, y-1) && stroked.find((y-1)*1024+(x-1)) == stroked.end()) {
+          m_target->px(x-1, y-1, outline_color);
         }
-        if (in_bounds(x+0, y-1) && stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
-          m_target.px(x+0, y-1, outline_color);
+        if (m_target->in_bounds(x+0, y-1) && stroked.find((y-1)*1024+(x+0)) == stroked.end()) {
+          m_target->px(x+0, y-1, outline_color);
         }
-        if (in_bounds(x+1, y-1) && stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
-          m_target.px(x+1, y-1, outline_color);
-        }
-
-        if (in_bounds(x-1, y+0) && stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
-          m_target.px(x-1, y+0, outline_color);
-        }
-        if (in_bounds(x+1, y+0) && stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
-          m_target.px(x+1, y+0, outline_color);
+        if (m_target->in_bounds(x+1, y-1) && stroked.find((y-1)*1024+(x+1)) == stroked.end()) {
+          m_target->px(x+1, y-1, outline_color);
         }
 
-        if (in_bounds(x-1, y+1) && stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
-          m_target.px(x-1, y+1, outline_color);
+        if (m_target->in_bounds(x-1, y+0) && stroked.find((y+0)*1024+(x-1)) == stroked.end()) {
+          m_target->px(x-1, y+0, outline_color);
         }
-        if (in_bounds(x+0, y+1) && stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
-          m_target.px(x+0, y+1, outline_color);
+        if (m_target->in_bounds(x+1, y+0) && stroked.find((y+0)*1024+(x+1)) == stroked.end()) {
+          m_target->px(x+1, y+0, outline_color);
         }
-        if (in_bounds(x+1, y+1) && stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
-          m_target.px(x+1, y+1, outline_color);
+
+        if (m_target->in_bounds(x-1, y+1) && stroked.find((y+1)*1024+(x-1)) == stroked.end()) {
+          m_target->px(x-1, y+1, outline_color);
+        }
+        if (m_target->in_bounds(x+0, y+1) && stroked.find((y+1)*1024+(x+0)) == stroked.end()) {
+          m_target->px(x+0, y+1, outline_color);
+        }
+        if (m_target->in_bounds(x+1, y+1) && stroked.find((y+1)*1024+(x+1)) == stroked.end()) {
+          m_target->px(x+1, y+1, outline_color);
         }
       }
     }
@@ -305,7 +314,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
               // look up color in cgram:
               uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
 
-              m_target.px(sx, sy, bgr);
+              m_target->px(sx, sy, bgr);
             }
           }
         }
@@ -332,16 +341,16 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           for (int16_t y = y0; y < y0+h; y++) {
             if (y < 0) continue;
-            if (y >= m_target.height) break;
+            if (y >= m_target->height) break;
 
             for (int16_t x = x0; x < x0+w; x++) {
               if (x < 0) continue;
-              if (x >= m_target.width) break;
+              if (x >= m_target->width) break;
 
               uint16_t c = *d++;
               if (!is_color_visible(c)) continue;
 
-              m_target.px(x, y, c);
+              m_target->px(x, y, c);
             }
           }
         }
@@ -592,13 +601,13 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           if (is_color_visible(fill_color)) {
             for (int16_t y = y0; y < y0+h; y++) {
               if (y < 0) continue;
-              if (y >= m_target.height) break;
+              if (y >= m_target->height) break;
 
               for (int16_t x = x0; x < x0+w; x++) {
                 if (x < 0) continue;
-                if (x >= m_target.width) break;
+                if (x >= m_target->width) break;
 
-                m_target.px(x, y, fill_color);
+                m_target->px(x, y, fill_color);
               }
             }
           }
@@ -610,18 +619,18 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 }
 
 inline void Context::draw_pixel(int x0, int y0, uint16_t color) {
-  if (!in_bounds(x0, y0)) return;
+  if (!m_target->in_bounds(x0, y0)) return;
 
-  m_target.px(x0, y0, color);
+  m_target->px(x0, y0, color);
 }
 
 inline void Context::draw_hline(int x0, int y0, int w, const plot& px) {
   if (y0 < 0) return;
-  if (y0 >= m_target.height) return;
+  if (y0 >= m_target->height) return;
 
   for (int x = x0; x < x0+w; x++) {
     if (x < 0) continue;
-    if (x >= m_target.width) return;
+    if (x >= m_target->width) return;
 
     px(x, y0);
   }
@@ -629,11 +638,11 @@ inline void Context::draw_hline(int x0, int y0, int w, const plot& px) {
 
 inline void Context::draw_vline(int x0, int y0, int h, const plot& px) {
   if (x0 < 0) return;
-  if (x0 >= m_target.width) return;
+  if (x0 >= m_target->width) return;
 
   for (int y = y0; y < y0+h; y++) {
     if (y < 0) continue;
-    if (y >= m_target.height) break;
+    if (y >= m_target->height) break;
 
     px(x0, y);
   }
@@ -660,7 +669,7 @@ inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
       xe = x1;
     }
 
-    if (in_bounds(x, y)) {
+    if (m_target->in_bounds(x, y)) {
       px(x, y);
     }
 
@@ -679,8 +688,8 @@ inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
 
       if (x < 0) continue;
       if (y < 0) continue;
-      if (x >= m_target.width) break;
-      if (y >= m_target.height) break;
+      if (x >= m_target->width) break;
+      if (y >= m_target->height) break;
       px(x, y);
     }
   } else {
@@ -694,7 +703,7 @@ inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
       ye = y1;
     }
 
-    if (in_bounds(x, y)) {
+    if (m_target->in_bounds(x, y)) {
       px(x, y);
     }
 
@@ -713,8 +722,8 @@ inline void Context::draw_line(int x1, int y1, int x2, int y2, const plot& px) {
 
       if (x < 0) continue;
       if (y < 0) continue;
-      if (x >= m_target.width) break;
-      if (y >= m_target.height) break;
+      if (x >= m_target->width) break;
+      if (y >= m_target->height) break;
       px(x, y);
     }
   }

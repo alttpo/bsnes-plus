@@ -15,6 +15,8 @@ const uint16_t color_none = 0x8000;
 enum draw_cmd : uint16_t {
   // commands which affect state:
   ///////////////////////////////
+
+  // 4, CMD_TARGET, draw_layer, pre_mode7_transform, priority
   CMD_TARGET = 1,
   CMD_COLOR_DIRECT_BGR555,
   CMD_COLOR_DIRECT_RGB888,
@@ -114,23 +116,36 @@ private:
   std::vector<std::shared_ptr<Space>> m_spaces;
 };
 
-struct Target {
+struct BaseTarget {
+  BaseTarget(unsigned p_width,
+             unsigned p_height);
+
+  virtual void px(int x, int y, uint16_t color) = 0;
+
+  inline bool in_bounds(int x, int y);
+
+public:
+  unsigned width;
+  unsigned height;
+};
+
+struct Target : public BaseTarget {
   explicit Target(
     unsigned p_width,
     unsigned p_height,
     const PlotBGR555& p_px
   );
 
-  unsigned width;
-  unsigned height;
-  PlotBGR555 px;
+  void px(int x, int y, uint16_t color) final;
+
+public:
+  PlotBGR555 m_px;
 };
 
-typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, Target& o_target)> ChangeTarget;
+typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<BaseTarget>& o_target)> ChangeTarget;
 
 struct Context {
   Context(
-    const Target& target,
     const ChangeTarget& changeTarget,
     const std::shared_ptr<FontContainer>& fonts,
     const std::shared_ptr<SpaceContainer>& spaces
@@ -143,10 +158,8 @@ struct Context {
   inline void draw_vline(int x, int y, int h, const plot& px);
   inline void draw_line(int x1, int y1, int x2, int y2, const plot& px);
 
-  inline bool in_bounds(int x, int y);
-
 private:
-  Target m_target;
+  std::shared_ptr<BaseTarget> m_target;
   const ChangeTarget& m_changeTarget;
   const std::shared_ptr<FontContainer> m_fonts;
   const std::shared_ptr<SpaceContainer> m_spaces;

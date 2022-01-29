@@ -19,11 +19,11 @@ void PPU::ppux_render_frame_pre() {
   memset(ppux_layer_pri, 0xFF, sizeof(ppux_layer_pri));
   for (const auto& dl : ppux_draw_lists) {
     // this function is called from CMD_TARGET draw list command to switch drawing target:
-    DrawList::ChangeTarget changeTarget = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, DrawList::Target& o_target) {
+    DrawList::ChangeTarget changeTarget = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::BaseTarget>& o_target) {
       // select pixel-drawing function:
       if (i_pre_mode7_transform) {
         // pre-mode7-transform drawing (will be stretched/scaled):
-        o_target = DrawList::Target(1024, 1024, [=](int x, int y, uint16_t color) {
+        o_target = std::make_shared<DrawList::Target>(1024, 1024, [=](int x, int y, uint16_t color) {
           // draw to mode7 pre-transform BG1 (layer=0x80) or BG2 (layer=0x81):
           if (i_layer > DrawList::BG1) return;
 
@@ -32,7 +32,7 @@ void PPU::ppux_render_frame_pre() {
         });
       } else {
         // regular screen drawing:
-        o_target = DrawList::Target(256, 256, [=](int x, int y, uint16_t color) {
+        o_target = std::make_shared<DrawList::Target>(256, 256, [=](int x, int y, uint16_t color) {
           // draw to any PPU layer:
           auto offs = (y << 8) + x;
           if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= i_priority)) {
@@ -44,18 +44,7 @@ void PPU::ppux_render_frame_pre() {
       }
     };
 
-    // default to OAM layer target:
-    DrawList::Target target(256, 256, [=](int x, int y, uint16_t color) {
-      // draw to any PPU layer:
-      auto offs = (y << 8) + x;
-      if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= 15)) {
-        ppux_layer_pri[offs] = 15;
-        ppux_layer_lyr[offs] = DrawList::OAM;
-        ppux_layer_col[offs] = color;
-      }
-    });
-
-    DrawList::Context context(target, changeTarget, dl.fonts, dl.spaces);
+    DrawList::Context context(changeTarget, dl.fonts, dl.spaces);
 
     // render the draw_list:
     context.draw_list(dl.cmdlist);
