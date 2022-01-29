@@ -120,11 +120,12 @@ void WASMInstanceBase::warn() {
 
 bool WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
   //printf("msg_enqueue(%p, %u)\n", msg->m_data, msg->m_size);
-  m_msgs.push(msg);
 
   std::shared_ptr<WASMFunction> fn;
   if (!func_find("on_msg_recv", fn))
     return false;
+
+  m_msgs.push(msg);
 
   if (!func_invoke(fn, 0, 0, nullptr)) {
     warn();
