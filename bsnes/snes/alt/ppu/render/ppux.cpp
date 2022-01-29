@@ -8,6 +8,29 @@ void PPU::ppux_draw_list_reset() {
   ppux_draw_lists.clear();
 }
 
+struct LayerTarget : public DrawList::BaseTarget {
+  LayerTarget(PPU& p_ppu, DrawList::draw_layer p_layer, uint8_t p_priority)
+    : DrawList::BaseTarget(256, 256),
+      ppu(p_ppu),
+      layer(p_layer),
+      priority(p_priority)
+  {}
+
+  PPU& ppu;
+  DrawList::draw_layer layer;
+  uint8_t priority;
+
+  void px(int x, int y, uint16_t color) override {
+    // draw to any PPU layer:
+    auto offs = (y << 8) + x;
+    if ((ppu.ppux_layer_pri[offs] == 0xFF) || ((ppu.ppux_layer_pri[offs]&0x7F) <= priority)) {
+      ppu.ppux_layer_pri[offs] = priority;
+      ppu.ppux_layer_lyr[offs] = layer;
+      ppu.ppux_layer_col[offs] = color;
+    }
+  }
+};
+
 void PPU::ppux_render_frame_pre() {
   // extra sprites drawn on pre-transformed mode7 BG1 or BG2 layers:
   for(int i = 0; i < 1024*1024; i++) {
@@ -32,15 +55,7 @@ void PPU::ppux_render_frame_pre() {
         });
       } else {
         // regular screen drawing:
-        o_target = std::make_shared<DrawList::Target>(256, 256, [=](int x, int y, uint16_t color) {
-          // draw to any PPU layer:
-          auto offs = (y << 8) + x;
-          if ((ppux_layer_pri[offs] == 0xFF) || ((ppux_layer_pri[offs]&0x7F) <= i_priority)) {
-            ppux_layer_pri[offs] = i_priority;
-            ppux_layer_lyr[offs] = i_layer;
-            ppux_layer_col[offs] = color;
-          }
-        });
+        o_target = std::make_shared<LayerTarget>(*this, i_layer, i_priority);
       }
     };
 
