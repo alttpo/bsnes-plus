@@ -8,50 +8,23 @@ void PPU::ppux_draw_list_reset() {
   ppux_draw_lists.clear();
 }
 
-#if 0
-struct LayerTarget : public DrawList::BaseTarget {
-  LayerTarget(PPU& p_ppu, DrawList::draw_layer p_layer, uint8_t p_priority)
-    : DrawList::BaseTarget(256, 256),
-      ppu(p_ppu),
-      layer(p_layer),
-      priority(p_priority)
-  {}
+struct Mode7PreTransformPlot {
+  Mode7PreTransformPlot(DrawList::draw_layer p_layer, uint8_t p_priority) : layer(p_layer), priority(p_priority) {}
 
-  PPU& ppu;
   DrawList::draw_layer layer;
   uint8_t priority;
 
-  inline void px(int x, int y, uint16_t color) final {
-    // draw to any PPU layer:
-    auto offs = (y << 8) + x;
-    if ((ppu.ppux_layer_pri[offs] == 0xFF) || ((ppu.ppux_layer_pri[offs]&0x7F) <= priority)) {
-      ppu.ppux_layer_pri[offs] = priority;
-      ppu.ppux_layer_lyr[offs] = layer;
-      ppu.ppux_layer_col[offs] = color;
-    }
-  }
-};
-
-struct Mode7Target : public DrawList::BaseTarget {
-  Mode7Target(PPU& p_ppu, DrawList::draw_layer p_layer)
-    : DrawList::BaseTarget(1024, 1024),
-      ppu(p_ppu),
-      layer(p_layer)
-  {}
-
-  PPU& ppu;
-  DrawList::draw_layer layer;
-
-  inline void px(int x, int y, uint16_t color) final {
+  void operator() (int x, int y, uint16_t color) {
     // draw to mode7 pre-transform BG1 or BG2:
     if (layer > DrawList::BG1)
       return;
+
+    // TODO: priority
 
     auto offs = (y << 10) + x;
     ppu.ppux_mode7_col[layer][offs] = color;
   }
 };
-#endif
 
 struct LayerPlot {
   LayerPlot(DrawList::draw_layer p_layer, uint8_t p_priority) : layer(p_layer), priority(p_priority) {}
@@ -106,8 +79,9 @@ struct Outliner {
   }
 };
 
-struct LayerRenderer : public DrawList::Renderer {
-  LayerRenderer(DrawList::draw_layer p_layer, uint8_t p_priority)
+template<unsigned width, unsigned height, typename PLOT>
+struct GenericRenderer : public DrawList::Renderer {
+  GenericRenderer(DrawList::draw_layer p_layer, uint8_t p_priority)
     : layer(p_layer), priority(p_priority)
   {
   }
@@ -115,9 +89,6 @@ struct LayerRenderer : public DrawList::Renderer {
   DrawList::draw_layer layer;
   uint8_t priority;
   uint16_t stroke_color, outline_color, fill_color;
-
-  static const unsigned width = 256;
-  static const unsigned height = 256;
 
   void set_stroke_color(uint16_t color) override {
     stroke_color = color;
@@ -130,86 +101,91 @@ struct LayerRenderer : public DrawList::Renderer {
   }
 
   void draw_pixel(int x0, int y0) override {
-    LayerPlot plot(layer, priority);
-    DrawList::draw_pixel<width, height>(x0, y0, outline_color, Outliner<width, height, LayerPlot>(plot));
+    PLOT plot(layer, priority);
+    DrawList::draw_pixel<width, height>(x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
     DrawList::draw_pixel<width, height>(x0, y0, stroke_color, plot);
   }
 
   void draw_hline(int x0, int y0, int w) override {
-    LayerPlot plot(layer, priority);
-    DrawList::draw_hline<width, height>(x0, y0, w, outline_color, Outliner<width, height, LayerPlot>(plot));
+    PLOT plot(layer, priority);
+    DrawList::draw_hline<width, height>(x0, y0, w, outline_color, Outliner<width, height, PLOT>(plot));
     DrawList::draw_hline<width, height>(x0, y0, w, stroke_color, plot);
   }
 
   void draw_vline(int x0, int y0, int h) override {
-    LayerPlot plot(layer, priority);
-    DrawList::draw_vline<width, height>(x0, y0, h, outline_color, Outliner<width, height, LayerPlot>(plot));
+    PLOT plot(layer, priority);
+    DrawList::draw_vline<width, height>(x0, y0, h, outline_color, Outliner<width, height, PLOT>(plot));
     DrawList::draw_vline<width, height>(x0, y0, h, stroke_color, plot);
   }
 
   void draw_rect(int x0, int y0, int w, int h) override {
-    LayerPlot plot(layer, priority);
-    DrawList::draw_rect<width, height>(x0, y0, w, h, outline_color, Outliner<width, height, LayerPlot>(plot));
+    PLOT plot(layer, priority);
+    DrawList::draw_rect<width, height>(x0, y0, w, h, outline_color, Outliner<width, height, PLOT>(plot));
     DrawList::draw_rect<width, height>(x0, y0, w, h, stroke_color, plot);
   }
 
   void draw_rect_fill(int x0, int y0, int w, int h) override {
-    LayerPlot plot(layer, priority);
+    PLOT plot(layer, priority);
     DrawList::draw_rect_fill<width, height>(x0, y0, w, h, fill_color, plot);
   }
 
   void draw_line(int x0, int y0, int x1, int y1) override {
-    LayerPlot plot(layer, priority);
-    DrawList::draw_line<width, height>(x0, y0, x1, y1, outline_color, Outliner<width, height, LayerPlot>(plot));
+    PLOT plot(layer, priority);
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, outline_color, Outliner<width, height, PLOT>(plot));
     DrawList::draw_line<width, height>(x0, y0, x1, y1, stroke_color, plot);
   }
 
   void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) override {
-    LayerPlot plot(layer, priority);
-    font.draw_text_utf8(s, len, x0, y0, outline_color, Outliner<width, height, LayerPlot>(plot));
+    PLOT plot(layer, priority);
+    font.draw_text_utf8(s, len, x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
     font.draw_text_utf8(s, len, x0, y0, stroke_color, plot);
   }
 
 
   uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) override {
-    return DrawList::draw_image<width, height>(x0, y0, w, h, d, LayerPlot(layer, priority));
+    PLOT plot(layer, priority);
+    return DrawList::draw_image<width, height>(x0, y0, w, h, d, plot);
   }
 
   void draw_vram_tile(int x0, int y0, int w, int h, bool hflip, bool vflip, uint8_t bpp, uint16_t vram_addr, uint8_t palette, uint8_t* vram, uint8_t* cgram) override {
+    PLOT plot(layer, priority);
     switch (bpp) {
       case 4:
         if (!hflip && !vflip)
-          DrawList::draw_vram_tile<4, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<4, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (hflip && !vflip)
-          DrawList::draw_vram_tile<4, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<4, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (!hflip && vflip)
-          DrawList::draw_vram_tile<4, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<4, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (hflip && vflip)
-          DrawList::draw_vram_tile<4, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<4, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         break;
       case 2:
         if (!hflip && !vflip)
-          DrawList::draw_vram_tile<2, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<2, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (hflip && !vflip)
-          DrawList::draw_vram_tile<2, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<2, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (!hflip && vflip)
-          DrawList::draw_vram_tile<2, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<2, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (hflip && vflip)
-          DrawList::draw_vram_tile<2, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<2, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         break;
       case 8:
         if (!hflip && !vflip)
-          DrawList::draw_vram_tile<8, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<8, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (hflip && !vflip)
-          DrawList::draw_vram_tile<8, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<8, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (!hflip && vflip)
-          DrawList::draw_vram_tile<8, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<8, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         else if (hflip && vflip)
-          DrawList::draw_vram_tile<8, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+          DrawList::draw_vram_tile<8, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
         break;
     }
   }
 };
+
+using LayerRenderer = GenericRenderer<256, 256, LayerPlot>;
+using Mode7PreTransformRenderer = GenericRenderer<1024, 1024, Mode7PreTransformPlot>;
 
 void PPU::ppux_render_frame_pre() {
   // extra sprites drawn on pre-transformed mode7 BG1 or BG2 layers:
@@ -225,7 +201,7 @@ void PPU::ppux_render_frame_pre() {
     DrawList::ChooseRenderer chooseRenderer = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::Renderer>& o_renderer) {
       // select drawing target:
       if (i_pre_mode7_transform) {
-        //o_renderer = std::make_shared<Mode7Renderer>(i_layer);
+        o_renderer = std::make_shared<Mode7PreTransformRenderer>(i_layer, i_priority);
       } else {
         // regular screen drawing:
         o_renderer = std::make_shared<LayerRenderer>(i_layer, i_priority);
