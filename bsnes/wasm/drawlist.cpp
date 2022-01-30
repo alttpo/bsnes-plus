@@ -374,15 +374,13 @@ uint16_t* BaseTarget::draw_image(int16_t x0, int16_t y0, int16_t w, int16_t h, u
 }
 
 Context::Context(
-  const ChangeTarget& changeTarget,
   const ChooseRenderer& chooseRenderer,
   const std::shared_ptr<FontContainer>& fonts,
   const std::shared_ptr<SpaceContainer>& spaces
 )
-  : m_changeTarget(changeTarget), m_chooseRenderer(chooseRenderer), m_fonts(fonts), m_spaces(spaces)
+  : m_chooseRenderer(chooseRenderer), m_fonts(fonts), m_spaces(spaces)
 {
   // default to OAM layer target:
-  m_changeTarget(OAM, false, 15, m_target);
   m_chooseRenderer(OAM, false, 15, m_renderer);
 }
 
@@ -428,7 +426,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
         bool pre_mode7_transform = *d++;
         uint8_t priority = *d++;
 
-        m_changeTarget(layer, pre_mode7_transform, priority, m_target);
+        m_chooseRenderer(layer, pre_mode7_transform, priority, m_renderer);
         break;
       }
       case CMD_VRAM_TILE: {
@@ -466,14 +464,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           }
 
           // draw tile:
-          switch (bpp) {
-            case 2: m_target->draw_vram_tile<2>(x0, y0, hflip, vflip, vram_addr, palette, twidth, theight, vram, cgram); break;
-            case 4: m_target->draw_vram_tile<4>(x0, y0, hflip, vflip, vram_addr, palette, twidth, theight, vram, cgram); break;
-            case 8: m_target->draw_vram_tile<8>(x0, y0, hflip, vflip, vram_addr, palette, twidth, theight, vram, cgram); break;
-            default:
-              fprintf(stderr, "draw_list: CMD_VRAM_TILE: bad bpp value %d; must be 2, 4, or 8\n", bpp);
-              break;
-          }
+          m_renderer->draw_vram_tile(x0, y0, twidth, theight, hflip, vflip, bpp, vram_addr, palette, vram, cgram);
         }
         break;
       }
@@ -496,7 +487,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             break;
           }
 
-          d = m_target->draw_image(x0, y0, w, h, d);
+          d = m_renderer->draw_image(x0, y0, w, h, d);
         }
         break;
       }
@@ -634,9 +625,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           font->draw_text_utf8(str, textchars, x0, y0, [=](int x, int y) {
             m_renderer->draw_pixel(x, y, stroke_color);
           });
-          //m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const std::function<void(int,int)>& px) {
-          //  font->draw_text_utf8(str, textchars, x0, y0, px);
-          //});
         }
         break;
       }
@@ -653,9 +641,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           // TODO:
           m_renderer->draw_pixel(x0, y0, stroke_color);
-          //m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const std::function<void(int,int)>& px) {
-          //  px(x0, y0);
-          //});
         }
         break;
       }
@@ -673,9 +658,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           // TODO:
           m_renderer->draw_hline(x0, y0, w, stroke_color);
-          //m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
-          //  m_target->draw_hline(x0, y0, w, px);
-          //});
         }
         break;
       }
@@ -693,9 +675,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           // TODO:
           m_renderer->draw_vline(x0, y0, w, stroke_color);
-          //m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
-          //  m_target->draw_vline(x0, y0, h, px);
-          //});
         }
         break;
       }
@@ -714,9 +693,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           // TODO:
           m_renderer->draw_line(x0, y0, x1, y1, stroke_color);
-          //m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
-          //  m_target->draw_line(x0, y0, x1, y1, px);
-          //});
         }
         break;
       }
@@ -735,12 +711,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           // TODO:
           m_renderer->draw_rect(x0, y0, w, h, stroke_color);
-          //m_target->draw_outlined_stroked(stroke_color, outline_color, [=](const plot& px) {
-          //  m_target->draw_hline(x0,     y0,     w,   px);
-          //  m_target->draw_hline(x0,     y0+h-1, w,   px);
-          //  m_target->draw_vline(x0,     y0+1,   h-2, px);
-          //  m_target->draw_vline(x0+w-1, y0+1,   h-2, px);
-          //});
         }
         break;
       }

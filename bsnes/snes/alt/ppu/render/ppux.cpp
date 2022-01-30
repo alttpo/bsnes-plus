@@ -102,6 +102,45 @@ struct LayerRenderer : public DrawList::Renderer {
   void draw_line(int x0, int y0, int x1, int y1, uint16_t color) override {
     DrawList::draw_line<width, height>(x0, y0, x1, y1, color, LayerPlot(layer, priority));
   }
+
+  uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) override {
+    return DrawList::draw_image<width, height>(x0, y0, w, h, d, LayerPlot(layer, priority));
+  }
+
+  void draw_vram_tile(int x0, int y0, int w, int h, bool hflip, bool vflip, uint8_t bpp, uint16_t vram_addr, uint8_t palette, uint8_t* vram, uint8_t* cgram) override {
+    switch (bpp) {
+      case 4:
+        if (!hflip && !vflip)
+          DrawList::draw_vram_tile<4, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (hflip && !vflip)
+          DrawList::draw_vram_tile<4, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (!hflip && vflip)
+          DrawList::draw_vram_tile<4, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (hflip && vflip)
+          DrawList::draw_vram_tile<4, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        break;
+      case 2:
+        if (!hflip && !vflip)
+          DrawList::draw_vram_tile<2, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (hflip && !vflip)
+          DrawList::draw_vram_tile<2, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (!hflip && vflip)
+          DrawList::draw_vram_tile<2, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (hflip && vflip)
+          DrawList::draw_vram_tile<2, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        break;
+      case 8:
+        if (!hflip && !vflip)
+          DrawList::draw_vram_tile<8, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (hflip && !vflip)
+          DrawList::draw_vram_tile<8, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (!hflip && vflip)
+          DrawList::draw_vram_tile<8, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        else if (hflip && vflip)
+          DrawList::draw_vram_tile<8, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
+        break;
+    }
+  }
 };
 
 void PPU::ppux_render_frame_pre() {
@@ -114,18 +153,7 @@ void PPU::ppux_render_frame_pre() {
   // pre-render ppux draw_lists to frame buffers:
   memset(ppux_layer_pri, 0xFF, sizeof(ppux_layer_pri));
   for (const auto& dl : ppux_draw_lists) {
-    // this function is called from CMD_TARGET draw list command to switch drawing target:
-    DrawList::ChangeTarget changeTarget = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::BaseTarget>& o_target) {
-      // select drawing target:
-      if (i_pre_mode7_transform) {
-        o_target = std::make_shared<Mode7Target>(*this, i_layer);
-      } else {
-        // regular screen drawing:
-        o_target = std::make_shared<LayerTarget>(*this, i_layer, i_priority);
-      }
-    };
-
-    // this function is called from CMD_TARGET draw list command to switch drawing target:
+    // this function is called from CMD_TARGET draw list command to switch renderers:
     DrawList::ChooseRenderer chooseRenderer = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::Renderer>& o_renderer) {
       // select drawing target:
       if (i_pre_mode7_transform) {
@@ -136,7 +164,7 @@ void PPU::ppux_render_frame_pre() {
       }
     };
 
-    DrawList::Context context(changeTarget, chooseRenderer, dl.fonts, dl.spaces);
+    DrawList::Context context(chooseRenderer, dl.fonts, dl.spaces);
 
     // render the draw_list:
     context.draw_list(dl.cmdlist);

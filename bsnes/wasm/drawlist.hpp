@@ -170,6 +170,8 @@ struct Renderer {
   virtual void draw_rect(int x0, int y0, int w, int h, uint16_t color) = 0;
   virtual void draw_rect_fill(int x0, int y0, int w, int h, uint16_t color) = 0;
   virtual void draw_line(int x1, int y1, int x2, int y2, uint16_t color) = 0;
+  virtual uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) = 0;
+  virtual void draw_vram_tile(int x0, int y0, int w, int h, bool hflip, bool vflip, uint8_t bpp, uint16_t vram_addr, uint8_t palette, uint8_t* vram, uint8_t* cgram) = 0;
 };
 
 template<unsigned width, unsigned height, typename PLOT>
@@ -329,13 +331,131 @@ void draw_line(int x1, int y1, int x2, int y2, uint16_t color, PLOT plot) {
   }
 }
 
+template<unsigned width, unsigned height, typename PLOT>
+uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d, PLOT plot) {
+  for (int y = y0; y < y0+h; y++) {
+    // TODO: early bounds checking does not advance `d`!!!
+    if (y < 0) continue;
+    if (y >= height) break;
+
+    for (int x = x0; x < x0+w; x++) {
+      if (x < 0) continue;
+      if (x >= width) break;
+
+      uint16_t c = *d++;
+      if (!is_color_visible(c))
+        continue;
+
+      plot(x, y, c);
+    }
+  }
+
+  return d;
+}
+
+template<unsigned bpp, bool hflip, bool vflip, typename PLOT>
+void draw_vram_tile(
+  int x0, int y0,
+  int w, int h,
+
+  uint16_t vram_addr,
+  uint8_t  palette,
+
+  uint8_t* vram,
+  uint8_t* cgram,
+
+  PLOT plot
+) {
+  // draw tile:
+  unsigned sy = y0;
+  for (unsigned ty = 0; ty < h; ty++, sy++) {
+    sy &= 255;
+
+    unsigned sx = x0;
+    unsigned y = (vflip == false) ? (ty) : (h - 1 - ty);
+
+    for(unsigned tx = 0; tx < w; tx++, sx++) {
+      sx &= 511;
+      if(sx >= 256) continue;
+
+      unsigned x = ((hflip == false) ? tx : (w - 1 - tx));
+
+      uint8_t col, d0, d1, d2, d3, d4, d5, d6, d7;
+      uint8_t mask = 1 << (7-(x&7));
+      uint8_t *tile_ptr = vram + vram_addr;
+
+      switch (bpp) {
+        case 2:
+          // 16 bytes per 8x8 tile
+          tile_ptr += ((x >> 3) << 4);
+          tile_ptr += ((y >> 3) << 8);
+          tile_ptr += (y & 7) << 1;
+          d0 = *(tile_ptr    );
+          d1 = *(tile_ptr + 1);
+          col  = !!(d0 & mask) << 0;
+          col += !!(d1 & mask) << 1;
+          break;
+        case 4:
+          // 32 bytes per 8x8 tile
+          tile_ptr += ((x >> 3) << 5);
+          tile_ptr += ((y >> 3) << 9);
+          tile_ptr += (y & 7) << 1;
+          d0 = *(tile_ptr     );
+          d1 = *(tile_ptr +  1);
+          d2 = *(tile_ptr + 16);
+          d3 = *(tile_ptr + 17);
+          col  = !!(d0 & mask) << 0;
+          col += !!(d1 & mask) << 1;
+          col += !!(d2 & mask) << 2;
+          col += !!(d3 & mask) << 3;
+          break;
+        case 8:
+          // 64 bytes per 8x8 tile
+          tile_ptr += ((x >> 3) << 6);
+          tile_ptr += ((y >> 3) << 10);
+          tile_ptr += (y & 7) << 1;
+          d0 = *(tile_ptr     );
+          d1 = *(tile_ptr +  1);
+          d2 = *(tile_ptr + 16);
+          d3 = *(tile_ptr + 17);
+          d4 = *(tile_ptr + 32);
+          d5 = *(tile_ptr + 33);
+          d6 = *(tile_ptr + 48);
+          d7 = *(tile_ptr + 49);
+          col  = !!(d0 & mask) << 0;
+          col += !!(d1 & mask) << 1;
+          col += !!(d2 & mask) << 2;
+          col += !!(d3 & mask) << 3;
+          col += !!(d4 & mask) << 4;
+          col += !!(d5 & mask) << 5;
+          col += !!(d6 & mask) << 6;
+          col += !!(d7 & mask) << 7;
+          break;
+        default:
+          // TODO: warn
+          break;
+      }
+
+      // color 0 is always transparent:
+      if (col == 0)
+        continue;
+
+      col += palette;
+
+      // look up color in cgram:
+      uint16_t bgr = *(cgram + (col<<1)) + (*(cgram + (col<<1) + 1) << 8);
+
+      plot(sx, sy, bgr);
+    }
+  }
+}
+
 typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<BaseTarget>& o_target)> ChangeTarget;
 
 typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<Renderer>& o_target)> ChooseRenderer;
 
 struct Context {
   Context(
-    const ChangeTarget& changeTarget,
     const ChooseRenderer& chooseRenderer,
     const std::shared_ptr<FontContainer>& fonts,
     const std::shared_ptr<SpaceContainer>& spaces
@@ -344,9 +464,6 @@ struct Context {
   void draw_list(const std::vector<uint8_t>& cmdlist);
 
 private:
-  std::shared_ptr<BaseTarget> m_target;
-  const ChangeTarget& m_changeTarget;
-
   std::shared_ptr<Renderer> m_renderer;
   const ChooseRenderer& m_chooseRenderer;
 
