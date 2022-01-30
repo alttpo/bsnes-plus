@@ -51,6 +51,59 @@ struct Mode7Target : public DrawList::BaseTarget {
   }
 };
 
+struct LayerPlot {
+  LayerPlot(DrawList::draw_layer p_layer, uint8_t p_priority) : layer(p_layer), priority(p_priority) {}
+
+  DrawList::draw_layer layer;
+  uint8_t priority;
+
+  void operator() (int x, int y, uint16_t color) {
+    // draw to any PPU layer:
+    auto offs = (y << 8) + x;
+    if ((ppu.ppux_layer_pri[offs] == 0xFF) || ((ppu.ppux_layer_pri[offs]&0x7F) <= priority)) {
+      ppu.ppux_layer_lyr[offs] = layer;
+      ppu.ppux_layer_pri[offs] = priority;
+      ppu.ppux_layer_col[offs] = color;
+    }
+  }
+};
+
+struct LayerRenderer : public DrawList::Renderer {
+  LayerRenderer(DrawList::draw_layer p_layer, uint8_t p_priority)
+    : layer(p_layer), priority(p_priority)
+  {}
+
+  DrawList::draw_layer layer;
+  uint8_t priority;
+
+  static const unsigned width = 256;
+  static const unsigned height = 256;
+
+  void draw_pixel(int x0, int y0, uint16_t color) override {
+    DrawList::draw_pixel<width, height>(x0, y0, color, LayerPlot(layer, priority));
+  }
+
+  void draw_hline(int x0, int y0, int w, uint16_t color) override {
+    DrawList::draw_hline<width, height>(x0, y0, w, color, LayerPlot(layer, priority));
+  }
+
+  void draw_vline(int x0, int y0, int h, uint16_t color) override {
+    DrawList::draw_vline<width, height>(x0, y0, h, color, LayerPlot(layer, priority));
+  }
+
+  void draw_rect(int x0, int y0, int w, int h, uint16_t color) override {
+    DrawList::draw_rect<width, height>(x0, y0, w, h, color, LayerPlot(layer, priority));
+  }
+
+  void draw_rect_fill(int x0, int y0, int w, int h, uint16_t color) override {
+    DrawList::draw_rect_fill<width, height>(x0, y0, w, h, color, LayerPlot(layer, priority));
+  }
+
+  void draw_line(int x0, int y0, int x1, int y1, uint16_t color) override {
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, color, LayerPlot(layer, priority));
+  }
+};
+
 void PPU::ppux_render_frame_pre() {
   // extra sprites drawn on pre-transformed mode7 BG1 or BG2 layers:
   for(int i = 0; i < 1024*1024; i++) {
@@ -72,7 +125,18 @@ void PPU::ppux_render_frame_pre() {
       }
     };
 
-    DrawList::Context context(changeTarget, dl.fonts, dl.spaces);
+    // this function is called from CMD_TARGET draw list command to switch drawing target:
+    DrawList::ChooseRenderer chooseRenderer = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::Renderer>& o_renderer) {
+      // select drawing target:
+      if (i_pre_mode7_transform) {
+        //o_target = std::make_shared<Mode7Target>(*this, i_layer);
+      } else {
+        // regular screen drawing:
+        o_renderer = std::make_shared<LayerRenderer>(i_layer, i_priority);
+      }
+    };
+
+    DrawList::Context context(changeTarget, chooseRenderer, dl.fonts, dl.spaces);
 
     // render the draw_list:
     context.draw_list(dl.cmdlist);

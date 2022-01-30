@@ -49,7 +49,16 @@ enum draw_layer : uint16_t {
   COL = 5
 };
 
-inline bool is_color_visible(uint16_t c);
+inline bool is_color_visible(uint16_t c) { return c < 0x8000; }
+
+template<unsigned width, unsigned height>
+inline bool bounds_check(int x, int y) {
+  if (y < 0) return false;
+  if (y >= height) return false;
+  if (x < 0) return false;
+  if (x >= width) return false;
+  return true;
+}
 
 typedef std::function<void(int x, int y)> plot;
 typedef std::function<void(int x, int y, uint16_t color)> PlotBGR555;
@@ -154,11 +163,180 @@ public:
   unsigned height;
 };
 
+struct Renderer {
+  virtual void draw_pixel(int x, int y, uint16_t color) = 0;
+  virtual void draw_hline(int x, int y, int w, uint16_t color) = 0;
+  virtual void draw_vline(int x, int y, int h, uint16_t color) = 0;
+  virtual void draw_rect(int x0, int y0, int w, int h, uint16_t color) = 0;
+  virtual void draw_rect_fill(int x0, int y0, int w, int h, uint16_t color) = 0;
+  virtual void draw_line(int x1, int y1, int x2, int y2, uint16_t color) = 0;
+};
+
+template<unsigned width, unsigned height, typename PLOT>
+void draw_pixel(int x0, int y0, uint16_t color, PLOT plot) {
+  if (!is_color_visible(color))
+    return;
+
+  if (!bounds_check<width, height>(x0, y0))
+    return;
+
+  plot(x0, y0, color);
+}
+
+template<unsigned width, unsigned height, typename PLOT>
+void draw_hline(int x0, int y0, int w, uint16_t color, PLOT plot) {
+  if (!is_color_visible(color))
+    return;
+
+  if (y0 < 0) return;
+  if (y0 >= height) return;
+
+  for (int x = x0; x < x0+w; x++) {
+    if (x < 0) continue;
+    if (x >= width) return;
+
+    plot(x, y0, color);
+  }
+}
+
+template<unsigned width, unsigned height, typename PLOT>
+void draw_vline(int x0, int y0, int h, uint16_t color, PLOT plot) {
+  if (!is_color_visible(color))
+    return;
+
+  if (x0 < 0) return;
+  if (x0 >= width) return;
+
+  for (int y = y0; y < y0+h; y++) {
+    if (y < 0) continue;
+    if (y >= height) break;
+
+    plot(x0, y, color);
+  }
+}
+
+template<unsigned width, unsigned height, typename PLOT>
+void draw_rect(int x0, int y0, int w, int h, uint16_t color, PLOT plot) {
+  if (!is_color_visible(color))
+    return;
+
+  draw_hline<width, height>(x0,     y0,     w,   color, plot);
+  draw_hline<width, height>(x0,     y0+h-1, w,   color, plot);
+  draw_vline<width, height>(x0,     y0+1,   h-2, color, plot);
+  draw_vline<width, height>(x0+w-1, y0+1,   h-2, color, plot);
+}
+
+template<unsigned width, unsigned height, typename PLOT>
+void draw_rect_fill(int x0, int y0, int w, int h, uint16_t fill_color, PLOT plot) {
+  if (!is_color_visible(fill_color))
+    return;
+
+  for (int y = y0; y < y0+h; y++) {
+    if (y < 0) continue;
+    if (y >= height) break;
+
+    for (int x = x0; x < x0+w; x++) {
+      if (x < 0) continue;
+      if (x >= width) break;
+
+      plot(x, y, fill_color);
+    }
+  }
+}
+
+template<unsigned width, unsigned height, typename PLOT>
+void draw_line(int x1, int y1, int x2, int y2, uint16_t color, PLOT plot) {
+  if (!is_color_visible(color))
+    return;
+
+  int x, y, dx, dy, dx1, dy1, mx, my, xe, ye, i;
+
+  dx = x2 - x1;
+  dy = y2 - y1;
+  dx1 = std::abs(dx);
+  dy1 = std::abs(dy);
+  mx = 2 * dy1 - dx1;
+  my = 2 * dx1 - dy1;
+
+  if (dy1 <= dx1) {
+    if (dx >= 0) {
+      x = x1;
+      y = y1;
+      xe = x2;
+    } else {
+      x = x2;
+      y = y2;
+      xe = x1;
+    }
+
+    if (bounds_check<width, height>(x, y)) {
+      plot(x, y, color);
+    }
+
+    for (i = 0; x < xe; i++) {
+      x = x + 1;
+      if (mx < 0) {
+        mx = mx + 2 * dy1;
+      } else {
+        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+          y = y + 1;
+        } else {
+          y = y - 1;
+        }
+        mx = mx + 2 * (dy1 - dx1);
+      }
+
+      if (x < 0) continue;
+      if (y < 0) continue;
+      if (x >= width) break;
+      if (y >= height) break;
+      plot(x, y, color);
+    }
+  } else {
+    if (dy >= 0) {
+      x = x1;
+      y = y1;
+      ye = y2;
+    } else {
+      x = x2;
+      y = y2;
+      ye = y1;
+    }
+
+    if (bounds_check<width, height>(x, y)) {
+      plot(x, y, color);
+    }
+
+    for (i = 0; y < ye; i++) {
+      y = y + 1;
+      if (my <= 0) {
+        my = my + 2 * dx1;
+      } else {
+        if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+          x = x + 1;
+        } else {
+          x = x - 1;
+        }
+        my = my + 2 * (dx1 - dy1);
+      }
+
+      if (x < 0) continue;
+      if (y < 0) continue;
+      if (x >= width) break;
+      if (y >= height) break;
+      plot(x, y, color);
+    }
+  }
+}
+
 typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<BaseTarget>& o_target)> ChangeTarget;
+
+typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<Renderer>& o_target)> ChooseRenderer;
 
 struct Context {
   Context(
     const ChangeTarget& changeTarget,
+    const ChooseRenderer& chooseRenderer,
     const std::shared_ptr<FontContainer>& fonts,
     const std::shared_ptr<SpaceContainer>& spaces
   );
@@ -168,6 +346,10 @@ struct Context {
 private:
   std::shared_ptr<BaseTarget> m_target;
   const ChangeTarget& m_changeTarget;
+
+  std::shared_ptr<Renderer> m_renderer;
+  const ChooseRenderer& m_chooseRenderer;
+
   const std::shared_ptr<FontContainer> m_fonts;
   const std::shared_ptr<SpaceContainer> m_spaces;
 };
