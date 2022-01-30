@@ -1,5 +1,7 @@
 #include <snes.hpp>
 
+#include "wasm/drawlist_render.hpp"
+
 #define PPU_CPP
 namespace SNES {
 

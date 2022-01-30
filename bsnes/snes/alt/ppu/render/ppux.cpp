@@ -8,6 +8,7 @@ void PPU::ppux_draw_list_reset() {
   ppux_draw_lists.clear();
 }
 
+#if 0
 struct LayerTarget : public DrawList::BaseTarget {
   LayerTarget(PPU& p_ppu, DrawList::draw_layer p_layer, uint8_t p_priority)
     : DrawList::BaseTarget(256, 256),
@@ -50,6 +51,7 @@ struct Mode7Target : public DrawList::BaseTarget {
     ppu.ppux_mode7_col[layer][offs] = color;
   }
 };
+#endif
 
 struct LayerPlot {
   LayerPlot(DrawList::draw_layer p_layer, uint8_t p_priority) : layer(p_layer), priority(p_priority) {}
@@ -141,6 +143,10 @@ struct LayerRenderer : public DrawList::Renderer {
         break;
     }
   }
+
+  void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0, uint16_t color) override {
+    font.draw_text_utf8(s, len, x0, y0, color, LayerPlot(layer, priority));
+  }
 };
 
 void PPU::ppux_render_frame_pre() {
@@ -157,7 +163,7 @@ void PPU::ppux_render_frame_pre() {
     DrawList::ChooseRenderer chooseRenderer = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::Renderer>& o_renderer) {
       // select drawing target:
       if (i_pre_mode7_transform) {
-        //o_target = std::make_shared<Mode7Target>(*this, i_layer);
+        //o_renderer = std::make_shared<Mode7Renderer>(i_layer);
       } else {
         // regular screen drawing:
         o_renderer = std::make_shared<LayerRenderer>(i_layer, i_priority);

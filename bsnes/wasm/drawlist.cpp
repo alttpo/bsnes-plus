@@ -463,7 +463,6 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             continue;
           }
 
-          // draw tile:
           m_renderer->draw_vram_tile(x0, y0, twidth, theight, hflip, vflip, bpp, vram_addr, palette, vram, cgram);
         }
         break;
@@ -621,10 +620,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             continue;
           }
 
-          // TODO:
-          font->draw_text_utf8(str, textchars, x0, y0, [=](int x, int y) {
-            m_renderer->draw_pixel(x, y, stroke_color);
-          });
+          m_renderer->draw_text_utf8(str, textchars, *font, x0, y0, stroke_color);
         }
         break;
       }
