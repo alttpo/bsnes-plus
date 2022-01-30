@@ -2,6 +2,8 @@
 
 namespace DrawList {
 
+inline bool is_color_visible(uint16_t c) { return c < 0x8000; }
+
 template<unsigned width, unsigned height>
 inline bool bounds_check(int x, int y) {
   if (y < 0) return false;

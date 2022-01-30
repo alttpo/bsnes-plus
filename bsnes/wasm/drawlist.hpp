@@ -49,11 +49,6 @@ enum draw_layer : uint16_t {
   COL = 5
 };
 
-typedef std::function<void(int x, int y)> plot;
-typedef std::function<void(int x, int y, uint16_t color)> PlotBGR555;
-
-inline bool is_color_visible(uint16_t c) { return c < 0x8000; }
-
 struct FontContainer {
   void load_pcf(int fontindex, const uint8_t* pcf_data, int pcf_size);
 
