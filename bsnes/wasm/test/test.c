@@ -518,6 +518,7 @@ void on_frame_present() {
     4, CMD_COLOR_PALETTED, COLOR_FILL, 0, 0xF3,
     5, CMD_RECT_FILL, 92, 0, 4, 4,
     5, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1C4E, COLOR_OUTLINE, 0x0C27,
+    // -23
     5, CMD_LINE, 10, -12, 260, 239,
     // -17
     7, CMD_COLOR_DIRECT_RGB888, COLOR_STROKE, 0x0000, 0xFF00, COLOR_OUTLINE, 0x00FF, 0x0000,
@@ -531,7 +532,7 @@ void on_frame_present() {
   // increment y:
   cmd[cmd_len-6]++;
   if (cmd[cmd_len-6] == 240) {
-    cmd[cmd_len-6] = 0;
+    cmd[cmd_len-6] = -12;
     // increment x:
     cmd[cmd_len-7] += 4;
     if (cmd[cmd_len-7] == 240) {
@@ -543,6 +544,11 @@ void on_frame_present() {
   cmd[cmd_len-18]++;
   if (cmd[cmd_len-18] >= 240) {
     cmd[cmd_len-18] = 0;
+  }
+
+  cmd[cmd_len-20]--;
+  if ((int16_t)cmd[cmd_len-20] <= -12) {
+    cmd[cmd_len-20] = 240;
   }
 
   ppux_draw_list_reset();
