@@ -171,15 +171,20 @@ void draw_line(int x1, int y1, int x2, int y2, uint16_t color, PLOT plot) {
 template<unsigned width, unsigned height, typename PLOT>
 uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d, PLOT plot) {
   for (int y = y0; y < y0+h; y++) {
-    // TODO: early bounds checking does not advance `d`!!!
-    if (y < 0) continue;
-    if (y >= height) break;
+    if (y < 0) {
+      d += w;
+      continue;
+    }
+    if (y >= height) {
+      d += w;
+      continue;
+    }
 
-    for (int x = x0; x < x0+w; x++) {
+    for (int x = x0; x < x0+w; x++, d++) {
       if (x < 0) continue;
-      if (x >= width) break;
+      if (x >= width) continue;
 
-      uint16_t c = *d++;
+      uint16_t c = *d;
       if (!is_color_visible(c))
         continue;
 
