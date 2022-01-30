@@ -77,33 +77,82 @@ struct LayerRenderer : public DrawList::Renderer {
 
   DrawList::draw_layer layer;
   uint8_t priority;
+  uint16_t stroke_color, outline_color, fill_color;
 
   static const unsigned width = 256;
   static const unsigned height = 256;
 
-  void draw_pixel(int x0, int y0, uint16_t color) override {
-    DrawList::draw_pixel<width, height>(x0, y0, color, LayerPlot(layer, priority));
+  void set_stroke_color(uint16_t color) override {
+    stroke_color = color;
+  }
+  void set_outline_color(uint16_t color) override {
+    outline_color = color;
+  }
+  void set_fill_color(uint16_t color) override {
+    fill_color = color;
   }
 
-  void draw_hline(int x0, int y0, int w, uint16_t color) override {
-    DrawList::draw_hline<width, height>(x0, y0, w, color, LayerPlot(layer, priority));
+  void draw_pixel(int x0, int y0) override {
+    LayerPlot plot(layer, priority);
+
+    DrawList::draw_pixel<width, height>(x0, y0, stroke_color, plot);
   }
 
-  void draw_vline(int x0, int y0, int h, uint16_t color) override {
-    DrawList::draw_vline<width, height>(x0, y0, h, color, LayerPlot(layer, priority));
+  void draw_hline(int x0, int y0, int w) override {
+    DrawList::draw_hline<width, height>(x0, y0, w, stroke_color, LayerPlot(layer, priority));
   }
 
-  void draw_rect(int x0, int y0, int w, int h, uint16_t color) override {
-    DrawList::draw_rect<width, height>(x0, y0, w, h, color, LayerPlot(layer, priority));
+  void draw_vline(int x0, int y0, int h) override {
+    DrawList::draw_vline<width, height>(x0, y0, h, stroke_color, LayerPlot(layer, priority));
   }
 
-  void draw_rect_fill(int x0, int y0, int w, int h, uint16_t color) override {
-    DrawList::draw_rect_fill<width, height>(x0, y0, w, h, color, LayerPlot(layer, priority));
+  void draw_rect(int x0, int y0, int w, int h) override {
+    DrawList::draw_rect<width, height>(x0, y0, w, h, stroke_color, LayerPlot(layer, priority));
   }
 
-  void draw_line(int x0, int y0, int x1, int y1, uint16_t color) override {
-    DrawList::draw_line<width, height>(x0, y0, x1, y1, color, LayerPlot(layer, priority));
+  void draw_rect_fill(int x0, int y0, int w, int h) override {
+    DrawList::draw_rect_fill<width, height>(x0, y0, w, h, fill_color, LayerPlot(layer, priority));
   }
+
+  void draw_line(int x0, int y0, int x1, int y1) override {
+    LayerPlot plot(layer, priority);
+
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, outline_color, [&plot](int x, int y, uint16_t color) {
+      if (DrawList::bounds_check<width, height>(x-1, y-1)) {
+        plot(x-1, y-1, color);
+      }
+      if (DrawList::bounds_check<width, height>(x+0, y-1)) {
+        plot(x+0, y-1, color);
+      }
+      if (DrawList::bounds_check<width, height>(x+1, y-1)) {
+        plot(x+1, y-1, color);
+      }
+
+      if (DrawList::bounds_check<width, height>(x-1, y+0)) {
+        plot(x-1, y+0, color);
+      }
+      if (DrawList::bounds_check<width, height>(x+1, y+0)) {
+        plot(x+1, y+0, color);
+      }
+
+      if (DrawList::bounds_check<width, height>(x-1, y+1)) {
+        plot(x-1, y+1, color);
+      }
+      if (DrawList::bounds_check<width, height>(x+0, y+1)) {
+        plot(x+0, y+1, color);
+      }
+      if (DrawList::bounds_check<width, height>(x+1, y+1)) {
+        plot(x+1, y+1, color);
+      }
+    });
+
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, stroke_color, plot);
+  }
+
+  void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) override {
+    font.draw_text_utf8(s, len, x0, y0, stroke_color, LayerPlot(layer, priority));
+  }
+
 
   uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) override {
     return DrawList::draw_image<width, height>(x0, y0, w, h, d, LayerPlot(layer, priority));
@@ -142,10 +191,6 @@ struct LayerRenderer : public DrawList::Renderer {
           DrawList::draw_vram_tile<8, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, LayerPlot(layer, priority));
         break;
     }
-  }
-
-  void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0, uint16_t color) override {
-    font.draw_text_utf8(s, len, x0, y0, color, LayerPlot(layer, priority));
   }
 };
 

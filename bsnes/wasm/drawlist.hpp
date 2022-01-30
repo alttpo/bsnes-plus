@@ -155,15 +155,20 @@ public:
 };
 
 struct Renderer {
-  virtual void draw_pixel(int x, int y, uint16_t color) = 0;
-  virtual void draw_hline(int x, int y, int w, uint16_t color) = 0;
-  virtual void draw_vline(int x, int y, int h, uint16_t color) = 0;
-  virtual void draw_rect(int x0, int y0, int w, int h, uint16_t color) = 0;
-  virtual void draw_rect_fill(int x0, int y0, int w, int h, uint16_t color) = 0;
-  virtual void draw_line(int x1, int y1, int x2, int y2, uint16_t color) = 0;
+  virtual void set_stroke_color(uint16_t color) = 0;
+  virtual void set_outline_color(uint16_t color) = 0;
+  virtual void set_fill_color(uint16_t color) = 0;
+
+  virtual void draw_pixel(int x, int y) = 0;
+  virtual void draw_hline(int x, int y, int w) = 0;
+  virtual void draw_vline(int x, int y, int h) = 0;
+  virtual void draw_rect(int x0, int y0, int w, int h) = 0;
+  virtual void draw_rect_fill(int x0, int y0, int w, int h) = 0;
+  virtual void draw_line(int x1, int y1, int x2, int y2) = 0;
+  virtual void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) = 0;
+
   virtual uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) = 0;
   virtual void draw_vram_tile(int x0, int y0, int w, int h, bool hflip, bool vflip, uint8_t bpp, uint16_t vram_addr, uint8_t palette, uint8_t* vram, uint8_t* cgram) = 0;
-  virtual void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0, uint16_t color) = 0;
 };
 
 typedef std::function<void(draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<Renderer>& o_target)> ChooseRenderer;

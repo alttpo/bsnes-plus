@@ -399,6 +399,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
   fill_color = color_none;
   outline_color = color_none;
 
+  m_renderer->set_stroke_color(colorstate[COLOR_STROKE]);
+  m_renderer->set_fill_color(colorstate[COLOR_FILL]);
+  m_renderer->set_outline_color(colorstate[COLOR_OUTLINE]);
+
   // process all commands:
   while ((p - start) < end) {
     // every command starts with the number of 16-bit words in length, including command, arguments, and inline data:
@@ -507,6 +511,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           }
 
           colorstate[index] = color;
+
+          m_renderer->set_stroke_color(colorstate[COLOR_STROKE]);
+          m_renderer->set_fill_color(colorstate[COLOR_FILL]);
+          m_renderer->set_outline_color(colorstate[COLOR_OUTLINE]);
         }
         break;
       }
@@ -540,6 +548,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             | ((ar >> 3) & 0x1F)
             // alpha (only MSB)
             | ((ar >> 15) << 15);
+
+          m_renderer->set_stroke_color(colorstate[COLOR_STROKE]);
+          m_renderer->set_fill_color(colorstate[COLOR_FILL]);
+          m_renderer->set_outline_color(colorstate[COLOR_OUTLINE]);
         }
         break;
       }
@@ -568,6 +580,10 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
 
           // read litle-endian 16-bit color from CGRAM:
           colorstate[index] = cgram[addr] + (cgram[addr + 1] << 8);
+
+          m_renderer->set_stroke_color(colorstate[COLOR_STROKE]);
+          m_renderer->set_fill_color(colorstate[COLOR_FILL]);
+          m_renderer->set_outline_color(colorstate[COLOR_OUTLINE]);
         }
         break;
       }
@@ -620,7 +636,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
             continue;
           }
 
-          m_renderer->draw_text_utf8(str, textchars, *font, x0, y0, stroke_color);
+          m_renderer->draw_text_utf8(str, textchars, *font, x0, y0);
         }
         break;
       }
@@ -635,8 +651,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           x0 = *d++;
           y0 = *d++;
 
-          // TODO:
-          m_renderer->draw_pixel(x0, y0, stroke_color);
+          m_renderer->draw_pixel(x0, y0);
         }
         break;
       }
@@ -652,8 +667,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           y0 = (int16_t)*d++;
           w  = (int16_t)*d++;
 
-          // TODO:
-          m_renderer->draw_hline(x0, y0, w, stroke_color);
+          m_renderer->draw_hline(x0, y0, w);
         }
         break;
       }
@@ -669,8 +683,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           y0 = (int16_t)*d++;
           h  = (int16_t)*d++;
 
-          // TODO:
-          m_renderer->draw_vline(x0, y0, w, stroke_color);
+          m_renderer->draw_vline(x0, y0, w);
         }
         break;
       }
@@ -687,8 +700,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           x1 = (int16_t)*d++;
           y1 = (int16_t)*d++;
 
-          // TODO:
-          m_renderer->draw_line(x0, y0, x1, y1, stroke_color);
+          m_renderer->draw_line(x0, y0, x1, y1);
         }
         break;
       }
@@ -705,8 +717,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           w  = (int16_t)*d++;
           h  = (int16_t)*d++;
 
-          // TODO:
-          m_renderer->draw_rect(x0, y0, w, h, stroke_color);
+          m_renderer->draw_rect(x0, y0, w, h);
         }
         break;
       }
@@ -723,7 +734,7 @@ void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
           w  = (int16_t)*d++;
           h  = (int16_t)*d++;
 
-          m_renderer->draw_rect_fill(x0, y0, w, h, fill_color);
+          m_renderer->draw_rect_fill(x0, y0, w, h);
         }
         break;
       }
