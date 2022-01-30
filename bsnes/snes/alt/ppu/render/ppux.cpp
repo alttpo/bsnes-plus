@@ -70,10 +70,47 @@ struct LayerPlot {
   }
 };
 
+template<unsigned width, unsigned height, typename PLOT>
+struct Outliner {
+  Outliner(PLOT& p_plot) : plot(p_plot) {}
+
+  PLOT& plot;
+
+  void operator() (int x, int y, uint16_t color) {
+    if (DrawList::bounds_check<width, height>(x-1, y-1)) {
+      plot(x-1, y-1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+0, y-1)) {
+      plot(x+0, y-1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+1, y-1)) {
+      plot(x+1, y-1, color);
+    }
+
+    if (DrawList::bounds_check<width, height>(x-1, y+0)) {
+      plot(x-1, y+0, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+1, y+0)) {
+      plot(x+1, y+0, color);
+    }
+
+    if (DrawList::bounds_check<width, height>(x-1, y+1)) {
+      plot(x-1, y+1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+0, y+1)) {
+      plot(x+0, y+1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+1, y+1)) {
+      plot(x+1, y+1, color);
+    }
+  }
+};
+
 struct LayerRenderer : public DrawList::Renderer {
   LayerRenderer(DrawList::draw_layer p_layer, uint8_t p_priority)
     : layer(p_layer), priority(p_priority)
-  {}
+  {
+  }
 
   DrawList::draw_layer layer;
   uint8_t priority;
@@ -94,63 +131,43 @@ struct LayerRenderer : public DrawList::Renderer {
 
   void draw_pixel(int x0, int y0) override {
     LayerPlot plot(layer, priority);
-
+    DrawList::draw_pixel<width, height>(x0, y0, outline_color, Outliner<width, height, LayerPlot>(plot));
     DrawList::draw_pixel<width, height>(x0, y0, stroke_color, plot);
   }
 
   void draw_hline(int x0, int y0, int w) override {
-    DrawList::draw_hline<width, height>(x0, y0, w, stroke_color, LayerPlot(layer, priority));
+    LayerPlot plot(layer, priority);
+    DrawList::draw_hline<width, height>(x0, y0, w, outline_color, Outliner<width, height, LayerPlot>(plot));
+    DrawList::draw_hline<width, height>(x0, y0, w, stroke_color, plot);
   }
 
   void draw_vline(int x0, int y0, int h) override {
-    DrawList::draw_vline<width, height>(x0, y0, h, stroke_color, LayerPlot(layer, priority));
+    LayerPlot plot(layer, priority);
+    DrawList::draw_vline<width, height>(x0, y0, h, outline_color, Outliner<width, height, LayerPlot>(plot));
+    DrawList::draw_vline<width, height>(x0, y0, h, stroke_color, plot);
   }
 
   void draw_rect(int x0, int y0, int w, int h) override {
-    DrawList::draw_rect<width, height>(x0, y0, w, h, stroke_color, LayerPlot(layer, priority));
+    LayerPlot plot(layer, priority);
+    DrawList::draw_rect<width, height>(x0, y0, w, h, outline_color, Outliner<width, height, LayerPlot>(plot));
+    DrawList::draw_rect<width, height>(x0, y0, w, h, stroke_color, plot);
   }
 
   void draw_rect_fill(int x0, int y0, int w, int h) override {
-    DrawList::draw_rect_fill<width, height>(x0, y0, w, h, fill_color, LayerPlot(layer, priority));
+    LayerPlot plot(layer, priority);
+    DrawList::draw_rect_fill<width, height>(x0, y0, w, h, fill_color, plot);
   }
 
   void draw_line(int x0, int y0, int x1, int y1) override {
     LayerPlot plot(layer, priority);
-
-    DrawList::draw_line<width, height>(x0, y0, x1, y1, outline_color, [&plot](int x, int y, uint16_t color) {
-      if (DrawList::bounds_check<width, height>(x-1, y-1)) {
-        plot(x-1, y-1, color);
-      }
-      if (DrawList::bounds_check<width, height>(x+0, y-1)) {
-        plot(x+0, y-1, color);
-      }
-      if (DrawList::bounds_check<width, height>(x+1, y-1)) {
-        plot(x+1, y-1, color);
-      }
-
-      if (DrawList::bounds_check<width, height>(x-1, y+0)) {
-        plot(x-1, y+0, color);
-      }
-      if (DrawList::bounds_check<width, height>(x+1, y+0)) {
-        plot(x+1, y+0, color);
-      }
-
-      if (DrawList::bounds_check<width, height>(x-1, y+1)) {
-        plot(x-1, y+1, color);
-      }
-      if (DrawList::bounds_check<width, height>(x+0, y+1)) {
-        plot(x+0, y+1, color);
-      }
-      if (DrawList::bounds_check<width, height>(x+1, y+1)) {
-        plot(x+1, y+1, color);
-      }
-    });
-
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, outline_color, Outliner<width, height, LayerPlot>(plot));
     DrawList::draw_line<width, height>(x0, y0, x1, y1, stroke_color, plot);
   }
 
   void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) override {
-    font.draw_text_utf8(s, len, x0, y0, stroke_color, LayerPlot(layer, priority));
+    LayerPlot plot(layer, priority);
+    font.draw_text_utf8(s, len, x0, y0, outline_color, Outliner<width, height, LayerPlot>(plot));
+    font.draw_text_utf8(s, len, x0, y0, stroke_color, plot);
   }
 
 
