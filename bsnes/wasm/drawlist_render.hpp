@@ -287,4 +287,145 @@ void draw_vram_tile(
   }
 }
 
+template<unsigned width, unsigned height, typename PLOT>
+struct Outliner {
+  Outliner(PLOT& p_plot) : plot(p_plot) {}
+
+  PLOT& plot;
+
+  void operator() (int x, int y, uint16_t color) {
+    if (DrawList::bounds_check<width, height>(x-1, y-1)) {
+      plot(x-1, y-1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+0, y-1)) {
+      plot(x+0, y-1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+1, y-1)) {
+      plot(x+1, y-1, color);
+    }
+
+    if (DrawList::bounds_check<width, height>(x-1, y+0)) {
+      plot(x-1, y+0, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+1, y+0)) {
+      plot(x+1, y+0, color);
+    }
+
+    if (DrawList::bounds_check<width, height>(x-1, y+1)) {
+      plot(x-1, y+1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+0, y+1)) {
+      plot(x+0, y+1, color);
+    }
+    if (DrawList::bounds_check<width, height>(x+1, y+1)) {
+      plot(x+1, y+1, color);
+    }
+  }
+};
+
+template<unsigned width, unsigned height, typename PLOT>
+struct GenericRenderer : public DrawList::Renderer {
+  GenericRenderer(DrawList::draw_layer p_layer, uint8_t p_priority)
+    : layer(p_layer), priority(p_priority)
+  {
+  }
+
+  DrawList::draw_layer layer;
+  uint8_t priority;
+  uint16_t stroke_color, outline_color, fill_color;
+
+  void set_stroke_color(uint16_t color) override {
+    stroke_color = color;
+  }
+  void set_outline_color(uint16_t color) override {
+    outline_color = color;
+  }
+  void set_fill_color(uint16_t color) override {
+    fill_color = color;
+  }
+
+  void draw_pixel(int x0, int y0) override {
+    PLOT plot(layer, priority);
+    DrawList::draw_pixel<width, height>(x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
+    DrawList::draw_pixel<width, height>(x0, y0, stroke_color, plot);
+  }
+
+  void draw_hline(int x0, int y0, int w) override {
+    PLOT plot(layer, priority);
+    DrawList::draw_hline<width, height>(x0, y0, w, outline_color, Outliner<width, height, PLOT>(plot));
+    DrawList::draw_hline<width, height>(x0, y0, w, stroke_color, plot);
+  }
+
+  void draw_vline(int x0, int y0, int h) override {
+    PLOT plot(layer, priority);
+    DrawList::draw_vline<width, height>(x0, y0, h, outline_color, Outliner<width, height, PLOT>(plot));
+    DrawList::draw_vline<width, height>(x0, y0, h, stroke_color, plot);
+  }
+
+  void draw_rect(int x0, int y0, int w, int h) override {
+    PLOT plot(layer, priority);
+    DrawList::draw_rect<width, height>(x0, y0, w, h, outline_color, Outliner<width, height, PLOT>(plot));
+    DrawList::draw_rect<width, height>(x0, y0, w, h, stroke_color, plot);
+  }
+
+  void draw_rect_fill(int x0, int y0, int w, int h) override {
+    PLOT plot(layer, priority);
+    DrawList::draw_rect_fill<width, height>(x0, y0, w, h, fill_color, plot);
+  }
+
+  void draw_line(int x0, int y0, int x1, int y1) override {
+    PLOT plot(layer, priority);
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, outline_color, Outliner<width, height, PLOT>(plot));
+    DrawList::draw_line<width, height>(x0, y0, x1, y1, stroke_color, plot);
+  }
+
+  void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) override {
+    PLOT plot(layer, priority);
+    font.draw_text_utf8(s, len, x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
+    font.draw_text_utf8(s, len, x0, y0, stroke_color, plot);
+  }
+
+
+  uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) override {
+    PLOT plot(layer, priority);
+    return DrawList::draw_image<width, height>(x0, y0, w, h, d, plot);
+  }
+
+  void draw_vram_tile(int x0, int y0, int w, int h, bool hflip, bool vflip, uint8_t bpp, uint16_t vram_addr, uint8_t palette, uint8_t* vram, uint8_t* cgram) override {
+    PLOT plot(layer, priority);
+    switch (bpp) {
+      case 4:
+        if (!hflip && !vflip)
+          DrawList::draw_vram_tile<4, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (hflip && !vflip)
+          DrawList::draw_vram_tile<4, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (!hflip && vflip)
+          DrawList::draw_vram_tile<4, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (hflip && vflip)
+          DrawList::draw_vram_tile<4, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        break;
+      case 2:
+        if (!hflip && !vflip)
+          DrawList::draw_vram_tile<2, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (hflip && !vflip)
+          DrawList::draw_vram_tile<2, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (!hflip && vflip)
+          DrawList::draw_vram_tile<2, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (hflip && vflip)
+          DrawList::draw_vram_tile<2, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        break;
+      case 8:
+        if (!hflip && !vflip)
+          DrawList::draw_vram_tile<8, false, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (hflip && !vflip)
+          DrawList::draw_vram_tile<8, true, false>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (!hflip && vflip)
+          DrawList::draw_vram_tile<8, false, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        else if (hflip && vflip)
+          DrawList::draw_vram_tile<8, true, true>(x0, y0, w, h, vram_addr, palette, vram, cgram, plot);
+        break;
+    }
+  }
+};
+
 }
