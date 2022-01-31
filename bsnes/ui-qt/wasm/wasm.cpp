@@ -15,6 +15,10 @@ WasmWindow::WasmWindow() {
   layout->setSpacing(Style::WidgetSpacing);
   setLayout(layout);
 
+  auto labelLog = new QLabel;
+  labelLog->setText("Messages:");
+  layout->addWidget(labelLog);
+
   log = new QPlainTextEdit;
   log->setFrameStyle(0);
   log->setReadOnly(true);
