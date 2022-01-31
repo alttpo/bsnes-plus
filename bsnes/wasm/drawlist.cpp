@@ -71,9 +71,9 @@ Context::Context(
   m_chooseRenderer(OAM, false, 15, m_renderer);
 }
 
-void Context::draw_list(const std::vector<uint8_t>& cmdlist) {
+void Context::draw_list(const std::vector<uint16_t>& cmdlist) {
   uint16_t* start = (uint16_t*) cmdlist.data();
-  uint32_t  end = cmdlist.size()>>1;
+  uint32_t  end = cmdlist.size();
   uint16_t* p = start;
 
   uint16_t fontindex = 0;

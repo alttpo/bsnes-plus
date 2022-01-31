@@ -8,7 +8,7 @@ uint8  ppux_layer_lyr[256 * 256];
 struct ppux_draw_layer {
   std::shared_ptr<DrawList::FontContainer> fonts;
   std::shared_ptr<DrawList::SpaceContainer> spaces;
-  std::vector<uint8_t> cmdlist;
+  std::vector<uint16_t> cmdlist;
 };
 std::vector<ppux_draw_layer> ppux_draw_lists;
 
@@ -19,4 +19,4 @@ void   ppux_render_line_pre();
 void   ppux_render_line_post();
 void   ppux_mode7_fetch(int32 px, int32 py, int32 tile, unsigned layer, int32 &palette, uint16& color);
 
-void   ppux_draw_list_reset();
+void   ppux_draw_list_clear();

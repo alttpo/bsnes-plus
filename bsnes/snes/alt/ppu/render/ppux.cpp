@@ -4,7 +4,7 @@ uint8* PPU::ppux_get_oam() {
   return memory::oam.data();
 }
 
-void PPU::ppux_draw_list_reset() {
+void PPU::ppux_draw_list_clear() {
   ppux_draw_lists.clear();
 }
 

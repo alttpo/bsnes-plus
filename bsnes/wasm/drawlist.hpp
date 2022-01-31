@@ -137,7 +137,7 @@ struct Context {
     const std::shared_ptr<SpaceContainer>& spaces
   );
 
-  void draw_list(const std::vector<uint8_t>& cmdlist);
+  void draw_list(const std::vector<uint16_t>& cmdlist);
 
 private:
   std::shared_ptr<Renderer> m_renderer;

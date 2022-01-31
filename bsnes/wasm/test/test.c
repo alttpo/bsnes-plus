@@ -551,8 +551,8 @@ void on_frame_present() {
     cmd[cmd_len-20] = 240;
   }
 
-  ppux_draw_list_reset();
-  ppux_draw_list_append(sizeof(cmd), cmd);
+  ppux_draw_list_clear();
+  ppux_draw_list_append(sizeof(cmd)/sizeof(uint16_t), cmd);
 
   uint8_t pri_lkup[4] = { 2, 3, 6, 9 };
 
@@ -605,7 +605,7 @@ void on_frame_present() {
         if (dl[5+5]) {
           dl[5+3] += 8;
         }
-        ppux_draw_list_append(sizeof(dl), dl);
+        ppux_draw_list_append(sizeof(dl)/sizeof(uint16_t), dl);
 
         if (dl[5+5]) {
           dl[5+3] -= 8;
@@ -619,7 +619,7 @@ void on_frame_present() {
       dl[5+7] = 0x8000 + (locs[79][i].chr << 5);
     }
 
-    ppux_draw_list_append(sizeof(dl), dl);
+    ppux_draw_list_append(sizeof(dl)/sizeof(uint16_t), dl);
   }
 
   if (msgs != last_msgs) {

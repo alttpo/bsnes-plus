@@ -166,7 +166,9 @@ void WASMInstanceM3::link_module() {
   wasm_link(ppux_font_load_za);
   wasm_link(ppux_font_delete);
 
-  wasm_link(ppux_draw_list_reset);
+  wasm_link(ppux_draw_list_clear);
+  wasm_link(ppux_draw_list_resize);
+  wasm_link(ppux_draw_list_set);
   wasm_link(ppux_draw_list_append);
 
   wasm_link(ppux_vram_write);

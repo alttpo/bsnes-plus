@@ -100,11 +100,17 @@ int32_t ppux_cgram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, ui
 __attribute__((import_module("env"), import_name("ppux_oam_read")))
 int32_t ppux_oam_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_draw_list_reset")))
-void ppux_draw_list_reset();
+__attribute__((import_module("env"), import_name("ppux_draw_list_clear")))
+void ppux_draw_list_clear();
+
+__attribute__((import_module("env"), import_name("ppux_draw_list_resize")))
+void ppux_draw_list_resize(uint32_t i_len);
+
+__attribute__((import_module("env"), import_name("ppux_draw_list_set")))
+uint32_t ppux_draw_list_set(uint32_t i_index, uint32_t i_len, uint16_t* i_cmdlist);
 
 __attribute__((import_module("env"), import_name("ppux_draw_list_append")))
-void ppux_draw_list_append(uint32_t size, uint16_t* cmdlist);
+uint32_t ppux_draw_list_append(uint32_t i_len, uint16_t* i_cmdlist);
 
 // snes:
 

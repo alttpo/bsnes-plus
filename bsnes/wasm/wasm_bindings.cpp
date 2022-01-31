@@ -96,7 +96,7 @@ wasm_binding(msg_recv, "i(*i)") {
   wa_return_type(int32_t);
 
   wa_arg_mem(uint8_t *, o_data);
-  wa_arg   (uint32_t,  i_size);
+  wa_arg    (uint32_t,  i_size);
 
   wa_check_mem(o_data, i_size);
 
@@ -162,10 +162,10 @@ wasm_binding(ppux_font_delete, "v(i)") {
 wasm_binding(ppux_vram_write, "i(ii*i)") {
   wa_return_type(int32_t);
 
-  wa_arg   (uint32_t,          i_space);
-  wa_arg   (uint32_t,          i_offset);
+  wa_arg    (uint32_t,          i_space);
+  wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          i_data);
-  wa_arg   (uint32_t,          i_size);
+  wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(i_data, i_size);
 
@@ -207,10 +207,10 @@ wasm_binding(ppux_vram_write, "i(ii*i)") {
 wasm_binding(ppux_cgram_write, "i(ii*i)") {
   wa_return_type(int32_t);
 
-  wa_arg   (uint32_t,          i_space);
-  wa_arg   (uint32_t,          i_offset);
+  wa_arg    (uint32_t,          i_space);
+  wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          i_data);
-  wa_arg   (uint32_t,          i_size);
+  wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(i_data, i_size);
 
@@ -252,10 +252,10 @@ wasm_binding(ppux_cgram_write, "i(ii*i)") {
 wasm_binding(ppux_oam_write, "i(i*i)") {
   wa_return_type(int32_t);
 
-  wa_arg   (uint32_t,          i_space);
-  wa_arg   (uint32_t,          i_offset);
+  wa_arg    (uint32_t,          i_space);
+  wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          i_data);
-  wa_arg   (uint32_t,          i_size);
+  wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(i_data, i_size);
 
@@ -293,10 +293,10 @@ wasm_binding(ppux_oam_write, "i(i*i)") {
 wasm_binding(ppux_vram_read, "i(ii*i)") {
   wa_return_type(int32_t);
 
-  wa_arg   (uint32_t,          i_space);
-  wa_arg   (uint32_t,          i_offset);
+  wa_arg    (uint32_t,          i_space);
+  wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          o_data);
-  wa_arg   (uint32_t,          i_size);
+  wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(o_data, i_size);
 
@@ -338,10 +338,10 @@ wasm_binding(ppux_vram_read, "i(ii*i)") {
 wasm_binding(ppux_cgram_read, "i(ii*i)") {
   wa_return_type(int32_t);
 
-  wa_arg   (uint32_t,          i_space);
-  wa_arg   (uint32_t,          i_offset);
+  wa_arg    (uint32_t,          i_space);
+  wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          o_data);
-  wa_arg   (uint32_t,          i_size);
+  wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(o_data, i_size);
 
@@ -383,9 +383,9 @@ wasm_binding(ppux_cgram_read, "i(ii*i)") {
 wasm_binding(ppux_oam_read, "i(i*i)") {
   wa_return_type(int32_t);
 
-  wa_arg   (uint32_t,          i_offset);
+  wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          o_data);
-  wa_arg   (uint32_t,          i_size);
+  wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(o_data, i_size);
 
@@ -415,9 +415,9 @@ wasm_binding(ppux_oam_read, "i(i*i)") {
 
 //void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
 wasm_binding(snes_bus_read, "v(i*i)") {
-  wa_arg   (uint32_t, i_address);
+  wa_arg    (uint32_t, i_address);
   wa_arg_mem(uint8_t*, o_data);
-  wa_arg   (uint32_t, i_size);
+  wa_arg    (uint32_t, i_size);
 
   wa_check_mem(o_data, i_size);
 
@@ -432,9 +432,9 @@ wasm_binding(snes_bus_read, "v(i*i)") {
 
 //void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
 wasm_binding(snes_bus_write, "v(i*i)") {
-  wa_arg   (uint32_t, i_address);
+  wa_arg    (uint32_t, i_address);
   wa_arg_mem(uint8_t*, i_data);
-  wa_arg   (uint32_t, i_size);
+  wa_arg    (uint32_t, i_size);
 
   wa_check_mem(i_data, i_size);
 
@@ -446,23 +446,52 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   wa_success();
 }
 
-wasm_binding(ppux_draw_list_reset, "v()") {
-  SNES::ppu.ppux_draw_list_reset();
+wasm_binding(ppux_draw_list_clear, "v()") {
+  SNES::ppu.ppux_draw_list_clear();
 
   wa_success();
 }
 
-wasm_binding(ppux_draw_list_append, "v(i*)") {
-  // size in bytes:
-  wa_arg    (uint32_t,  i_size);
+wasm_binding(ppux_draw_list_resize, "v(i)") {
+  wa_arg    (uint32_t,  i_len);
+
+  SNES::ppu.ppux_draw_lists.resize(i_len);
+
+  wa_success();
+}
+
+wasm_binding(ppux_draw_list_set, "i(ii*)") {
+  wa_return_type(uint32_t);
+
+  wa_arg    (uint32_t,  i_index);
+  // length of cmdlist in words (uint16_t):
+  wa_arg    (uint32_t,  i_len);
   wa_arg_mem(uint8_t*,  i_cmdlist);
 
-  wa_check_mem(i_cmdlist, i_size);
+  wa_check_mem(i_cmdlist, i_len*sizeof(uint16_t));
 
-  // commands are aligned to 16-bits:
-  if ((i_size & 1) != 0) {
-    wa_trap("ppux_draw_list_append: i_size must be even");
-  }
+  // fill in the new cmdlist:
+  auto& dl = SNES::ppu.ppux_draw_lists[i_index];
+  // refer to the runtime instance's fonts and spaces collections:
+  dl.fonts = m_fonts;
+  dl.spaces = m_spaces;
+
+  // copy cmdlist data in:
+  dl.cmdlist.resize(i_len);
+  void* dst = (void *)(dl.cmdlist.data());
+  memcpy(dst, (const void *)i_cmdlist, i_len*sizeof(uint16_t));
+
+  wa_return(i_index);
+}
+
+wasm_binding(ppux_draw_list_append, "i(i*)") {
+  wa_return_type(uint32_t);
+
+  // length of cmdlist in words (uint16_t):
+  wa_arg    (uint32_t,  i_len);
+  wa_arg_mem(uint8_t*,  i_cmdlist);
+
+  wa_check_mem(i_cmdlist, i_len*sizeof(uint16_t));
 
   // extend ppux_draw_lists vector:
   int n = SNES::ppu.ppux_draw_lists.size();
@@ -475,11 +504,11 @@ wasm_binding(ppux_draw_list_append, "v(i*)") {
   dl.spaces = m_spaces;
 
   // copy cmdlist data in:
-  dl.cmdlist.resize(i_size);
+  dl.cmdlist.resize(i_len);
   void* dst = (void *)(dl.cmdlist.data());
-  memcpy(dst, (const void *)i_cmdlist, i_size);
+  memcpy(dst, (const void *)i_cmdlist, i_len*sizeof(uint16_t));
 
-  wa_success();
+  wa_return(n);
 }
 
 #undef wasm_binding

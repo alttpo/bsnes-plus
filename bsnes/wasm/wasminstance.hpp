@@ -98,7 +98,9 @@ public:
   decl_binding(ppux_font_load_za);
   decl_binding(ppux_font_delete);
 
-  decl_binding(ppux_draw_list_reset);
+  decl_binding(ppux_draw_list_clear);
+  decl_binding(ppux_draw_list_resize);
+  decl_binding(ppux_draw_list_set);
   decl_binding(ppux_draw_list_append);
 
   decl_binding(ppux_vram_write);
