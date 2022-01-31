@@ -1,5 +1,5 @@
 
-bool WASMInstanceM3::_catch(M3Result err) {
+bool WASMInstanceM3::_catch(M3Result err, const char* contextFunctionName) {
   if (err == m3Err_none) {
     return false;
   }
@@ -9,27 +9,39 @@ bool WASMInstanceM3::_catch(M3Result err) {
 
   // get error info:
   M3ErrorInfo errInfo;
-  m3_GetErrorInfo(m_runtime, &errInfo);
-  if (errInfo.function) {
-     functionName = m3_GetFunctionName(errInfo.function);
-  }
+  IM3BacktraceInfo backtrace = NULL;
+  if (m_runtime) {
+    m3_GetErrorInfo(m_runtime, &errInfo);
+    if (errInfo.function) {
+      functionName = m3_GetFunctionName(errInfo.function);
+    }
 
-  // get backtrace info from last frame:
-  IM3BacktraceInfo backtrace = m3_GetBacktrace(m_runtime);
-  if (backtrace) {
-    IM3BacktraceFrame lastFrame = backtrace->lastFrame;
-    if (lastFrame) {
-      functionName = m3_GetFunctionName(lastFrame->function);
-      moduleOffset = lastFrame->moduleOffset;
+    // get backtrace info from last frame:
+    backtrace = m3_GetBacktrace(m_runtime);
+    if (backtrace) {
+      IM3BacktraceFrame lastFrame = backtrace->lastFrame;
+      if (lastFrame) {
+        functionName = m3_GetFunctionName(lastFrame->function);
+        moduleOffset = lastFrame->moduleOffset;
+      }
     }
   }
 
+  std::string message;
+  if (errInfo.message) {
+    message = errInfo.message;
+  }
+
+  std::string contextFunction;
+  if (contextFunctionName) {
+    contextFunction = contextFunctionName;
+  }
+
   m_err = WASMError(
-    err,
     m_key,
-    errInfo.message,
-    errInfo.file,
-    errInfo.line,
+    contextFunction,
+    err,
+    message,
     functionName,
     moduleOffset);
 
@@ -73,7 +85,11 @@ m3ApiRawFunction(m3puts) {
 }
 
 WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key, const std::shared_ptr<ZipArchive> &za)
-  : WASMInstanceBase(interface, key, za) {
+  : WASMInstanceBase(interface, key, za)
+{
+}
+
+bool WASMInstanceM3::load_module() {
   m_env = m3_NewEnvironment();
   m_runtime = m3_NewRuntime(m_env, stack_size_bytes, (void *) this);
 
@@ -85,37 +101,17 @@ WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key,
     m3_FreeModule(m_module);
     m_module = nullptr;
 
-    m_err = WASMError(err, m_key);
-    return;
+    m_err = WASMError(m_key, err);
+    return false;
   }
 
   m3_SetModuleName(m_module, m_key.c_str());
 
   // load module:
   err = m3_LoadModule(m_runtime, m_module);
-  if (_catch(err)) return;
+  if (_catch(err)) return false;
 
-  // link in libc API:
-  err = m3_LinkLibC(m_module);
-  if (_catch(err)) return;
-
-  // link puts function:
-  err = m3_LinkRawFunction(m_module, "env", "puts", "i(*)", m3puts);
-  if (err == m3Err_functionLookupFailed) {
-    err = nullptr;
-  }
-  if (_catch(err)) return;
-
-  // link hexdump function:
-  err = m3_LinkRawFunction(m_module, "env", "hexdump", "v(*i)", hexdump);
-  if (err == m3Err_functionLookupFailed) {
-    err = nullptr;
-  }
-  if (_catch(err)) return;
-
-  link_module();
-
-  //m3_PrintRuntimeInfo(m_runtime);
+  return true;
 }
 
 WASMInstanceM3::~WASMInstanceM3() {
@@ -123,8 +119,26 @@ WASMInstanceM3::~WASMInstanceM3() {
   m3_FreeEnvironment(m_env);
 }
 
-void WASMInstanceM3::link_module() {
+bool WASMInstanceM3::link_module() {
   M3Result err;
+
+  // link in libc API:
+  err = m3_LinkLibC(m_module);
+  if (_catch(err)) return false;
+
+  // link puts function:
+  err = m3_LinkRawFunction(m_module, "env", "puts", "i(*)", m3puts);
+  if (err == m3Err_functionLookupFailed) {
+    err = nullptr;
+  }
+  if (_catch(err)) return false;
+
+  // link hexdump function:
+  err = m3_LinkRawFunction(m_module, "env", "hexdump", "v(*i)", hexdump);
+  if (err == m3Err_functionLookupFailed) {
+    err = nullptr;
+  }
+  if (_catch(err)) return false;
 
 // link wasm_bindings.cpp member functions:
 #define wasm_link_full(name, namestr) \
@@ -142,7 +156,7 @@ void WASMInstanceM3::link_module() {
   if (err == m3Err_functionLookupFailed) { \
     err = m3Err_none; \
   } \
-  if (_catch(err)) return;
+  if (_catch(err, namestr)) return false;
 
 #define wasm_link(name) wasm_link_full(name, #name)
 
@@ -180,6 +194,10 @@ void WASMInstanceM3::link_module() {
   wasm_link(ppux_oam_read);
 
 #undef wasm_link
+
+  //m3_PrintRuntimeInfo(m_runtime);
+
+  return true;
 }
 
 uint64_t WASMInstanceM3::memory_size() {

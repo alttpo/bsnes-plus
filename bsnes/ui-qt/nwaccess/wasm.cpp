@@ -18,17 +18,6 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
   try {
     wasmInterface.load_zip(instanceKey, reinterpret_cast<const uint8_t *>(data.constData()), data.size());
 
-    //WASM::host.with_runtime(runtime_name, [&](const std::shared_ptr<WASM::Runtime>& runtime) {
-    //  // instantiate and parse the module:
-    //  std::shared_ptr<WASM::Module> module = runtime->parse_module(module_name, reinterpret_cast<const uint8_t *>(data.constData()), data.size());
-    //
-    //  // load the module into the runtime:
-    //  runtime->load_module(module);
-    //
-    //  // link wasm functions:
-    //  wasmInterface.link_module(module);
-    //});
-
     reply = makeOkReply();
   } catch (WASMError& err) {
     reply = makeErrorReply(err.what().c_str());

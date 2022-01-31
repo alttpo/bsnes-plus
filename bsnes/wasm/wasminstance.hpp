@@ -21,37 +21,22 @@ protected:
 struct WASMError {
   WASMError();
 
-  explicit WASMError(
-    const char *result,
-    const std::string& moduleName);
+  explicit WASMError(const std::string &moduleName, const char *result);
 
-  explicit WASMError(
-    const char *result,
-    const std::string& moduleName,
-    const std::string& message,
-    const std::string& file,
-    uint32_t line);
-
-  explicit WASMError(
-    const char *result,
-    const std::string& moduleName,
-    const std::string& message,
-    const std::string& file,
-    uint32_t line,
-    const std::string& functionName,
-    uint32_t moduleOffset);
+  explicit WASMError(const std::string &moduleName, const std::string &contextFunction,
+                     const char *result, const std::string &message,
+                     const std::string &functionName, uint32_t moduleOffset);
 
   operator bool() const;
   std::string what() const;
 
 public:
+  std::string m_moduleName;
+  std::string m_contextFunction;
+
   // this is `const char *` to maintain reference identity
   const char *m_result;
-  std::string m_moduleName;
-
   std::string m_message;
-  std::string m_file;
-  uint32_t    m_line;
 
   std::string m_functionName;
   uint32_t    m_moduleOffset;
@@ -67,6 +52,9 @@ public:
   bool msg_size(uint16_t *o_size);
 
 public:
+  virtual bool extract_wasm();
+  virtual bool load_module() = 0;
+  virtual bool link_module() = 0;
   virtual bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) = 0;
   virtual bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
   virtual uint64_t memory_size() = 0;
@@ -116,7 +104,7 @@ public:
 public:
   WASMInterface* m_interface;
   const std::string m_key;
-  const std::shared_ptr<ZipArchive> m_za;
+  std::shared_ptr<ZipArchive> m_za;
 
   WASMError m_err;
 

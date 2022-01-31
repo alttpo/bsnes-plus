@@ -11,10 +11,11 @@ struct WASMInstanceM3 : public WASMInstanceBase {
   explicit WASMInstanceM3(WASMInterface* intf, const std::string &key, const std::shared_ptr<ZipArchive> &za);
   ~WASMInstanceM3();
 
-  void link_module();
+  bool link_module() override;
+  bool load_module() override;
 
 private:
-  bool _catch(M3Result err);
+  bool _catch(M3Result err, const char* contextFunctionName = NULL);
 
 public:
   bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) final;

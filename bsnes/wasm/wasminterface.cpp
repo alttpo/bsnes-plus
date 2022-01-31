@@ -53,7 +53,23 @@ void WASMInterface::reset() {
   m_instances.clear();
 }
 
-void WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data, size_t size) {
+bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data, size_t size) {
+  // initialize the wasm module before inserting:
+  std::shared_ptr<ZipArchive> za(new ZipArchive(data, size));
+  auto m = std::shared_ptr<WASMInstanceBase>(new WASMInstanceM3(this, instanceKey, za));
+  if (!m->extract_wasm()) {
+    m->warn();
+    return false;
+  }
+  if (!m->load_module()) {
+    m->warn();
+    return false;
+  }
+  if (!m->link_module()) {
+    m->warn();
+    return false;
+  }
+
   auto it = m_instances.find(instanceKey);
   if (it != m_instances.end()) {
     // existing instance found so erase it:
@@ -62,13 +78,10 @@ void WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
   }
 
   // emplace a new instance of the module:
-  std::shared_ptr<ZipArchive> za(new ZipArchive(data, size));
   //fprintf(stderr, "load_zip(): inserting new instance key \"%s\"\n", instanceKey.c_str());
-  m_instances.emplace_hint(
-    it,
-    instanceKey,
-    std::shared_ptr<WASMInstanceBase>(new WASMInstanceM3(this, instanceKey, za))
-  );
+  m_instances.emplace_hint(it, instanceKey, m);
+
+  return true;
 }
 
 void WASMInterface::unload_zip(const std::string &instanceKey) {

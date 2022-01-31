@@ -47,7 +47,7 @@ public:
   void reset();
 
   // load a ZIP containing a main.wasm module and embedded resources:
-  void load_zip(const std::string& instanceKey, const uint8_t *data, size_t size);
+  bool load_zip(const std::string& instanceKey, const uint8_t *data, size_t size);
   void unload_zip(const std::string& instanceKey);
 
   bool msg_enqueue(const std::string& instanceKey, const uint8_t *data, size_t size);
