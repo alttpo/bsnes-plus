@@ -23,7 +23,7 @@ struct WASMInstanceBase {
   virtual ~WASMInstanceBase();
 
 private:
-  bool _throw(const char* result);
+  bool _throw(const std::string& contextFunction, const char* result);
 
 public:
   bool msg_enqueue(const std::shared_ptr<WASMMessage>& msg);

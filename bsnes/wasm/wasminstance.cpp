@@ -37,13 +37,13 @@ WASMInstanceBase::~WASMInstanceBase() {
   m_spaces.reset();
 }
 
-bool WASMInstanceBase::_throw(const char* result) {
+bool WASMInstanceBase::_throw(const std::string& contextFunction, const char* result) {
   if (result == NULL) {
     // success:
     return true;
   }
 
-  m_err = WASMError(m_key, result);
+  m_err = WASMError(m_key, contextFunction, result);
 
   if (filter_error()) {
     m_interface->report_error(m_err);
@@ -57,19 +57,19 @@ bool WASMInstanceBase::filter_error() {
 }
 
 bool WASMInstanceBase::extract_wasm() {
-  auto fh = m_za->file_locate("main.wasm");
-  if (!fh) {
-    return _throw("missing required main.wasm in zip archive");
+  uint32_t fh;
+  if (!m_za->file_locate("main.wasm", &fh)) {
+    return _throw("extract_wasm", "missing required main.wasm in zip archive");
   }
 
   if (!m_za->file_size(fh, &m_size)) {
-    return _throw("failed to retrieve file size of main.wasm in zip archive");
+    return _throw("extract_wasm", "failed to retrieve file size of main.wasm in zip archive");
   }
 
   // extract main.wasm into m_data/m_size:
   m_data = new uint8_t[m_size];
   if (!m_za->file_extract(fh, m_data, m_size)) {
-    return _throw("failed to extract main.wasm in zip archive");
+    return _throw("extract_wasm", "failed to extract main.wasm in zip archive");
   }
 
   return true;

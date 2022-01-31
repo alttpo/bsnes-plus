@@ -74,7 +74,7 @@ bool WASMInstanceM3::load_module() {
     m3_FreeModule(m_module);
     m_module = nullptr;
 
-    m_err = WASMError(m_key, err);
+    m_err = WASMError(m_key, "m3_ParseModule", err);
     return false;
   }
 

@@ -22,16 +22,10 @@
 #define MINIZ_NO_STDIO
 #include "miniz.h"
 
-#include "ziparchive.hpp"
-#include "pixelfont.hpp"
-#include "drawlist.hpp"
-
-struct WASMInterface;
-
 struct WASMError {
   WASMError();
 
-  explicit WASMError(const std::string &moduleName, const char *result);
+  explicit WASMError(const std::string &moduleName, const std::string &contextFunction, const char *result);
 
   explicit WASMError(const std::string &moduleName, const std::string &contextFunction,
                      const char *result, const std::string &message,
@@ -51,6 +45,12 @@ public:
   std::string m_functionName;
   uint32_t    m_moduleOffset;
 };
+
+#include "ziparchive.hpp"
+#include "pixelfont.hpp"
+#include "drawlist.hpp"
+
+struct WASMInterface;
 
 #include "wasminstance.hpp"
 

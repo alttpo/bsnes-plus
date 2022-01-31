@@ -11,8 +11,9 @@ WASMError::WASMError() : m_moduleName(), m_result(NULL)
 {
 }
 
-WASMError::WASMError(const std::string &moduleName, const char *result) :
+WASMError::WASMError(const std::string &moduleName, const std::string &contextFunction, const char *result) :
   m_moduleName(moduleName),
+  m_contextFunction(contextFunction),
   m_result(result)
 {
 }

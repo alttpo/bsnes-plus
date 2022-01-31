@@ -28,31 +28,33 @@ wasm_binding(debugger_continue, "v()") {
 
 //int32_t za_file_locate(const char *i_filename);
 wasm_binding(za_file_locate, "i(*)") {
-  wa_return_type(int32_t);
+  wa_return_type(uint32_t);
 
   wa_arg_mem(const char*, i_filename);
 
   wa_check_mem(i_filename, 0);
   // TODO: upper bounds check
 
-  auto fh = m_za->file_locate(i_filename);
-  if (!fh) {
+  uint32_t o_index;
+  if (!m_za->file_locate(i_filename, &o_index)) {
+    m_interface->report_error(m_za->last_error());
     wa_return(-1);
   }
 
-  wa_return((int32_t)fh);
+  wa_return(o_index);
 }
 
 //int32_t za_file_size(int32_t fh, uint64_t* o_size);
 wasm_binding(za_file_size, "i(i*)") {
   wa_return_type(int32_t);
 
-  wa_arg    (int32_t,   i_fh);
+  wa_arg    (uint32_t,  i_fh);
   wa_arg_mem(uint64_t*, o_size);
 
   wa_check_mem(o_size, sizeof(uint64_t));
 
-  if (!m_za->file_size(ZipArchive::FileHandle(i_fh), o_size)) {
+  if (!m_za->file_size(i_fh, o_size)) {
+    m_interface->report_error(m_za->last_error());
     wa_return(0);
   }
 
@@ -63,13 +65,14 @@ wasm_binding(za_file_size, "i(i*)") {
 wasm_binding(za_file_extract, "i(i*I)") {
   wa_return_type(int32_t);
 
-  wa_arg    (int32_t,   i_fh);
-  wa_arg_mem(void*, o_data);
+  wa_arg    (uint32_t, i_fh);
+  wa_arg_mem(void*,    o_data);
   wa_arg    (uint64_t, i_size);
 
   wa_check_mem(o_data, i_size);
 
-  if (!m_za->file_extract(ZipArchive::FileHandle(i_fh), o_data, i_size)) {
+  if (!m_za->file_extract(i_fh, o_data, i_size)) {
+    m_interface->report_error(m_za->last_error());
     wa_return(0);
   }
 
@@ -120,29 +123,30 @@ wasm_binding(ppux_spaces_reset, "v()") {
 
 //void ppux_font_load_za(int32_t i_fontindex, int32_t i_za_fh);
 wasm_binding(ppux_font_load_za, "v(ii)") {
-  wa_arg(int32_t, i_fontindex);
-  wa_arg(int32_t, i_za_fh);
-
-  auto fh = ZipArchive::FileHandle(i_za_fh);
-  if (!fh) {
-    wa_trap("invalid zip archive file handle");
-  }
+  wa_arg(int32_t,  i_fontindex);
+  wa_arg(uint32_t, i_fh);
 
   // set a font using pcf format data:
   try {
     // measure file size:
     uint64_t size;
-    if (m_za->file_size(fh, &size)) {
-      // allocate buffer and extract:
-      std::vector<char> data(size);
-
-      if (m_za->file_extract(fh, data.data(), size)) {
-        // load pcf data:
-        m_fonts->load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
-      }
+    if (!m_za->file_size(i_fh, &size)) {
+      m_interface->report_error(m_za->last_error());
+      wa_success(); // not really
     }
+
+    // allocate buffer and extract:
+    std::vector<char> data(size);
+
+    if (!m_za->file_extract(i_fh, data.data(), size)) {
+      m_interface->report_error(m_za->last_error());
+      wa_success(); // not really
+    }
+
+    // load pcf data:
+    m_fonts->load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
   } catch (std::runtime_error& err) {
-    wa_trap( err.what());
+    wa_trap(err.what());
   }
 
   wa_success();
