@@ -9,13 +9,31 @@ WASMInstanceM3::~WASMInstanceM3() {
   m3_FreeEnvironment(m_env);
 }
 
-bool WASMInstanceM3::_catchM3(M3Result err, const char* contextFunctionName) {
-  if (err == m3Err_none) {
+void WASMInstanceM3::decorate_error(WASMError& err) {
+  if (!m_runtime) {
+    return;
+  }
+
+  // get backtrace info from last frame:
+  IM3BacktraceInfo backtrace = m3_GetBacktrace(m_runtime);
+  if (!backtrace)
+    return;
+
+  IM3BacktraceFrame lastFrame = backtrace->lastFrame;
+  if (!lastFrame)
+    return;
+
+  err.m_wasmFunctionName = m3_GetFunctionName(lastFrame->function);
+  err.m_wasmModuleOffset = lastFrame->moduleOffset;
+}
+
+bool WASMInstanceM3::_catchM3(M3Result m3err, const std::string& contextFunctionName) {
+  if (m3err == m3Err_none) {
     return false;
   }
 
-  std::string functionName;
-  uint32_t moduleOffset;
+  std::string wasmFunctionName;
+  uint32_t wasmModuleOffset = 0;
 
   // get error info:
   M3ErrorInfo errInfo;
@@ -23,17 +41,7 @@ bool WASMInstanceM3::_catchM3(M3Result err, const char* contextFunctionName) {
   if (m_runtime) {
     m3_GetErrorInfo(m_runtime, &errInfo);
     if (errInfo.function) {
-      functionName = m3_GetFunctionName(errInfo.function);
-    }
-
-    // get backtrace info from last frame:
-    backtrace = m3_GetBacktrace(m_runtime);
-    if (backtrace) {
-      IM3BacktraceFrame lastFrame = backtrace->lastFrame;
-      if (lastFrame) {
-        functionName = m3_GetFunctionName(lastFrame->function);
-        moduleOffset = lastFrame->moduleOffset;
-      }
+      wasmFunctionName = m3_GetFunctionName(errInfo.function);
     }
   }
 
@@ -42,22 +50,10 @@ bool WASMInstanceM3::_catchM3(M3Result err, const char* contextFunctionName) {
     message = errInfo.message;
   }
 
-  std::string contextFunction;
-  if (contextFunctionName) {
-    contextFunction = contextFunctionName;
-  }
+  // construct error:
+  WASMError errc(contextFunctionName, m3err, message);
 
-  m_err = WASMError(
-    m_key,
-    contextFunction,
-    err,
-    message,
-    functionName,
-    moduleOffset);
-
-  if (filter_error()) {
-    m_interface->report_error(m_err);
-  }
+  report_error(errc);
 
   return true;
 }
@@ -74,7 +70,7 @@ bool WASMInstanceM3::load_module() {
     m3_FreeModule(m_module);
     m_module = nullptr;
 
-    m_err = WASMError(m_key, "m3_ParseModule", err);
+    report_error(WASMError("m3_ParseModule", err));
     return false;
   }
 
@@ -218,11 +214,21 @@ WASMFunctionM3::WASMFunctionM3(const std::string& name, IM3Function m3fn)
 WASMFunctionM3::operator bool() const { return m_fn != nullptr; }
 
 bool WASMInstanceM3::func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) {
+  auto it = m_missingFunctions.find(i_name);
+  if (it != m_missingFunctions.end()) {
+    // avoid generating error since we already know it's missing:
+    return false;
+  }
+
   IM3Function m3fn = nullptr;
 
   M3Result err;
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
-  if (_catchM3(err)) return false;
+  if (_catchM3(err)) {
+    // record function as missing:
+    m_missingFunctions.emplace_hint(it, i_name);
+    return false;
+  }
 
   o_func = std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));
   return true;
@@ -257,12 +263,12 @@ bool WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32
   return true;
 }
 
-bool WASMInstanceM3::filter_error() {
-  if (!m_err)
+bool WASMInstanceM3::filter_error(const WASMError &err) {
+  if (!err)
     return false;
 
   // prevent redundant warnings:
-  const std::string &key = m_err.m_message;
+  const std::string &key = err.m_message;
 
   const std::set<std::string>::iterator &it = m_warnings.find(key);
   if (it != m_warnings.end())

@@ -34,13 +34,9 @@ QByteArray NWAccess::cmdWasmUnload(QByteArray args)
   std::string instanceKey = items.takeFirst().toStdString();
 
   QByteArray reply;
-  try {
-    wasmInterface.unload_zip(instanceKey);
+  wasmInterface.unload_zip(instanceKey);
 
-    reply = makeOkReply();
-  } catch (WASMError& err) {
-    reply = makeErrorReply(err.what().c_str());
-  }
+  reply = makeOkReply();
 
   return reply;
 }

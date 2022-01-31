@@ -26,22 +26,23 @@ wasm_binding(debugger_continue, "v()") {
   wa_success();
 }
 
-//int32_t za_file_locate(const char *i_filename);
-wasm_binding(za_file_locate, "i(*)") {
-  wa_return_type(uint32_t);
+//int32_t za_file_locate(const char *i_filename, uint32_t* o_index);
+wasm_binding(za_file_locate, "i(**)") {
+  wa_return_type(int32_t);
 
   wa_arg_mem(const char*, i_filename);
+  wa_arg_mem(uint32_t*,   o_index);
 
-  wa_check_mem(i_filename, 0);
   // TODO: upper bounds check
+  wa_check_mem(i_filename, 0);
+  wa_check_mem(o_index, sizeof(uint32_t));
 
-  uint32_t o_index;
-  if (!m_za->file_locate(i_filename, &o_index)) {
-    m_interface->report_error(m_za->last_error());
+  if (!m_za->file_locate(i_filename, o_index)) {
+    report_error(m_za->last_error());
     wa_return(-1);
   }
 
-  wa_return(o_index);
+  wa_return(0);
 }
 
 //int32_t za_file_size(int32_t fh, uint64_t* o_size);
@@ -54,11 +55,11 @@ wasm_binding(za_file_size, "i(i*)") {
   wa_check_mem(o_size, sizeof(uint64_t));
 
   if (!m_za->file_size(i_fh, o_size)) {
-    m_interface->report_error(m_za->last_error());
-    wa_return(0);
+    report_error(m_za->last_error());
+    wa_return(-1);
   }
 
-  wa_return(1);
+  wa_return(0);
 }
 
 //int32_t za_file_extract(int32_t fh, void *o_data, uint64_t i_size);
@@ -72,11 +73,11 @@ wasm_binding(za_file_extract, "i(i*I)") {
   wa_check_mem(o_data, i_size);
 
   if (!m_za->file_extract(i_fh, o_data, i_size)) {
-    m_interface->report_error(m_za->last_error());
-    wa_return(0);
+    report_error(m_za->last_error());
+    wa_return(-1);
   }
 
-  wa_return(1);
+  wa_return(0);
 }
 
 //int32_t msg_size(uint16_t *o_size);
@@ -88,10 +89,10 @@ wasm_binding(msg_size, "i(*)") {
   wa_check_mem(o_size, sizeof(uint16_t));
 
   if (!msg_size(o_size)) {
-    wa_return(-1)
+    wa_return(-1);
   }
 
-  wa_return(0)
+  wa_return(0);
 }
 
 //int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
@@ -105,12 +106,12 @@ wasm_binding(msg_recv, "i(*i)") {
 
   auto msg = msg_dequeue();
   if (msg->m_size > i_size) {
-    wa_return(-1)
+    wa_return(-1);
   }
 
   memcpy((void *)o_data, (const void *)msg->m_data, msg->m_size);
 
-  wa_return(0)
+  wa_return(0);
 }
 
 //void ppux_spaces_reset();
@@ -121,35 +122,34 @@ wasm_binding(ppux_spaces_reset, "v()") {
   wa_success();
 }
 
-//void ppux_font_load_za(int32_t i_fontindex, int32_t i_za_fh);
-wasm_binding(ppux_font_load_za, "v(ii)") {
+//int32_t ppux_font_load_za(int32_t i_fontindex, int32_t i_za_fh);
+wasm_binding(ppux_font_load_za, "i(ii)") {
+  wa_return_type(int32_t); // bool
+
   wa_arg(int32_t,  i_fontindex);
   wa_arg(uint32_t, i_fh);
 
   // set a font using pcf format data:
-  try {
-    // measure file size:
-    uint64_t size;
-    if (!m_za->file_size(i_fh, &size)) {
-      m_interface->report_error(m_za->last_error());
-      wa_success(); // not really
-    }
 
-    // allocate buffer and extract:
-    std::vector<char> data(size);
-
-    if (!m_za->file_extract(i_fh, data.data(), size)) {
-      m_interface->report_error(m_za->last_error());
-      wa_success(); // not really
-    }
-
-    // load pcf data:
-    m_fonts->load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
-  } catch (std::runtime_error& err) {
-    wa_trap(err.what());
+  // measure file size:
+  uint64_t size;
+  if (!m_za->file_size(i_fh, &size)) {
+    report_error(m_za->last_error());
+    wa_return(-1);
   }
 
-  wa_success();
+  // allocate buffer and extract:
+  std::vector<char> data(size);
+
+  if (!m_za->file_extract(i_fh, data.data(), size)) {
+    report_error(m_za->last_error());
+    wa_return(-1);
+  }
+
+  // load pcf data:
+  m_fonts->load_pcf(i_fontindex, reinterpret_cast<const uint8_t *>(data.data()), size);
+
+  wa_return(0);
 }
 
 //void ppux_font_delete(int32_t i_fontindex);
@@ -175,8 +175,12 @@ wasm_binding(ppux_vram_write, "i(ii*i)") {
 
   // 0 = local, 1..255 = extra
   if (i_space > DrawList::SpaceContainer::MaxCount) {
-    //return makeErrorReply(QString("space must be 0..%1").arg(DrawList::SpaceContainer::MaxCount-1));
-    wa_return(-2);
+    std::string err("space out of range; space=");
+    err.append(std::to_string(i_space));
+    err.append(" >= ");
+    err.append(std::to_string(DrawList::SpaceContainer::MaxCount));
+    report_error(WASMError("ppux_vram_write", err));
+    wa_return(-1);
   }
 
   unsigned maxSize = 0;
@@ -184,22 +188,38 @@ wasm_binding(ppux_vram_write, "i(ii*i)") {
   t = m_spaces->get_vram_space(i_space);
   maxSize = 0x10000;
   if (!t) {
-    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    std::string err("VRAM memory not allocated for space; space=");
+    err.append(std::to_string(i_space));
+    report_error(WASMError("ppux_vram_write", err));
     wa_return(-1);
   }
 
   if (i_offset >= maxSize) {
-    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    wa_return(-3);
+    std::string err("offset out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(" >= ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_vram_write", err));
+    wa_return(-1);
   }
   if (i_offset & 1) {
-    //return makeErrorReply("offset must be multiple of 2");
-    wa_return(-4);
+    std::string err("offset must be a multiple of 2; offset=");
+    err.append(std::to_string(i_offset));
+    report_error(WASMError("ppux_vram_write", err));
+    wa_return(-1);
   }
 
   if (i_offset + i_size > maxSize) {
-    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    wa_return(-5);
+    std::string err("offset+size out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(",size=");
+    err.append(std::to_string(i_size));
+    err.append("; total=");
+    err.append(std::to_string(i_offset+i_size));
+    err.append(" > ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_vram_write", err));
+    wa_return(-1);
   }
 
   memcpy(t + i_offset, i_data, i_size);
@@ -220,8 +240,12 @@ wasm_binding(ppux_cgram_write, "i(ii*i)") {
 
   // 0 = local, 1..255 = extra
   if (i_space > DrawList::SpaceContainer::MaxCount) {
-    //return makeErrorReply(QString("space must be 0..%1").arg(DrawList::SpaceContainer::MaxCount-1));
-    wa_return(-2);
+    std::string err("space out of range; space=");
+    err.append(std::to_string(i_space));
+    err.append(" >= ");
+    err.append(std::to_string(DrawList::SpaceContainer::MaxCount));
+    report_error(WASMError("ppux_cgram_write", err));
+    wa_return(-1);
   }
 
   unsigned maxSize = 0;
@@ -229,22 +253,38 @@ wasm_binding(ppux_cgram_write, "i(ii*i)") {
   t = m_spaces->get_cgram_space(i_space);
   maxSize = 0x200;
   if (!t) {
-    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    std::string err("CGRAM memory not allocated for space; space=");
+    err.append(std::to_string(i_space));
+    report_error(WASMError("ppux_cgram_write", err));
     wa_return(-1);
   }
 
   if (i_offset >= maxSize) {
-    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    wa_return(-3);
+    std::string err("offset out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(" >= ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_cgram_write", err));
+    wa_return(-1);
   }
   if (i_offset & 1) {
-    //return makeErrorReply("offset must be multiple of 2");
-    wa_return(-4);
+    std::string err("offset must be a multiple of 2; offset=");
+    err.append(std::to_string(i_offset));
+    report_error(WASMError("ppux_cgram_write", err));
+    wa_return(-1);
   }
 
   if (i_offset + i_size > maxSize) {
-    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    wa_return(-5);
+    std::string err("offset+size out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(",size=");
+    err.append(std::to_string(i_size));
+    err.append("; total=");
+    err.append(std::to_string(i_offset+i_size));
+    err.append(" > ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_cgram_write", err));
+    wa_return(-1);
   }
 
   memcpy(t + i_offset, i_data, i_size);
@@ -256,36 +296,42 @@ wasm_binding(ppux_cgram_write, "i(ii*i)") {
 wasm_binding(ppux_oam_write, "i(i*i)") {
   wa_return_type(int32_t);
 
-  wa_arg    (uint32_t,          i_space);
   wa_arg    (uint32_t,          i_offset);
   wa_arg_mem(uint8_t*,          i_data);
   wa_arg    (uint32_t,          i_size);
 
   wa_check_mem(i_data, i_size);
 
-  // 0 = local, 1..255 = extra
-  if (i_space > DrawList::SpaceContainer::MaxCount) {
-    //return makeErrorReply(QString("space must be 0..%1").arg(DrawList::SpaceContainer::MaxCount-1));
-    wa_return(-2);
-  }
-
   unsigned maxSize = 0;
   uint8_t *t = nullptr;
   t = SNES::ppu.ppux_get_oam();
   maxSize = 0x220;
   if (!t) {
-    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    std::string err("OAM memory not allocated");
+    report_error(WASMError("ppux_oam_write", err));
     wa_return(-1);
   }
 
   if (i_offset >= maxSize) {
-    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    wa_return(-3);
+    std::string err("offset out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(" >= ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_oam_write", err));
+    wa_return(-1);
   }
 
   if (i_offset + i_size > maxSize) {
-    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    wa_return(-5);
+    std::string err("offset+size out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(",size=");
+    err.append(std::to_string(i_size));
+    err.append("; total=");
+    err.append(std::to_string(i_offset+i_size));
+    err.append(" > ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_oam_write", err));
+    wa_return(-1);
   }
 
   memcpy(t + i_offset, i_data, i_size);
@@ -306,8 +352,12 @@ wasm_binding(ppux_vram_read, "i(ii*i)") {
 
   // 0 = local, 1..255 = extra
   if (i_space > DrawList::SpaceContainer::MaxCount) {
-    //return makeErrorReply(QString("space must be 0..%1").arg(DrawList::SpaceContainer::MaxCount-1));
-    wa_return(-2);
+    std::string err("space out of range; space=");
+    err.append(std::to_string(i_space));
+    err.append(" >= ");
+    err.append(std::to_string(DrawList::SpaceContainer::MaxCount));
+    report_error(WASMError("ppux_vram_read", err));
+    wa_return(-1);
   }
 
   unsigned maxSize = 0;
@@ -315,22 +365,38 @@ wasm_binding(ppux_vram_read, "i(ii*i)") {
   t = m_spaces->get_vram_space(i_space);
   maxSize = 0x10000;
   if (!t) {
-    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    std::string err("VRAM memory not allocated for space; space=");
+    err.append(std::to_string(i_space));
+    report_error(WASMError("ppux_vram_read", err));
     wa_return(-1);
   }
 
   if (i_offset >= maxSize) {
-    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    wa_return(-3);
+    std::string err("offset out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(" >= ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_vram_read", err));
+    wa_return(-1);
   }
   if (i_offset & 1) {
-    //return makeErrorReply("offset must be multiple of 2");
-    wa_return(-4);
+    std::string err("offset must be a multiple of 2; offset=");
+    err.append(std::to_string(i_offset));
+    report_error(WASMError("ppux_vram_read", err));
+    wa_return(-1);
   }
 
   if (i_offset + i_size > maxSize) {
-    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    wa_return(-5);
+    std::string err("offset+size out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(",size=");
+    err.append(std::to_string(i_size));
+    err.append("; total=");
+    err.append(std::to_string(i_offset+i_size));
+    err.append(" > ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_vram_read", err));
+    wa_return(-1);
   }
 
   memcpy(o_data, t + i_offset, i_size);
@@ -351,8 +417,12 @@ wasm_binding(ppux_cgram_read, "i(ii*i)") {
 
   // 0 = local, 1..255 = extra
   if (i_space > DrawList::SpaceContainer::MaxCount) {
-    //return makeErrorReply(QString("space must be 0..%1").arg(DrawList::SpaceContainer::MaxCount-1));
-    wa_return(-2);
+    std::string err("space out of range; space=");
+    err.append(std::to_string(i_space));
+    err.append(" >= ");
+    err.append(std::to_string(DrawList::SpaceContainer::MaxCount));
+    report_error(WASMError("ppux_cgram_read", err));
+    wa_return(-1);
   }
 
   unsigned maxSize = 0;
@@ -360,22 +430,38 @@ wasm_binding(ppux_cgram_read, "i(ii*i)") {
   t = m_spaces->get_cgram_space(i_space);
   maxSize = 0x200;
   if (!t) {
-    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    std::string err("CGRAM memory not allocated for space; space=");
+    err.append(std::to_string(i_space));
+    report_error(WASMError("ppux_cgram_read", err));
     wa_return(-1);
   }
 
   if (i_offset >= maxSize) {
-    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    wa_return(-3);
+    std::string err("offset out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(" >= ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_cgram_read", err));
+    wa_return(-1);
   }
   if (i_offset & 1) {
-    //return makeErrorReply("offset must be multiple of 2");
-    wa_return(-4);
+    std::string err("offset must be a multiple of 2; offset=");
+    err.append(std::to_string(i_offset));
+    report_error(WASMError("ppux_cgram_read", err));
+    wa_return(-1);
   }
 
   if (i_offset + i_size > maxSize) {
-    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    wa_return(-5);
+    std::string err("offset+size out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(",size=");
+    err.append(std::to_string(i_size));
+    err.append("; total=");
+    err.append(std::to_string(i_offset+i_size));
+    err.append(" > ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_cgram_read", err));
+    wa_return(-1);
   }
 
   memcpy(o_data, t + i_offset, i_size);
@@ -398,18 +484,31 @@ wasm_binding(ppux_oam_read, "i(i*i)") {
   t = SNES::ppu.ppux_get_oam();
   maxSize = 0x220;
   if (!t) {
-    //return makeErrorReply(QString("%1 memory not allocated for space %2").arg(memory).arg(space));
+    std::string err("OAM memory not allocated");
+    report_error(WASMError("ppux_oam_read", err));
     wa_return(-1);
   }
 
   if (i_offset >= maxSize) {
-    //return makeErrorReply(QString("offset must be 0..$%1").arg(maxSize-1, 0, 16));
-    wa_return(-3);
+    std::string err("offset out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(" >= ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_oam_read", err));
+    wa_return(-1);
   }
 
   if (i_offset + i_size > maxSize) {
-    //return makeErrorReply(QString("offset+size must be 0..$%1, offset+size=$%2").arg(maxSize, 0, 16).arg(offset+size, 0, 16));
-    wa_return(-5);
+    std::string err("offset+size out of range; offset=");
+    err.append(std::to_string(i_offset));
+    err.append(",size=");
+    err.append(std::to_string(i_size));
+    err.append("; total=");
+    err.append(std::to_string(i_offset+i_size));
+    err.append(" > ");
+    err.append(std::to_string(maxSize));
+    report_error(WASMError("ppux_oam_read", err));
+    wa_return(-1);
   }
 
   memcpy(o_data, t + i_offset, i_size);

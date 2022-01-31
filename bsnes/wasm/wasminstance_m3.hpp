@@ -15,10 +15,13 @@ struct WASMInstanceM3 : public WASMInstanceBase {
   bool load_module() override;
 
 private:
-  bool _catchM3(M3Result err, const char* contextFunctionName = NULL);
+  bool _catchM3(M3Result m3err, const std::string& contextFunctionName = "");
+
+protected:
+  void decorate_error(WASMError& err) final;
 
 public:
-  bool filter_error() final;
+  bool filter_error(const WASMError &err) final;
 
 public:
   bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) final;
@@ -33,4 +36,5 @@ public:
   IM3Module m_module;
 
   std::set<std::string> m_warnings;
+  std::set<std::string> m_missingFunctions;
 };

@@ -54,7 +54,7 @@ bool ZipArchive::_throw(const std::string &name) {
   std::string errtxt(name);
   errtxt.append(": ");
   errtxt.append(mz_zip_get_error_string(err));
-  m_err = WASMError("", name, mz_zip_get_error_string(err));
+  m_err = WASMError(name, mz_zip_get_error_string(err));
   return false;
 }
 

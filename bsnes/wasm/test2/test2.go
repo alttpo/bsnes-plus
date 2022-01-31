@@ -10,10 +10,10 @@ func ppux_draw_list_clear()
 func ppux_draw_list_append(size uint32, cmdlist unsafe.Pointer) uint32
 
 //export za_file_locate
-func za_file_locate(i_filename *byte) int32
+func za_file_locate(i_filename *byte, o_fh *uint32) int32
 
 //export ppux_font_load_za
-func ppux_font_load_za(i_fontindex int32, i_za_fh int32)
+func ppux_font_load_za(i_fontindex int32, i_za_fh uint32) bool
 
 const (
 	COLOR_STROKE = iota
@@ -67,8 +67,10 @@ func str(s string) *byte {
 func on_nmi() {
     if !loaded {
         // load PCF font from ZIP archive:
-        fh := za_file_locate(str("kakwafont-12-n.pcf"))
-        ppux_font_load_za(0, fh)
+        var fh uint32
+        if za_file_locate(str("kakwafont-12-n.pcf"), &fh) == 0 {
+            ppux_font_load_za(0, fh)
+        }
 
         loaded = true
     }

@@ -25,11 +25,8 @@
 struct WASMError {
   WASMError();
 
-  explicit WASMError(const std::string &moduleName, const std::string &contextFunction, const char *result);
-
-  explicit WASMError(const std::string &moduleName, const std::string &contextFunction,
-                     const char *result, const std::string &message,
-                     const std::string &functionName, uint32_t moduleOffset);
+  explicit WASMError(const std::string &contextFunction, const std::string &result);
+  explicit WASMError(const std::string &contextFunction, const std::string &result, const std::string &message);
 
   operator bool() const;
   std::string what() const;
@@ -38,12 +35,11 @@ public:
   std::string m_moduleName;
   std::string m_contextFunction;
 
-  // this is `const char *` to maintain reference identity
-  const char *m_result;
+  std::string m_result;
   std::string m_message;
 
-  std::string m_functionName;
-  uint32_t    m_moduleOffset;
+  std::string m_wasmFunctionName;
+  uint32_t    m_wasmModuleOffset;
 };
 
 #include "ziparchive.hpp"

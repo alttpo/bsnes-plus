@@ -43,17 +43,25 @@ bool WASMInstanceBase::_throw(const std::string& contextFunction, const char* re
     return true;
   }
 
-  m_err = WASMError(m_key, contextFunction, result);
-
-  if (filter_error()) {
-    m_interface->report_error(m_err);
-  }
+  report_error(WASMError(contextFunction, result));
 
   return false;
 }
 
-bool WASMInstanceBase::filter_error() {
-  return (bool)m_err;
+void WASMInstanceBase::report_error(const WASMError &err) {
+  WASMError errc = err;
+  errc.m_moduleName = m_key;
+  decorate_error(errc);
+
+  m_err = errc;
+
+  if (!filter_error(m_err))
+    return;
+  m_interface->report_error(m_err);
+}
+
+bool WASMInstanceBase::filter_error(const WASMError &err) {
+  return (bool)err;
 }
 
 bool WASMInstanceBase::extract_wasm() {

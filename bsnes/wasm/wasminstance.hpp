@@ -25,6 +25,10 @@ struct WASMInstanceBase {
 private:
   bool _throw(const std::string& contextFunction, const char* result);
 
+protected:
+  void report_error(const WASMError& err);
+  virtual void decorate_error(WASMError& err) = 0;
+
 public:
   bool msg_enqueue(const std::shared_ptr<WASMMessage>& msg);
   std::shared_ptr<WASMMessage> msg_dequeue();
@@ -39,8 +43,8 @@ public:
   virtual uint64_t memory_size() = 0;
 
 public:
-  // returns true if the current error `m_err` should be reported
-  virtual bool filter_error();
+  // returns true if the current error `err` should be reported
+  virtual bool filter_error(const WASMError &err);
 
 public:
   // wasm bindings:

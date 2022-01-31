@@ -7,53 +7,59 @@
 // WASMError:
 //////////
 
-WASMError::WASMError() : m_moduleName(), m_result(NULL)
+WASMError::WASMError() : m_result()
 {
 }
 
-WASMError::WASMError(const std::string &moduleName, const std::string &contextFunction, const char *result) :
-  m_moduleName(moduleName),
+WASMError::WASMError(const std::string &contextFunction, const std::string &result) :
   m_contextFunction(contextFunction),
-  m_result(result)
+  m_result(result),
+  m_message(),
+  m_wasmFunctionName(),
+  m_wasmModuleOffset(0)
 {
 }
 
-WASMError::WASMError(const std::string &moduleName, const std::string &contextFunction,
-                     const char *result, const std::string &message,
-                     const std::string &wasmFunctionName, uint32_t wasmModuleOffset) :
-  m_moduleName(moduleName),
+WASMError::WASMError(const std::string &contextFunction, const std::string &result, const std::string &message) :
   m_contextFunction(contextFunction),
   m_result(result),
   m_message(message),
-  m_functionName(wasmFunctionName),
-  m_moduleOffset(wasmModuleOffset)
+  m_wasmFunctionName(),
+  m_wasmModuleOffset(0)
 {
 }
 
 WASMError::operator bool() const {
-  return m_result != NULL;
+  return !m_result.empty();
 }
 
 std::string WASMError::what() const {
-  char buff[1024];
-  if (!m_functionName.empty() || m_moduleOffset > 0) {
-    snprintf(buff, sizeof(buff), "wasm module '%s' function '%s' error: %s%s%s; from wasm function '%s' offset %u",
-             m_moduleName.c_str(),
-             m_contextFunction.c_str(),
-             m_result,
-             m_message.empty() ? "" : ": ",
-             m_message.c_str(),
-             m_functionName.empty() ? "<unknown>" : m_functionName.c_str(),
-             m_moduleOffset);
-  } else {
-    snprintf(buff, sizeof(buff), "wasm module '%s' function '%s' error: %s%s%s",
-             m_moduleName.c_str(),
-             m_contextFunction.c_str(),
-             m_result,
-             m_message.empty() ? "" : ": ",
-             m_message.c_str());
+  std::string estr("wasm ");
+  if (!m_moduleName.empty()) {
+    estr.append("module '");
+    estr.append(m_moduleName);
+    estr.append("' ");
   }
-  std::string estr = buff;
+  if (!m_contextFunction.empty()) {
+    estr.append("function '");
+    estr.append(m_contextFunction);
+    estr.append("' ");
+  }
+  estr.append("error: ");
+  estr.append(m_result);
+  if (!m_message.empty()) {
+    estr.append(": ");
+    estr.append(m_message);
+  }
+  if (!m_wasmFunctionName.empty() || m_wasmModuleOffset > 0) {
+    estr.append("; at wasm offset ");
+    estr.append(std::to_string(m_wasmModuleOffset));
+    if (!m_wasmFunctionName.empty()) {
+      estr.append(" function '");
+      estr.append(m_wasmFunctionName);
+      estr.append("'");
+    }
+  }
   return estr;
 }
 
@@ -115,6 +121,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
 
 void WASMInterface::reset() {
   m_instances.clear();
+  SNES::ppu.ppux_draw_list_clear();
 }
 
 bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data, size_t size) {
