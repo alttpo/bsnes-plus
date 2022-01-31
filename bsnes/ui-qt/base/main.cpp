@@ -199,7 +199,11 @@ MainWindow::MainWindow() {
   tools_debugger->setVisible(false);
   #endif
 
+  tools->addSeparator();
+
   help = menuBar->addMenu("&Help");
+
+  tools_wasm = tools->addAction("&WASM Modules ...");
 
   help_documentation = help->addAction("&Documentation ...");
 
@@ -321,6 +325,7 @@ MainWindow::MainWindow() {
   connect(tools_manifestViewer, SIGNAL(triggered()), toolsWindow, SLOT(showManifestViewer()));
   connect(tools_soundViewer, SIGNAL(triggered()), this, SLOT(showSoundViewer()));
   connect(tools_debugger, SIGNAL(triggered()), this, SLOT(showDebugger()));
+  connect(tools_wasm, SIGNAL(triggered()), this, SLOT(showWASMModules()));
   connect(help_documentation, SIGNAL(triggered()), this, SLOT(showDocumentation()));
   connect(help_license, SIGNAL(triggered()), this, SLOT(showLicense()));
   connect(help_about, SIGNAL(triggered()), this, SLOT(showAbout()));
@@ -643,6 +648,10 @@ void MainWindow::showDebugger() {
   #if defined(DEBUGGER)
   debugger->show();
   #endif
+}
+
+void MainWindow::showWASMModules() {
+  wasmWindow->show();
 }
 
 void MainWindow::showDocumentation()  {

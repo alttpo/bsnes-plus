@@ -1,7 +1,7 @@
 qtlibs := $(strip QtCore QtGui QtWidgets QtNetwork $(if $(findstring osx,$(platform)),QtOpenGL))
 include $(nall)/qt/Makefile
 
-ui_objects := ui-main ui-base ui-cartridge ui-debugger ui-input ui-movie ui-settings ui-state ui-tools
+ui_objects := ui-main ui-base ui-cartridge ui-debugger ui-input ui-movie ui-settings ui-state ui-tools ui-wasm
 ui_objects += ruby
 ui_objects += $(if $(call streq,$(platform),$(filter $(platform),win msys)),resource)
 link += $(qtlib)
@@ -82,6 +82,7 @@ $(objdir)/ui-movie.o: $(ui)/movie/movie.cpp $(headers) $(wildcard $(ui)/movie/*.
 $(objdir)/ui-settings.o: $(ui)/settings/settings.cpp $(headers) $(wildcard $(ui)/settings/*.cpp); $(qt_compile)
 $(objdir)/ui-state.o: $(ui)/state/state.cpp $(headers) $(wildcard $(ui)/state/*.cpp); $(qt_compile)
 $(objdir)/ui-tools.o: $(ui)/tools/tools.cpp $(headers) $(wildcard $(ui)/tools/*.cpp); $(qt_compile)
+$(objdir)/ui-wasm.o: $(ui)/wasm/wasm.cpp $(headers) $(wildcard $(ui)/wasm/*.cpp); $(qt_compile)
 
 $(objdir)/ruby.o: ruby/ruby.cpp $(call rwildcard,ruby/*)
 	$(call compile,$(rubydef) $(rubyflags))

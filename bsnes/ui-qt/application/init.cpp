@@ -55,7 +55,7 @@ void Application::init() {
   settingsWindow = new SettingsWindow;
   toolsWindow = new ToolsWindow;
   soundViewerWindow = new SoundViewerWindow;
-
+  wasmWindow = new WasmWindow;
 
   //window must be onscreen and visible before initializing video interface
   mainWindow = new MainWindow;

@@ -96,6 +96,7 @@ public:
     QAction *tools_manifestViewer;
     QAction *tools_soundViewer;
     QAction *tools_debugger;
+    QAction *tools_wasm;
   QMenu *help;
     QAction *help_documentation;
     QAction *help_license;
@@ -172,6 +173,7 @@ public slots:
   void saveState();
   void showSoundViewer();
   void showDebugger();
+  void showWASMModules();
   void showDocumentation();
   void showLicense();
   void showAbout();

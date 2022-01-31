@@ -113,6 +113,7 @@ using namespace ruby;
 
 #include "utility/utility.hpp"
 #include "nwaccess/nwaccess.moc.hpp"
+#include "wasm/wasm.moc.hpp"
 
 struct Style {
   static const char Monospace[64];
