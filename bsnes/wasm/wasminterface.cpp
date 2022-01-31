@@ -86,6 +86,14 @@ WASMError WASMInterface::last_error() const {
   return m_last_error;
 }
 
+void WASMInterface::register_message_receiver(const std::function<void(log_level level, const std::string& msg)>& mesage_receiver) {
+  m_message_receiver = mesage_receiver;
+}
+
+void WASMInterface::log_message(log_level level, const std::string& msg) {
+  m_message_receiver(level, msg);
+}
+
 void WASMInterface::on_nmi() {
   for (auto &it : m_instances) {
     WASMError err;

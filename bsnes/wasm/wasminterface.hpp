@@ -22,6 +22,13 @@
 #define MINIZ_NO_STDIO
 #include "miniz.h"
 
+enum log_level {
+  L_DEBUG,
+  L_INFO,
+  L_WARN,
+  L_ERROR
+};
+
 struct WASMError {
   WASMError();
 
@@ -71,6 +78,13 @@ public:
 private:
   WASMError m_last_error;
   std::function<void(const WASMError& err)> m_error_receiver;
+
+public:
+  void register_message_receiver(const std::function<void(log_level level, const std::string& msg)>& mesage_receiver);
+  void log_message(log_level level, const std::string& msg);
+
+private:
+  std::function<void(log_level level, const std::string& msg)> m_message_receiver;
 
 public:
   void reset();

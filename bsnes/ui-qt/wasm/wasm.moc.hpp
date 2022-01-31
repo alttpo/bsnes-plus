@@ -10,7 +10,10 @@ public:
 signals:
   void appendMessage(const QString&);
 
-public slots:
+private:
+  log_level minLevel = L_DEBUG;
+
+  void logMessage(log_level level, const std::string& msg);
 };
 
 extern WasmWindow *wasmWindow;
