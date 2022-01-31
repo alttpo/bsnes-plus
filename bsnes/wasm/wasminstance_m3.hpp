@@ -15,13 +15,15 @@ struct WASMInstanceM3 : public WASMInstanceBase {
   bool load_module() override;
 
 private:
-  bool _catch(M3Result err, const char* contextFunctionName = NULL);
+  bool _catchM3(M3Result err, const char* contextFunctionName = NULL);
+
+public:
+  bool filter_error() final;
 
 public:
   bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) final;
   bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) final;
   uint64_t memory_size() final;
-  void warn() final;
 
 public:
   static const int stack_size_bytes = 1048576;

@@ -18,33 +18,12 @@ protected:
   explicit WASMFunction(const std::string& name);
 };
 
-struct WASMError {
-  WASMError();
-
-  explicit WASMError(const std::string &moduleName, const char *result);
-
-  explicit WASMError(const std::string &moduleName, const std::string &contextFunction,
-                     const char *result, const std::string &message,
-                     const std::string &functionName, uint32_t moduleOffset);
-
-  operator bool() const;
-  std::string what() const;
-
-public:
-  std::string m_moduleName;
-  std::string m_contextFunction;
-
-  // this is `const char *` to maintain reference identity
-  const char *m_result;
-  std::string m_message;
-
-  std::string m_functionName;
-  uint32_t    m_moduleOffset;
-};
-
 struct WASMInstanceBase {
   explicit WASMInstanceBase(WASMInterface* intf, const std::string& key, const std::shared_ptr<ZipArchive>& za);
   virtual ~WASMInstanceBase();
+
+private:
+  bool _throw(const char* result);
 
 public:
   bool msg_enqueue(const std::shared_ptr<WASMMessage>& msg);
@@ -58,7 +37,10 @@ public:
   virtual bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) = 0;
   virtual bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
   virtual uint64_t memory_size() = 0;
-  virtual void warn();
+
+public:
+  // returns true if the current error `m_err` should be reported
+  virtual bool filter_error();
 
 public:
   // wasm bindings:

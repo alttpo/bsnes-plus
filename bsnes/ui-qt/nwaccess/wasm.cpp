@@ -15,12 +15,11 @@ QByteArray NWAccess::cmdWasmLoad(QByteArray args, QByteArray data)
   std::string instanceKey = items.takeFirst().toStdString();
 
   QByteArray reply;
-  try {
-    wasmInterface.load_zip(instanceKey, reinterpret_cast<const uint8_t *>(data.constData()), data.size());
-
-    reply = makeOkReply();
-  } catch (WASMError& err) {
+  if (!wasmInterface.load_zip(instanceKey, reinterpret_cast<const uint8_t *>(data.constData()), data.size())) {
+    auto err = wasmInterface.last_error();
     reply = makeErrorReply(err.what().c_str());
+  } else {
+    reply = makeOkReply();
   }
 
   return reply;

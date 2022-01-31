@@ -1,5 +1,15 @@
 
-bool WASMInstanceM3::_catch(M3Result err, const char* contextFunctionName) {
+WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key, const std::shared_ptr<ZipArchive> &za)
+  : WASMInstanceBase(interface, key, za)
+{
+}
+
+WASMInstanceM3::~WASMInstanceM3() {
+  m3_FreeRuntime(m_runtime);
+  m3_FreeEnvironment(m_env);
+}
+
+bool WASMInstanceM3::_catchM3(M3Result err, const char* contextFunctionName) {
   if (err == m3Err_none) {
     return false;
   }
@@ -45,6 +55,35 @@ bool WASMInstanceM3::_catch(M3Result err, const char* contextFunctionName) {
     functionName,
     moduleOffset);
 
+  if (filter_error()) {
+    m_interface->report_error(m_err);
+  }
+
+  return true;
+}
+
+bool WASMInstanceM3::load_module() {
+  m_env = m3_NewEnvironment();
+  m_runtime = m3_NewRuntime(m_env, stack_size_bytes, (void *) this);
+
+  M3Result err;
+
+  //printf("m3_ParseModule(%p, %p, %p, %zu)\n", m_env, &m_module, m_data, m_size);
+  err = m3_ParseModule(m_env, &m_module, m_data, m_size);
+  if (err != m3Err_none) {
+    m3_FreeModule(m_module);
+    m_module = nullptr;
+
+    m_err = WASMError(m_key, err);
+    return false;
+  }
+
+  m3_SetModuleName(m_module, m_key.c_str());
+
+  // load module:
+  err = m3_LoadModule(m_runtime, m_module);
+  if (_catchM3(err)) return false;
+
   return true;
 }
 
@@ -84,61 +123,26 @@ m3ApiRawFunction(m3puts) {
   m3ApiReturn(fputs(i_str, stdout));
 }
 
-WASMInstanceM3::WASMInstanceM3(WASMInterface* interface, const std::string &key, const std::shared_ptr<ZipArchive> &za)
-  : WASMInstanceBase(interface, key, za)
-{
-}
-
-bool WASMInstanceM3::load_module() {
-  m_env = m3_NewEnvironment();
-  m_runtime = m3_NewRuntime(m_env, stack_size_bytes, (void *) this);
-
-  M3Result err;
-
-  //printf("m3_ParseModule(%p, %p, %p, %zu)\n", m_env, &m_module, m_data, m_size);
-  err = m3_ParseModule(m_env, &m_module, m_data, m_size);
-  if (err != m3Err_none) {
-    m3_FreeModule(m_module);
-    m_module = nullptr;
-
-    m_err = WASMError(m_key, err);
-    return false;
-  }
-
-  m3_SetModuleName(m_module, m_key.c_str());
-
-  // load module:
-  err = m3_LoadModule(m_runtime, m_module);
-  if (_catch(err)) return false;
-
-  return true;
-}
-
-WASMInstanceM3::~WASMInstanceM3() {
-  m3_FreeRuntime(m_runtime);
-  m3_FreeEnvironment(m_env);
-}
-
 bool WASMInstanceM3::link_module() {
   M3Result err;
 
   // link in libc API:
   err = m3_LinkLibC(m_module);
-  if (_catch(err)) return false;
+  if (_catchM3(err)) return false;
 
   // link puts function:
   err = m3_LinkRawFunction(m_module, "env", "puts", "i(*)", m3puts);
   if (err == m3Err_functionLookupFailed) {
     err = nullptr;
   }
-  if (_catch(err)) return false;
+  if (_catchM3(err)) return false;
 
   // link hexdump function:
   err = m3_LinkRawFunction(m_module, "env", "hexdump", "v(*i)", hexdump);
   if (err == m3Err_functionLookupFailed) {
     err = nullptr;
   }
-  if (_catch(err)) return false;
+  if (_catchM3(err)) return false;
 
 // link wasm_bindings.cpp member functions:
 #define wasm_link_full(name, namestr) \
@@ -156,7 +160,7 @@ bool WASMInstanceM3::link_module() {
   if (err == m3Err_functionLookupFailed) { \
     err = m3Err_none; \
   } \
-  if (_catch(err, namestr)) return false;
+  if (_catchM3(err, namestr)) return false;
 
 #define wasm_link(name) wasm_link_full(name, #name)
 
@@ -218,10 +222,7 @@ bool WASMInstanceM3::func_find(const std::string &i_name, std::shared_ptr<WASMFu
 
   M3Result err;
   err = m3_FindFunction(&m3fn, m_runtime, i_name.c_str());
-  if (err != m3Err_none) {
-    // not found:
-    if (_catch(err)) return false;
-  }
+  if (_catchM3(err)) return false;
 
   o_func = std::shared_ptr<WASMFunction>(new WASMFunctionM3(i_name, m3fn));
   return true;
@@ -246,28 +247,29 @@ bool WASMInstanceM3::func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32
 
   M3Result err;
   err = m3_Call(m3fn->m_fn, i_argc, argptrs + i_retc);
-  if (_catch(err)) return false;
+  if (_catchM3(err)) return false;
 
   err = m3_GetResults(m3fn->m_fn, i_retc, argptrs);
-  if (_catch(err)) return false;
+  if (_catchM3(err)) return false;
 
   delete[] argptrs;
 
   return true;
 }
 
-void WASMInstanceM3::warn() {
+bool WASMInstanceM3::filter_error() {
   if (!m_err)
-    return;
+    return false;
 
   // prevent redundant warnings:
   const std::string &key = m_err.m_message;
 
   const std::set<std::string>::iterator &it = m_warnings.find(key);
   if (it != m_warnings.end())
-    return;
+    return false;
 
+  // allow the error through:
   m_warnings.emplace_hint(it, key);
 
-  WASMInstanceBase::warn();
+  return true;
 }

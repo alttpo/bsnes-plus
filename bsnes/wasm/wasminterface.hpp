@@ -28,10 +28,34 @@
 
 struct WASMInterface;
 
+struct WASMError {
+  WASMError();
+
+  explicit WASMError(const std::string &moduleName, const char *result);
+
+  explicit WASMError(const std::string &moduleName, const std::string &contextFunction,
+                     const char *result, const std::string &message,
+                     const std::string &functionName, uint32_t moduleOffset);
+
+  operator bool() const;
+  std::string what() const;
+
+public:
+  std::string m_moduleName;
+  std::string m_contextFunction;
+
+  // this is `const char *` to maintain reference identity
+  const char *m_result;
+  std::string m_message;
+
+  std::string m_functionName;
+  uint32_t    m_moduleOffset;
+};
+
 #include "wasminstance.hpp"
 
 struct WASMInterface {
-  WASMInterface();
+  WASMInterface() noexcept;
 
 public:
   void on_nmi();
@@ -42,6 +66,15 @@ public:
 
   std::function<void()> m_do_break;
   std::function<void()> m_do_continue;
+
+public:
+  void register_error_receiver(const std::function<void(const WASMError& err)>& error_receiver);
+  void report_error(const WASMError& err);
+  WASMError last_error() const;
+
+private:
+  WASMError m_last_error;
+  std::function<void(const WASMError& err)> m_error_receiver;
 
 public:
   void reset();

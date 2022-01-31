@@ -20,58 +20,6 @@ WASMFunction::WASMFunction(const std::string &name) : m_name(name) {
 
 const char *WASMFunction::name() const { return m_name.c_str(); }
 
-// WASMError:
-//////////
-
-WASMError::WASMError() : m_moduleName(), m_result(NULL)
-{
-}
-
-WASMError::WASMError(const std::string &moduleName, const char *result) :
-  m_moduleName(moduleName),
-  m_result(result)
-{
-}
-
-WASMError::WASMError(const std::string &moduleName, const std::string &contextFunction,
-                     const char *result, const std::string &message,
-                     const std::string &wasmFunctionName, uint32_t wasmModuleOffset) :
-    m_moduleName(moduleName),
-    m_contextFunction(contextFunction),
-    m_result(result),
-    m_message(message),
-    m_functionName(wasmFunctionName),
-    m_moduleOffset(wasmModuleOffset)
-{
-}
-
-WASMError::operator bool() const {
-  return m_result != NULL;
-}
-
-std::string WASMError::what() const {
-  char buff[1024];
-  if (!m_functionName.empty() || m_moduleOffset > 0) {
-    snprintf(buff, sizeof(buff), "wasm module '%s' function '%s' error: %s%s%s; from wasm function '%s' offset %u",
-             m_moduleName.c_str(),
-             m_contextFunction.c_str(),
-             m_result,
-             m_message.empty() ? "" : ": ",
-             m_message.c_str(),
-             m_functionName.empty() ? "<unknown>" : m_functionName.c_str(),
-             m_moduleOffset);
-  } else {
-    snprintf(buff, sizeof(buff), "wasm module '%s' function '%s' error: %s%s%s",
-             m_moduleName.c_str(),
-             m_contextFunction.c_str(),
-             m_result,
-             m_message.empty() ? "" : ": ",
-             m_message.c_str());
-  }
-  std::string estr = buff;
-  return estr;
-}
-
 // Base:
 //////////
 
@@ -81,41 +29,50 @@ WASMInstanceBase::WASMInstanceBase(WASMInterface* interface, const std::string &
 {
 }
 
+WASMInstanceBase::~WASMInstanceBase() {
+  delete[] m_data;
+  m_data = nullptr;
+  m_size = 0;
+  m_fonts.reset();
+  m_spaces.reset();
+}
+
+bool WASMInstanceBase::_throw(const char* result) {
+  if (result == NULL) {
+    // success:
+    return true;
+  }
+
+  m_err = WASMError(m_key, result);
+
+  if (filter_error()) {
+    m_interface->report_error(m_err);
+  }
+
+  return false;
+}
+
+bool WASMInstanceBase::filter_error() {
+  return (bool)m_err;
+}
+
 bool WASMInstanceBase::extract_wasm() {
   auto fh = m_za->file_locate("main.wasm");
   if (!fh) {
-    m_err = WASMError(m_key, "missing required main.wasm in zip archive");
-    return false;
+    return _throw("missing required main.wasm in zip archive");
   }
 
   if (!m_za->file_size(fh, &m_size)) {
-    m_err = WASMError(m_key, "failed to retrieve file size of main.wasm in zip archive");
-    return false;
+    return _throw("failed to retrieve file size of main.wasm in zip archive");
   }
 
   // extract main.wasm into m_data/m_size:
   m_data = new uint8_t[m_size];
   if (!m_za->file_extract(fh, m_data, m_size)) {
-    m_err = WASMError(m_key, "failed to extract main.wasm in zip archive");
-    return false;
+    return _throw("failed to extract main.wasm in zip archive");
   }
 
   return true;
-}
-
-WASMInstanceBase::~WASMInstanceBase() {
-  delete[] m_data;
-}
-
-void WASMInstanceBase::warn() {
-  if (!m_err)
-    return;
-
-  fprintf(stderr, "%s\n", m_err.what().c_str());
-  fflush(stderr);
-
-  // clear error:
-  m_err = WASMError();
 }
 
 bool WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
@@ -128,7 +85,6 @@ bool WASMInstanceBase::msg_enqueue(const std::shared_ptr<WASMMessage>& msg) {
   m_msgs.push(msg);
 
   if (!func_invoke(fn, 0, 0, nullptr)) {
-    warn();
     return false;
   }
 
