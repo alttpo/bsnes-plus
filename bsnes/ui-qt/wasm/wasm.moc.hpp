@@ -8,7 +8,8 @@ public:
   WasmWindow();
 
 signals:
-  void appendMessage(const QString&);
+  void appendPlainText(const QString&);
+  void appendHtml(const QString&);
 
 private:
   log_level minLevel = L_DEBUG;

@@ -81,7 +81,8 @@ private:
 
 public:
   void register_message_receiver(const std::function<void(log_level level, const std::string& msg)>& mesage_receiver);
-  void log_message(log_level level, const std::string& msg);
+  void log_message(log_level level, const std::string& m);
+  void log_message(log_level level, std::initializer_list<const std::string> parts);
 
 private:
   std::function<void(log_level level, const std::string& msg)> m_message_receiver;

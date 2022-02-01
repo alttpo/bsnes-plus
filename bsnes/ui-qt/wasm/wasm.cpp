@@ -23,10 +23,14 @@ WasmWindow::WasmWindow() {
   log->setFrameStyle(0);
   log->setReadOnly(true);
   log->setMaximumBlockCount(10000);
+  QFont monospace = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+  monospace.setPointSize(12);
+  monospace.setLetterSpacing(QFont::AbsoluteSpacing, 0);
+  log->setFont(monospace);
   layout->addWidget(log);
 
-  // emit appendMessage(msg); to append to the log widget:
-  connect(this, SIGNAL(appendMessage(const QString&)), log, SLOT(appendPlainText(const QString&)));
+  connect(this, SIGNAL(appendPlainText(const QString&)), log, SLOT(appendPlainText(const QString&)));
+  connect(this, SIGNAL(appendHtml(const QString&)), log, SLOT(appendHtml(const QString&)));
 
   wasmInterface.register_error_receiver([this](const WASMError& err) {
     logMessage(L_ERROR, err.what());
@@ -41,18 +45,27 @@ void WasmWindow::logMessage(log_level level, const std::string& msg) {
   if (level < minLevel)
     return;
 
-  QString qmsg;
-  qmsg.append(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+  QString qmsg("<p>");
+  qmsg.append("<span>");
+  qmsg.append(QDateTime::currentDateTimeUtc().time().toString(Qt::ISODateWithMs).toHtmlEscaped());
+  qmsg.append("</span>");
 
-  if (level <= L_DEBUG)
-    qmsg.append(" DEBUG ");
-  else if (level <= L_INFO)
-    qmsg.append(" INFO  ");
-  else if (level <= L_WARN)
-    qmsg.append(" WARN  ");
-  else if (level <= L_ERROR)
-    qmsg.append(" ERROR ");
+  if (level <= L_DEBUG) {
+    qmsg.append(" <span style='color:green;'>DEBUG ");
+  }
+  else if (level <= L_INFO) {
+    qmsg.append(" <span style='color:gray'>INFO&nbsp; ");
+  }
+  else if (level <= L_WARN) {
+    qmsg.append(" <span style='color:yellow'>WARN&nbsp; ");
+  }
+  else if (level <= L_ERROR) {
+    qmsg.append(" <span style='color:red'>ERROR ");
+  }
 
-  qmsg.append(QString::fromStdString(msg));
-  emit appendMessage(qmsg);
+  qmsg.append(QString::fromStdString(msg).toHtmlEscaped());
+  qmsg.append("</span>");
+  qmsg.append("</p>");
+
+  emit appendHtml(qmsg);
 }

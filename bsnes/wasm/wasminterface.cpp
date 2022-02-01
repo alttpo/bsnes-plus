@@ -90,8 +90,16 @@ void WASMInterface::register_message_receiver(const std::function<void(log_level
   m_message_receiver = mesage_receiver;
 }
 
-void WASMInterface::log_message(log_level level, const std::string& msg) {
-  m_message_receiver(level, msg);
+void WASMInterface::log_message(log_level level, const std::string& m) {
+  m_message_receiver(level, m);
+}
+
+void WASMInterface::log_message(log_level level, std::initializer_list<const std::string> parts) {
+  std::string m;
+  for (const auto &item : parts) {
+    m.append(item);
+  }
+  m_message_receiver(level, m);
 }
 
 void WASMInterface::on_nmi() {
@@ -130,18 +138,25 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
 void WASMInterface::reset() {
   m_instances.clear();
   SNES::ppu.ppux_draw_list_clear();
+  log_message(L_INFO, "all wasm modules removed");
 }
 
 bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data, size_t size) {
+  log_message(L_DEBUG, {"[", instanceKey, "] loading wasm module from zip"});
+
   // initialize the wasm module before inserting:
   std::shared_ptr<ZipArchive> za(new ZipArchive(data, size));
   auto m = std::shared_ptr<WASMInstanceBase>(new WASMInstanceM3(this, instanceKey, za));
+
+  log_message(L_DEBUG, {"[", instanceKey, "] extracting main.wasm"});
   if (!m->extract_wasm()) {
     return false;
   }
+  log_message(L_DEBUG, {"[", instanceKey, "] loading wasm module"});
   if (!m->load_module()) {
     return false;
   }
+  log_message(L_DEBUG, {"[", instanceKey, "] linking wasm module"});
   if (!m->link_module()) {
     return false;
   }
@@ -157,11 +172,14 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
   //fprintf(stderr, "load_zip(): inserting new instance key \"%s\"\n", instanceKey.c_str());
   m_instances.emplace_hint(it, instanceKey, m);
 
+  log_message(L_INFO, {"[", instanceKey, "] loaded wasm module from zip"});
+
   return true;
 }
 
 void WASMInterface::unload_zip(const std::string &instanceKey) {
   m_instances.erase(instanceKey);
+  log_message(L_INFO, {"[", instanceKey, "] unloaded wasm module"});
 }
 
 bool WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *data, size_t size) {
