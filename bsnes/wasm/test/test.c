@@ -635,10 +635,12 @@ void on_nmi() {
 
   if (!copied) {
     copied = 1;
+    log(L_DEBUG, "decompress sprites");
     decompress_sprites();
 
     // load PCF font from ZIP archive:
     uint32_t fh;
+    log(L_DEBUG, "load PCF font");
     if (za_file_locate("kakwafont-12-n.pcf", &fh) == 0) {
       ppux_font_load_za(0, fh);
     }

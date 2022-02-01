@@ -5,8 +5,8 @@
   const char* WASMInstanceBase::wa_sig_##name = sig; \
   const char* WASMInstanceBase::wa_fun_##name(void* _mem, uint64_t* _sp)
 
-//i32 runtime_alloc(i32, i32, i32, i32)
-wasm_binding(runtime_alloc, "i(iiii)") {
+//i32 runtime_alloc(i32, i32, i32)
+wasm_binding(runtime_alloc, "i(iii)") {
   wa_return_type(int32_t);
 
   wa_return(0);
@@ -22,6 +22,34 @@ wasm_binding(debugger_break, "v()") {
 //void debugger_continue();
 wasm_binding(debugger_continue, "v()") {
   m_interface->m_do_continue();
+
+  wa_success();
+}
+
+//void log_c(int32_t level, const char* msg);
+wasm_binding(log_c, "v(i*)") {
+  wa_arg    (int32_t,     i_level);
+  wa_arg_mem(const char*, i_msg);
+
+  // TODO: check len of i_msg
+  wa_check_mem(i_msg, 0);
+
+  m_interface->log_message(static_cast<log_level>(i_level), i_msg);
+
+  wa_success();
+}
+
+// go_string expands to `uintptr data, uintptr len` which we're hoping are just uint32_ts here:
+//void log_go(int32_t level, go_string msg);
+wasm_binding(log_go, "v(iii)") {
+  wa_arg    (int32_t,     i_level);
+  wa_arg_mem(const char*, i_msg_data);
+  wa_arg    (uint32_t,    i_msg_len);
+
+  // TODO: check len of i_msg
+  wa_check_mem(i_msg_data, i_msg_len);
+
+  m_interface->log_message(static_cast<log_level>(i_level), std::string(i_msg_data, i_msg_len));
 
   wa_success();
 }

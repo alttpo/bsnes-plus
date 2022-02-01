@@ -13,6 +13,16 @@ int32_t puts(const char *i_str);
 __attribute__((import_module("env"), import_name("hexdump")))
 void hexdump(const uint8_t *i_data, uint32_t i_size);
 
+typedef enum log_level {
+  L_DEBUG,
+  L_INFO,
+  L_WARN,
+  L_ERROR
+} log_level;
+
+__attribute__((import_module("env"), import_name("log_c")))
+void log(log_level level, const char* msg);
+
 
 // ppux:
 

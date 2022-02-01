@@ -57,6 +57,9 @@ public:
   decl_binding(debugger_break);
   decl_binding(debugger_continue);
 
+  decl_binding(log_c);
+  decl_binding(log_go);
+
   decl_binding(za_file_locate);
   decl_binding(za_file_size);
   decl_binding(za_file_extract);

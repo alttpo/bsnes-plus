@@ -3,6 +3,17 @@ package main
 import "unsafe"
 import "reflect"
 
+type log_level int32
+const (
+  L_DEBUG log_level = iota
+  L_INFO
+  L_WARN
+  L_ERROR
+)
+
+//export log_go
+func log(level log_level, msg string);
+
 //export ppux_draw_list_clear
 func ppux_draw_list_clear()
 
@@ -68,6 +79,7 @@ func on_nmi() {
     if !loaded {
         // load PCF font from ZIP archive:
         var fh uint32
+        log(L_DEBUG, "load PCF font")
         if za_file_locate(str("kakwafont-12-n.pcf"), &fh) == 0 {
             ppux_font_load_za(0, fh)
         }

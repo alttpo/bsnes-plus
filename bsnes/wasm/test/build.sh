@@ -1,7 +1,9 @@
 
-#/usr/local/opt/llvm/bin/clang
+set -e
 
-clang \
+#clang \
+
+/usr/local/opt/llvm/bin/clang \
   --target=wasm32 \
   -g \
   -nostdlib \

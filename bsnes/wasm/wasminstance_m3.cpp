@@ -160,10 +160,11 @@ bool WASMInstanceM3::link_module() {
 
 #define wasm_link(name) wasm_link_full(name, #name)
 
-  wasm_link_full(runtime_alloc, "runtime.alloc");
-
   wasm_link(debugger_break);
   wasm_link(debugger_continue);
+
+  wasm_link(log_c);
+  wasm_link(log_go);
 
   wasm_link(za_file_locate);
   wasm_link(za_file_size);
@@ -193,7 +194,10 @@ bool WASMInstanceM3::link_module() {
   wasm_link(ppux_cgram_read);
   wasm_link(ppux_oam_read);
 
+  wasm_link_full(runtime_alloc, "runtime.alloc");
+
 #undef wasm_link
+#undef wasm_link_full
 
   //m3_PrintRuntimeInfo(m_runtime);
 
