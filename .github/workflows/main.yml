@@ -102,10 +102,10 @@ jobs:
           copy "..\..\external\qt\mingw-w64\bin\*.dll"
           xcopy /E "..\..\external\qt\mingw-w64\plugins"
 
-          copy "%MINGW_PATH%\libgcc_s_seh-1.dll"
-          copy "%MINGW_PATH%\libgomp-1.dll"
-          copy "%MINGW_PATH%\libstdc++-6.dll"
-          copy "%MINGW_PATH%\libwinpthread-1.dll"
+          rem copy "%MINGW_PATH%\libgcc_s_seh-1.dll"
+          rem copy "%MINGW_PATH%\libgomp-1.dll"
+          rem copy "%MINGW_PATH%\libstdc++-6.dll"
+          rem copy "%MINGW_PATH%\libwinpthread-1.dll"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v1
