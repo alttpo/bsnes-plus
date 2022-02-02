@@ -38,6 +38,7 @@ public:
   virtual bool extract_wasm();
   virtual bool load_module() = 0;
   virtual bool link_module() = 0;
+  virtual bool run_start() = 0;
   virtual bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) = 0;
   virtual bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t* io_stack) = 0;
   virtual uint64_t memory_size() = 0;

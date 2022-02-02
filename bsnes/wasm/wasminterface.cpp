@@ -34,11 +34,11 @@ WASMError::operator bool() const {
 }
 
 std::string WASMError::what() const {
-  std::string estr("wasm ");
+  std::string estr;
   if (!m_moduleName.empty()) {
-    estr.append("module '");
+    estr.append("[");
     estr.append(m_moduleName);
-    estr.append("' ");
+    estr.append("] ");
   }
   if (!m_contextFunction.empty()) {
     estr.append("function '");
@@ -160,6 +160,13 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
   if (!m->link_module()) {
     return false;
   }
+
+  // run the start routine:
+  log_message(L_DEBUG, {"[", instanceKey, "] running start routine"});
+  if (!m->run_start()) {
+    return false;
+  }
+  log_message(L_DEBUG, {"[", instanceKey, "] start routine complete"});
 
   auto it = m_instances.find(instanceKey);
   if (it != m_instances.end()) {

@@ -24,6 +24,7 @@ public:
   bool filter_error(const WASMError &err) final;
 
 public:
+  bool run_start() final;
   bool func_find(const std::string &i_name, std::shared_ptr<WASMFunction> &o_func) final;
   bool func_invoke(const std::shared_ptr<WASMFunction>& fn, uint32_t i_retc, uint32_t i_argc, uint64_t *io_stack) final;
   uint64_t memory_size() final;

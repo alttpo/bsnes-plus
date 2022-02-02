@@ -621,6 +621,11 @@ wasm_binding(ppux_draw_list_set, "i(ii*)") {
 
   wa_check_mem(i_cmdlist, i_len*sizeof(uint16_t));
 
+  if (i_index >= SNES::ppu.ppux_draw_lists.size()) {
+    report_error(WASMError("ppux_draw_list_set", "index out of bounds of ppux_draw_lists vector"));
+    wa_trap("[trap] ppux_draw_list_set index out of bounds of ppux_draw_lists vector");
+  }
+
   // fill in the new cmdlist:
   auto& dl = SNES::ppu.ppux_draw_lists[i_index];
   // refer to the runtime instance's fonts and spaces collections:

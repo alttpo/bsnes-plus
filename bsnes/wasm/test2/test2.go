@@ -16,6 +16,12 @@ func log(level log_level, msg string);
 //export ppux_draw_list_clear
 func ppux_draw_list_clear()
 
+//export ppux_draw_list_resize
+func ppux_draw_list_resize(len uint32)
+
+//export ppux_draw_list_set
+func ppux_draw_list_set(index uint32, size uint32, cmdlist unsafe.Pointer) uint32
+
 //export ppux_draw_list_append
 func ppux_draw_list_append(size uint32, cmdlist unsafe.Pointer) uint32
 
@@ -65,36 +71,32 @@ const (
 //export snes_bus_read
 func snes_bus_read(i_address uint32, i_data unsafe.Pointer, i_size uint32)
 
-var loaded bool
+var cmd = [...]uint16{
+    3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
+    3, CMD_PIXEL, 12, 118,
+    7, CMD_COLOR_DIRECT_RGB888, COLOR_STROKE, 0x00FF, 0x3F00, COLOR_OUTLINE, 0x005F, 0x1F00,
+    8, CMD_TEXT_UTF8, 0, 2,
+       7, 0, 0, 0, 0,
+}
 
 //export on_nmi
 func on_nmi() {
-    if !loaded {
-        // load PCF font from ZIP archive:
-        var fh uint32
-        log(L_DEBUG, "load PCF font")
-        if za_file_locate("kakwafont-12-n.pcf", &fh) == 0 {
-            ppux_font_load_za(0, fh)
-        }
-
-        loaded = true
-    }
-
 	var module uint8
 	snes_bus_read(0x7E0010, unsafe.Pointer(&module), 1)
 
-	var cmd = [...]uint16{
-		3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
-		3, CMD_PIXEL, 12, 118,
-		7, CMD_COLOR_DIRECT_RGB888, COLOR_STROKE, 0x00FF, 0x3F00, COLOR_OUTLINE, 0x005F, 0x1F00,
-		8, CMD_TEXT_UTF8, 0, 2,
-		   7, 0, 0, 0, 0,
-	}
-	copy((*(*[7]uint8)(unsafe.Pointer(&cmd[len(cmd)-4])))[:], "jsd1982")
-
-	ppux_draw_list_clear()
-	ppux_draw_list_append(uint32(len(cmd)), unsafe.Pointer(&cmd))
+	ppux_draw_list_set(0, uint32(len(cmd)), unsafe.Pointer(&cmd))
 }
 
 func main() {
+    // load PCF font from ZIP archive:
+    var fh uint32
+    log(L_DEBUG, "load PCF font")
+    if za_file_locate("kakwafont-12-n.pcf", &fh) == 0 {
+        ppux_font_load_za(0, fh)
+    }
+
+	copy((*(*[7]uint8)(unsafe.Pointer(&cmd[len(cmd)-4])))[:], "jsd1982")
+
+	ppux_draw_list_clear()
+	ppux_draw_list_resize(1)
 }
