@@ -1,9 +1,13 @@
 
 set -e
 
-#clang \
+if  [[ $OS == "Windows_NT" ]]; then
+  wasmclang=clang
+else
+  wasmclang=/usr/local/opt/llvm/bin/clang
+fi
 
-/usr/local/opt/llvm/bin/clang \
+$wasmclang \
   --target=wasm32 \
   -g \
   -nostdlib \
