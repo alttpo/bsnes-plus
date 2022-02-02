@@ -1,9 +1,9 @@
 
-clean:
-	$(MAKE) -C bsnes clean
+all:
+	$(MAKE) -C bsnes all
 
 build:
 	$(MAKE) -C bsnes build
 
-all:
-	$(MAKE) -C bsnes all
+clean:
+	$(MAKE) -C bsnes clean
