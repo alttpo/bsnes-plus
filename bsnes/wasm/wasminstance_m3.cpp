@@ -194,7 +194,7 @@ bool WASMInstanceM3::link_module() {
   wasm_link(ppux_cgram_read);
   wasm_link(ppux_oam_read);
 
-  wasm_link_full(runtime_alloc, "runtime.alloc");
+  //wasm_link_full(runtime_alloc, "runtime.alloc");
 
 #undef wasm_link
 #undef wasm_link_full
