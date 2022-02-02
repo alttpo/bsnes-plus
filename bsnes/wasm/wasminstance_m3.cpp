@@ -166,7 +166,8 @@ bool WASMInstanceM3::link_module() {
   wasm_link(log_c);
   wasm_link(log_go);
 
-  wasm_link(za_file_locate);
+  wasm_link(za_file_locate_c);
+  wasm_link(za_file_locate_go);
   wasm_link(za_file_size);
   wasm_link(za_file_extract);
 

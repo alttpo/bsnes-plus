@@ -1,7 +1,6 @@
 package main
 
 import "unsafe"
-import "reflect"
 
 type log_level int32
 const (
@@ -20,8 +19,8 @@ func ppux_draw_list_clear()
 //export ppux_draw_list_append
 func ppux_draw_list_append(size uint32, cmdlist unsafe.Pointer) uint32
 
-//export za_file_locate
-func za_file_locate(i_filename *byte, o_fh *uint32) int32
+//export za_file_locate_go
+func za_file_locate(i_filename string, o_fh *uint32) int32
 
 //export ppux_font_load_za
 func ppux_font_load_za(i_fontindex int32, i_za_fh uint32) bool
@@ -68,19 +67,13 @@ func snes_bus_read(i_address uint32, i_data unsafe.Pointer, i_size uint32)
 
 var loaded bool
 
-func str(s string) *byte {
-    hdr := (*reflect.StringHeader)(unsafe.Pointer(&s))
-    pbyte := (*byte)(unsafe.Pointer(hdr.Data))
-    return pbyte
-}
-
 //export on_nmi
 func on_nmi() {
     if !loaded {
         // load PCF font from ZIP archive:
         var fh uint32
         log(L_DEBUG, "load PCF font")
-        if za_file_locate(str("kakwafont-12-n.pcf"), &fh) == 0 {
+        if za_file_locate("kakwafont-12-n.pcf", &fh) == 0 {
             ppux_font_load_za(0, fh)
         }
 

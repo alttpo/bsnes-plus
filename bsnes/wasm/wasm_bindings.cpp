@@ -54,8 +54,8 @@ wasm_binding(log_go, "v(iii)") {
   wa_success();
 }
 
-//int32_t za_file_locate(const char *i_filename, uint32_t* o_index);
-wasm_binding(za_file_locate, "i(**)") {
+//int32_t za_file_locate_c(const char *i_filename, uint32_t* o_index);
+wasm_binding(za_file_locate_c, "i(**)") {
   wa_return_type(int32_t);
 
   wa_arg_mem(const char*, i_filename);
@@ -66,6 +66,26 @@ wasm_binding(za_file_locate, "i(**)") {
   wa_check_mem(o_index, sizeof(uint32_t));
 
   if (!m_za->file_locate(i_filename, o_index)) {
+    report_error(m_za->last_error());
+    wa_return(-1);
+  }
+
+  wa_return(0);
+}
+
+//func za_file_locate_go(i_filename string, o_index *uint32) int32
+wasm_binding(za_file_locate_go, "i(ii*)") {
+  wa_return_type(int32_t);
+
+  wa_arg_mem(const char*, i_filename_data);
+  wa_arg    (uint32_t,    i_filename_len);
+  wa_arg_mem(uint32_t*,   o_index);
+
+  wa_check_mem(i_filename_data, i_filename_len);
+  wa_check_mem(o_index, sizeof(uint32_t));
+
+  std::string i_filename(i_filename_data, i_filename_len);
+  if (!m_za->file_locate(i_filename.c_str(), o_index)) {
     report_error(m_za->last_error());
     wa_return(-1);
   }

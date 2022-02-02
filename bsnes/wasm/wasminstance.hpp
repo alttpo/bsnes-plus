@@ -60,7 +60,8 @@ public:
   decl_binding(log_c);
   decl_binding(log_go);
 
-  decl_binding(za_file_locate);
+  decl_binding(za_file_locate_c);
+  decl_binding(za_file_locate_go);
   decl_binding(za_file_size);
   decl_binding(za_file_extract);
 
