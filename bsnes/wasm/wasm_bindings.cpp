@@ -39,9 +39,10 @@ wasm_binding(log_c, "v(i*)") {
   wa_success();
 }
 
-// go_string expands to `uintptr data, uintptr len` which we're hoping are just uint32_ts here:
-//void log_go(int32_t level, go_string msg);
-wasm_binding(log_go, "v(iii)") {
+// Go's string expands to `uintptr data, uintptr len` which are just uint32_ts for wasm32
+
+//func log_go(level int32, msg string);
+wasm_binding(log_go, "v(i*i)") {
   wa_arg    (int32_t,     i_level);
   wa_arg_mem(const char*, i_msg_data);
   wa_arg    (uint32_t,    i_msg_len);
@@ -74,7 +75,7 @@ wasm_binding(za_file_locate_c, "i(**)") {
 }
 
 //func za_file_locate_go(i_filename string, o_index *uint32) int32
-wasm_binding(za_file_locate_go, "i(ii*)") {
+wasm_binding(za_file_locate_go, "i(*i*)") {
   wa_return_type(int32_t);
 
   wa_arg_mem(const char*, i_filename_data);
@@ -597,12 +598,14 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   wa_success();
 }
 
+//void ppux_draw_list_clear();
 wasm_binding(ppux_draw_list_clear, "v()") {
   SNES::ppu.ppux_draw_list_clear();
 
   wa_success();
 }
 
+//void ppux_draw_list_resize(uint32_t i_len);
 wasm_binding(ppux_draw_list_resize, "v(i)") {
   wa_arg    (uint32_t,  i_len);
 
@@ -611,6 +614,7 @@ wasm_binding(ppux_draw_list_resize, "v(i)") {
   wa_success();
 }
 
+//uint32_t ppux_draw_list_set(uint32_t i_index, uint32_t i_len, uint16_t* i_cmdlist);
 wasm_binding(ppux_draw_list_set, "i(ii*)") {
   wa_return_type(uint32_t);
 
@@ -619,7 +623,9 @@ wasm_binding(ppux_draw_list_set, "i(ii*)") {
   wa_arg    (uint32_t,  i_len);
   wa_arg_mem(uint8_t*,  i_cmdlist);
 
-  wa_check_mem(i_cmdlist, i_len*sizeof(uint16_t));
+  if (i_len > 0) {
+    wa_check_mem(i_cmdlist, i_len * sizeof(uint16_t));
+  }
 
   if (i_index >= SNES::ppu.ppux_draw_lists.size()) {
     report_error(WASMError("ppux_draw_list_set", "index out of bounds of ppux_draw_lists vector"));
@@ -634,12 +640,15 @@ wasm_binding(ppux_draw_list_set, "i(ii*)") {
 
   // copy cmdlist data in:
   dl.cmdlist.resize(i_len);
-  void* dst = (void *)(dl.cmdlist.data());
-  memcpy(dst, (const void *)i_cmdlist, i_len*sizeof(uint16_t));
+  if (i_len > 0) {
+    void *dst = (void *) (dl.cmdlist.data());
+    memcpy(dst, (const void *) i_cmdlist, i_len * sizeof(uint16_t));
+  }
 
   wa_return(i_index);
 }
 
+//uint32_t ppux_draw_list_append(uint32_t i_len, uint16_t* i_cmdlist);
 wasm_binding(ppux_draw_list_append, "i(i*)") {
   wa_return_type(uint32_t);
 
@@ -647,7 +656,9 @@ wasm_binding(ppux_draw_list_append, "i(i*)") {
   wa_arg    (uint32_t,  i_len);
   wa_arg_mem(uint8_t*,  i_cmdlist);
 
-  wa_check_mem(i_cmdlist, i_len*sizeof(uint16_t));
+  if (i_len > 0) {
+    wa_check_mem(i_cmdlist, i_len * sizeof(uint16_t));
+  }
 
   // extend ppux_draw_lists vector:
   int n = SNES::ppu.ppux_draw_lists.size();
@@ -661,8 +672,10 @@ wasm_binding(ppux_draw_list_append, "i(i*)") {
 
   // copy cmdlist data in:
   dl.cmdlist.resize(i_len);
-  void* dst = (void *)(dl.cmdlist.data());
-  memcpy(dst, (const void *)i_cmdlist, i_len*sizeof(uint16_t));
+  if (i_len > 0) {
+    void *dst = (void *) (dl.cmdlist.data());
+    memcpy(dst, (const void *) i_cmdlist, i_len * sizeof(uint16_t));
+  }
 
   wa_return(n);
 }
