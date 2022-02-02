@@ -40,12 +40,6 @@ std::string WASMError::what(bool withModuleName) const {
     estr.append(m_moduleName);
     estr.append("] ");
   }
-  if (!m_contextFunction.empty()) {
-    estr.append("function '");
-    estr.append(m_contextFunction);
-    estr.append("' ");
-  }
-  estr.append("error: ");
   estr.append(m_result);
   if (!m_message.empty()) {
     estr.append(": ");
@@ -59,6 +53,11 @@ std::string WASMError::what(bool withModuleName) const {
       estr.append(m_wasmFunctionName);
       estr.append("'");
     }
+  }
+  if (!m_contextFunction.empty()) {
+    estr.append("; in host function '");
+    estr.append(m_contextFunction);
+    estr.append("'");
   }
   return estr;
 }
