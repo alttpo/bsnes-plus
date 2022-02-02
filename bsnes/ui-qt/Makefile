@@ -6,7 +6,7 @@ ui_objects += ruby
 ui_objects += $(if $(call streq,$(platform),$(filter $(platform),win msys)),resource)
 link += $(qtlib)
 
-headers := $(call rwildcard,$(ui)/,%.hpp)
+headers := $(call rwildcard,$(ui)/,%.hpp) $(snes)/snes.hpp $(wasm)/wasminterface.hpp
 moc_headers := $(call rwildcard,$(nall)/qt/,%.moc.hpp) $(call rwildcard,$(ui)/,%.moc.hpp)
 moc_objects := $(foreach f,$(moc_headers),obj/$(notdir $(patsubst %.moc.hpp,%.moc,$f)))
 qt_compile = $(call compile,-Iobj $(qtinc))
