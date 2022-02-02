@@ -66,15 +66,14 @@ jobs:
       - uses: msys2/setup-msys2@v2
         name: Install MSYS2
         with:
+          msystem: mingw64
           update: true
           install: >-
-            base-devel
             git
             coreutils
             make
             mingw-w64-x86_64-toolchain
             mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
             p7zip
 
       - name: Inject slug/short variables
@@ -94,7 +93,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd external/wasm3
-          cmake -G "Ninja" -B build
+          cmake -G "MinGW Makefiles" -B build
           cmake --build build
 
       - name: Build bsnes-plus
