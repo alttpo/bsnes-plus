@@ -31,8 +31,6 @@ uint8_t bus_read_u8(uint32_t i_address) {
   return d;
 }
 
-int copied = 0;
-
 struct loc {
   uint8_t  enabled;
   uint16_t chr;
@@ -633,19 +631,6 @@ __attribute__((export_name("on_nmi")))
 void on_nmi() {
   uint16_t link_oam_start;
 
-  if (!copied) {
-    copied = 1;
-    log(L_DEBUG, "decompress sprites");
-    decompress_sprites();
-
-    // load PCF font from ZIP archive:
-    uint32_t fh;
-    log(L_DEBUG, "load PCF font");
-    if (za_file_locate("kakwafont-12-n.pcf", &fh) == 0) {
-      ppux_font_load_za(0, fh);
-    }
-  }
-
   uint8_t curr_sword = bus_read_u8(0x7EF359);
   if (curr_sword != last_sword) {
     // load sword graphics:
@@ -802,5 +787,18 @@ void on_nmi() {
   for (unsigned i = 0; i < 128; i++) {
     unsigned o = (i<<2);
     oam_convert(o, i);
+  }
+}
+
+__attribute__((export_name("_start")))
+void start() {
+  log(L_DEBUG, "decompress sprites");
+  decompress_sprites();
+
+  // load PCF font from ZIP archive:
+  uint32_t fh;
+  log(L_DEBUG, "load PCF font");
+  if (za_file_locate("kakwafont-12-n.pcf", &fh) == 0) {
+    ppux_font_load_za(0, fh);
   }
 }

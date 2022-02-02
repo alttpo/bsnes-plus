@@ -71,7 +71,7 @@ enum draw_layer : uint16_t {
   COL = 5
 };
 
-__attribute__((import_module("env"), import_name("za_file_locate")))
+__attribute__((import_module("env"), import_name("za_file_locate_c")))
 int32_t za_file_locate(const char *i_filename, uint32_t* o_fh);
 
 __attribute__((import_module("env"), import_name("za_file_size")))

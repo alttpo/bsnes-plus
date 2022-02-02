@@ -212,25 +212,23 @@ WASMFunctionM3::WASMFunctionM3(const std::string& name, IM3Function m3fn)
 
 WASMFunctionM3::operator bool() const { return m_fn != nullptr; }
 
+// NOTE: always returning true here because we don't want to fail loading a module if _start is not found.
 bool WASMInstanceM3::run_start() {
   M3Result err;
 
   err = m3_RunStart(m_module);
   if (_catchM3(err)) {
-    return false;
+    return true;
   }
 
   IM3Function startFn = nullptr;
   err = m3_FindFunction(&startFn, m_runtime, "_start");
-  if (err == m3Err_functionLookupFailed) {
-    err = nullptr;
-  }
   if (_catchM3(err)) {
-    return false;
+    return true;
   }
   err = m3_Call(startFn, 0, nullptr);
   if (_catchM3(err)) {
-    return false;
+    return true;
   }
 
   return true;
