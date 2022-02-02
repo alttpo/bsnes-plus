@@ -34,7 +34,7 @@ wasm_binding(log_c, "v(i*)") {
   // TODO: check len of i_msg
   wa_check_mem(i_msg, 0);
 
-  m_interface->log_message(static_cast<log_level>(i_level), i_msg);
+  m_interface->log_module_message(static_cast<log_level>(i_level), m_key, i_msg);
 
   wa_success();
 }
@@ -49,7 +49,7 @@ wasm_binding(log_go, "v(iii)") {
   // TODO: check len of i_msg
   wa_check_mem(i_msg_data, i_msg_len);
 
-  m_interface->log_message(static_cast<log_level>(i_level), std::string(i_msg_data, i_msg_len));
+  m_interface->log_module_message(static_cast<log_level>(i_level), m_key, std::string(i_msg_data, i_msg_len));
 
   wa_success();
 }

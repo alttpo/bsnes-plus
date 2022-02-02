@@ -32,17 +32,11 @@ bool WASMInstanceM3::_catchM3(M3Result m3err, const std::string& contextFunction
     return false;
   }
 
-  std::string wasmFunctionName;
-  uint32_t wasmModuleOffset = 0;
-
   // get error info:
   M3ErrorInfo errInfo;
   IM3BacktraceInfo backtrace = NULL;
   if (m_runtime) {
     m3_GetErrorInfo(m_runtime, &errInfo);
-    if (errInfo.function) {
-      wasmFunctionName = m3_GetFunctionName(errInfo.function);
-    }
   }
 
   std::string message;

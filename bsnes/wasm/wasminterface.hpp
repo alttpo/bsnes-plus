@@ -36,7 +36,7 @@ struct WASMError {
   explicit WASMError(const std::string &contextFunction, const std::string &result, const std::string &message);
 
   operator bool() const;
-  std::string what() const;
+  std::string what(bool withModuleName = true) const;
 
 public:
   std::string m_moduleName;
@@ -71,7 +71,6 @@ public:
   std::function<void()> m_do_continue;
 
 public:
-  void register_error_receiver(const std::function<void(const WASMError& err)>& error_receiver);
   void report_error(const WASMError& err);
   WASMError last_error() const;
 
@@ -83,6 +82,8 @@ public:
   void register_message_receiver(const std::function<void(log_level level, const std::string& msg)>& mesage_receiver);
   void log_message(log_level level, const std::string& m);
   void log_message(log_level level, std::initializer_list<const std::string> parts);
+  void log_module_message(log_level level, const std::string& moduleName, const std::string& m);
+  void log_module_message(log_level level, const std::string& moduleName, std::initializer_list<const std::string> parts);
 
 private:
   std::function<void(log_level level, const std::string& msg)> m_message_receiver;

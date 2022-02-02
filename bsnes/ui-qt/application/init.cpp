@@ -46,11 +46,6 @@ void Application::init() {
     }
   );
   #endif
-  // send errors to stderr:
-  wasmInterface.register_error_receiver([](const WASMError& err) {
-    fprintf(stderr, "%s\n", err.what().c_str());
-    fflush(stderr);
-  });
 
   settingsWindow = new SettingsWindow;
   toolsWindow = new ToolsWindow;

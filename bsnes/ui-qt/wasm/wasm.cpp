@@ -32,10 +32,6 @@ WasmWindow::WasmWindow() {
   connect(this, SIGNAL(appendPlainText(const QString&)), log, SLOT(appendPlainText(const QString&)));
   connect(this, SIGNAL(appendHtml(const QString&)), log, SLOT(appendHtml(const QString&)));
 
-  wasmInterface.register_error_receiver([this](const WASMError& err) {
-    logMessage(L_ERROR, err.what());
-  });
-
   std::function<void(log_level level, const std::string& msg)> receiver =
     std::bind(&WasmWindow::logMessage, this, std::placeholders::_1, std::placeholders::_2);
   wasmInterface.register_message_receiver(receiver);
