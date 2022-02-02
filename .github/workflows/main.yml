@@ -69,11 +69,6 @@ jobs:
           msystem: mingw64
           update: true
           install: >-
-            git
-            coreutils
-            make
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-cmake
             p7zip
 
       - name: Inject slug/short variables
@@ -97,41 +92,32 @@ jobs:
           cmake --build build
 
       - name: Build bsnes-plus
-        shell: msys2 {0}
         run: |
           cd bsnes
-          rm out/.gitignore
 
-          mingw32-make -j2 build platform=win profile=performance version=${{env.GITHUB_REF_SLUG}}
-          #mingw32-make -j2 build platform=win profile=accuracy version=${{env.GITHUB_REF_SLUG}}
-          mingw32-make -j2 platform=win version=${{env.GITHUB_REF_SLUG}}
+          mingw32-make -j8 build platform=win profile=performance version=${{env.GITHUB_REF_SLUG}}
+          mingw32-make -j8 platform=win version=${{env.GITHUB_REF_SLUG}}
 
           cd out
-          mv ../../snesfilter/snesfilter.dll .
-          mv ../../snesreader/snesreader.dll .
-          mv ../../snesmusic/snesmusic.dll .
-          mv ../../supergameboy/supergameboy.dll .
+
+          move ..\..\snesfilter\snesfilter.dll
+          move ..\..\snesreader\snesreader.dll
+          move ..\..\snesmusic\snesmusic.dll
+          move ..\..\supergameboy\supergameboy.dll
 
           mkdir bsxdat
-          cp -ra ../data/bsxdat bsxdat
+          copy ..\data\bsxdat bsxdat
 
-          cp ../../external/qt/mingw-w64/bin/*.dll .
-          cp -ra ../../external/qt/mingw-w64/plugins/* .
+          copy "..\..\external\qt\mingw-w64\bin\*.dll"
+          xcopy /E "..\..\external\qt\mingw-w64\plugins"
 
-          cp "$MINGW_PREFIX/bin/libgcc_s_seh-1.dll" .
-          cp "$MINGW_PREFIX/bin/libgomp-1.dll" .
-          cp "$MINGW_PREFIX/bin/libstdc++-6.dll" .
-          cp "$MINGW_PREFIX/bin/libwinpthread-1.dll" .
-
-      - name: Create ${{env.basename}}.zip
-        shell: msys2 {0}
-        run: |
-          cd bsnes
-          mv out ${{env.basename}}
-          7z a -r -mx=9 ../${{env.basename}}.zip ${{env.basename}}
+          copy "%MINGW_PATH%\libgcc_s_seh-1.dll"
+          copy "%MINGW_PATH%\libgomp-1.dll"
+          copy "%MINGW_PATH%\libstdc++-6.dll"
+          copy "%MINGW_PATH%\libwinpthread-1.dll"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v1
         with:
           name: ${{env.basename}}.zip
-          path: ${{github.workspace}}\${{env.basename}}.zip
+          path: ${{github.workspace}}\bsnes\out
