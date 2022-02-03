@@ -52,13 +52,26 @@ jobs:
           cmake --build build --parallel 8
 
       - name: Build bsnes-plus
-        run: mingw32-make -C bsnes -j8 platform=win profile=performance local=false
+        run: |
+          mingw32-make -C bsnes -j8 platform=win profile=performance local=false
 
+          cd bsnes\out
+
+          move ..\..\snesfilter\snesfilter.dll
+          move ..\..\snesreader\snesreader.dll
+          move ..\..\snesmusic\snesmusic.dll
+          move ..\..\supergameboy\supergameboy.dll
+
+          mkdir bsxdat
+          copy ..\data\bsxdat bsxdat
+
+          copy "..\..\external\qt\mingw-w64\bin\*.dll"
+          xcopy /E "..\..\external\qt\mingw-w64\plugins"
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
           name: bsnes-windows
-          path: bsnes/out/bsnes*
+          path: bsnes/out/
 
   release:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/wasm' || startsWith(github.ref, 'refs/tags/')
@@ -101,6 +114,15 @@ jobs:
             outdir=bsnes-plus${suffix}
             mkdir ${outdir}
             cp -ar ${bindir}/bsnes-${os}/* ${outdir}
+
+            #if [[ "${os}" == "windows" ]]; then
+            #  cp -a ${srcdir}/external/qt/mingw-w64/bin/*.dll ${outdir}
+            #  cp -ar ${srcdir}/external/qt/mingw-w64/plugins ${outdir}
+            #fi
+
+            #mkdir ${outdir}/bsxdat
+            #cp -a ${srcdir}/data/bsxdat/* ${outdir}/bsxdat
+
             zip -r ../bsnes-plus-${os}.zip ${outdir}
 
             cd -
