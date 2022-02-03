@@ -45,20 +45,9 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Build wasm3
-        run: |
-          cd external/wasm3
-          cmake -G "MinGW Makefiles" -B build
-          cmake --build build --parallel 8
-
-      - name: Build bsnes-plus
+      - name: Prepare artifacts
         run: |
           cd bsnes\out
-
-          move ..\..\snesfilter\snesfilter.dll
-          move ..\..\snesreader\snesreader.dll
-          move ..\..\snesmusic\snesmusic.dll
-          move ..\..\supergameboy\supergameboy.dll
 
           mkdir bsxdat
           copy ..\data\bsxdat bsxdat
@@ -71,7 +60,22 @@ jobs:
           copy "C:\msys64\mingw64\bin\libstdc++-6.dll"
           copy "C:\msys64\mingw64\bin\libwinpthread-1.dll"
 
+      - name: Build wasm3
+        run: |
+          cd external/wasm3
+          cmake -G "MinGW Makefiles" -B build
+          cmake --build build --parallel 8
+
+      - name: Build bsnes-plus
+        run: |
           mingw32-make -C bsnes -j8 platform=win profile=performance local=false
+
+          cd bsnes\out
+
+          move ..\..\snesfilter\snesfilter.dll
+          move ..\..\snesreader\snesreader.dll
+          move ..\..\snesmusic\snesmusic.dll
+          move ..\..\supergameboy\supergameboy.dll
 
       - name: Upload
         uses: actions/upload-artifact@v2
