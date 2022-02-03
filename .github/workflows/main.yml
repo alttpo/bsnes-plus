@@ -53,8 +53,6 @@ jobs:
 
       - name: Build bsnes-plus
         run: |
-          mingw32-make -C bsnes -j8 platform=win profile=performance local=false
-
           cd bsnes\out
 
           move ..\..\snesfilter\snesfilter.dll
@@ -68,11 +66,12 @@ jobs:
           copy "..\..\external\qt\mingw-w64\bin\*.dll"
           xcopy /E "..\..\external\qt\mingw-w64\plugins"
 
-          set MINGW_PATH=C:\msys64\mingw64\bin
-          copy "%MINGW_PATH%\libgcc_s_seh-1.dll"
-          copy "%MINGW_PATH%\libgomp-1.dll"
-          copy "%MINGW_PATH%\libstdc++-6.dll"
-          copy "%MINGW_PATH%\libwinpthread-1.dll"
+          copy "C:\msys64\mingw64\bin\libgcc_s_seh-1.dll"
+          copy "C:\msys64\mingw64\bin\libgomp-1.dll"
+          copy "C:\msys64\mingw64\bin\libstdc++-6.dll"
+          copy "C:\msys64\mingw64\bin\libwinpthread-1.dll"
+
+          mingw32-make -C bsnes -j8 platform=win profile=performance local=false
 
       - name: Upload
         uses: actions/upload-artifact@v2
