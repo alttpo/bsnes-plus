@@ -29,7 +29,6 @@ WasmWindow::WasmWindow() {
   log->setFont(monospace);
   layout->addWidget(log);
 
-  connect(this, SIGNAL(appendPlainText(const QString&)), log, SLOT(appendPlainText(const QString&)));
   connect(this, SIGNAL(appendHtml(const QString&)), log, SLOT(appendHtml(const QString&)));
 
   std::function<void(log_level level, const std::string& msg)> receiver =

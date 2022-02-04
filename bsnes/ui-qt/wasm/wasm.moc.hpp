@@ -8,7 +8,6 @@ public:
   WasmWindow();
 
 signals:
-  void appendPlainText(const QString&);
   void appendHtml(const QString&);
 
 private:
