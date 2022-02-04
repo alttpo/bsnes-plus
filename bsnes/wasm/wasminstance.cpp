@@ -48,7 +48,7 @@ bool WASMInstanceBase::_throw(const std::string& contextFunction, const char* re
   return false;
 }
 
-void WASMInstanceBase::report_error(const WASMError &err) {
+void WASMInstanceBase::report_error(const WASMError &err, log_level level) {
   WASMError errc = err;
   errc.m_moduleName = m_key;
   decorate_error(errc);
@@ -57,7 +57,8 @@ void WASMInstanceBase::report_error(const WASMError &err) {
 
   if (!filter_error(m_err))
     return;
-  m_interface->report_error(m_err);
+
+  m_interface->report_error(m_err, level);
 }
 
 bool WASMInstanceBase::filter_error(const WASMError &err) {

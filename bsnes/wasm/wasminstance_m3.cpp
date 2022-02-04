@@ -32,6 +32,11 @@ bool WASMInstanceM3::_catchM3(M3Result m3err, const std::string& contextFunction
     return false;
   }
 
+  log_level level = L_ERROR;
+  if (m3err == m3Err_functionLookupFailed) {
+    level = L_WARN;
+  }
+
   // get error info:
   M3ErrorInfo errInfo;
   IM3BacktraceInfo backtrace = NULL;
@@ -47,7 +52,7 @@ bool WASMInstanceM3::_catchM3(M3Result m3err, const std::string& contextFunction
   // construct error:
   WASMError errc(contextFunctionName, m3err, message);
 
-  report_error(errc);
+  report_error(errc, level);
 
   return true;
 }

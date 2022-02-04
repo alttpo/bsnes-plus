@@ -71,7 +71,7 @@ public:
   std::function<void()> m_do_continue;
 
 public:
-  void report_error(const WASMError& err);
+  void report_error(const WASMError& err, log_level level = L_ERROR);
   WASMError last_error() const;
 
 private:

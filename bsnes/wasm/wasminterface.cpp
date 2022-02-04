@@ -72,12 +72,12 @@ void WASMInterface::register_debugger(const std::function<void()>& do_break, con
   m_do_continue = do_continue;
 }
 
-void WASMInterface::report_error(const WASMError& err) {
+void WASMInterface::report_error(const WASMError& err, log_level level) {
   m_last_error = err;
   if (err.m_moduleName.empty()) {
-    log_message(L_ERROR, err.what());
+    log_message(level, err.what());
   } else {
-    log_module_message(L_ERROR, err.m_moduleName, err.what(false));
+    log_module_message(level, err.m_moduleName, err.what(false));
   }
 }
 
@@ -177,13 +177,6 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
     return false;
   }
 
-  // run the start routine:
-  log_module_message(L_DEBUG, instanceKey, {"start routine execute"});
-  if (!m->run_start()) {
-    return false;
-  }
-  log_module_message(L_DEBUG, instanceKey, {"start routine complete"});
-
   // find where to add/replace the instance:
   auto it = std::find_if(
     m_instances.begin(),
@@ -200,7 +193,12 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
     m->m_spaces
   );
 
-  log_module_message(L_INFO, instanceKey, {"wasm module loaded from zip"});
+  log_module_message(L_INFO, instanceKey, {"wasm module loaded from zip into slot ", std::to_string(m->m_index)});
+
+  // run the start routine:
+  log_module_message(L_DEBUG, instanceKey, {"start routine executing"});
+  m->run_start();
+  log_module_message(L_DEBUG, instanceKey, {"start routine completed"});
 
   return true;
 }

@@ -26,7 +26,7 @@ private:
   bool _throw(const std::string& contextFunction, const char* result);
 
 protected:
-  void report_error(const WASMError& err);
+  void report_error(const WASMError& err, log_level level = L_ERROR);
   virtual void decorate_error(WASMError& err) = 0;
 
 public:
