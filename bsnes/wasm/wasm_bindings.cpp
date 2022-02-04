@@ -600,7 +600,7 @@ wasm_binding(snes_bus_write, "v(i*i)") {
 
 //void ppux_draw_list_clear();
 wasm_binding(ppux_draw_list_clear, "v()") {
-  SNES::ppu.ppux_draw_list_clear();
+  SNES::ppu.ppux_modules[m_index].draw_lists.clear();
 
   wa_success();
 }
@@ -609,7 +609,7 @@ wasm_binding(ppux_draw_list_clear, "v()") {
 wasm_binding(ppux_draw_list_resize, "v(i)") {
   wa_arg    (uint32_t,  i_len);
 
-  SNES::ppu.ppux_draw_lists.resize(i_len);
+  SNES::ppu.ppux_modules[m_index].draw_lists.resize(i_len);
 
   wa_success();
 }
@@ -627,21 +627,19 @@ wasm_binding(ppux_draw_list_set, "i(ii*)") {
     wa_check_mem(i_cmdlist, i_len * sizeof(uint16_t));
   }
 
-  if (i_index >= SNES::ppu.ppux_draw_lists.size()) {
-    report_error(WASMError("ppux_draw_list_set", "index out of bounds of ppux_draw_lists vector"));
-    wa_trap("[trap] ppux_draw_list_set index out of bounds of ppux_draw_lists vector");
+  auto &draw_lists = SNES::ppu.ppux_modules[m_index].draw_lists;
+  if (i_index >= draw_lists.size()) {
+    report_error(WASMError("ppux_draw_list_set", "index out of bounds of draw_lists vector"));
+    wa_trap("[trap] ppux_draw_list_set index out of bounds of draw_lists vector");
   }
 
   // fill in the new cmdlist:
-  auto& dl = SNES::ppu.ppux_draw_lists[i_index];
-  // refer to the runtime instance's fonts and spaces collections:
-  dl.fonts = m_fonts;
-  dl.spaces = m_spaces;
+  auto& dl = draw_lists[i_index];
 
   // copy cmdlist data in:
-  dl.cmdlist.resize(i_len);
+  dl.resize(i_len);
   if (i_len > 0) {
-    void *dst = (void *) (dl.cmdlist.data());
+    void *dst = (void *) (dl.data());
     memcpy(dst, (const void *) i_cmdlist, i_len * sizeof(uint16_t));
   }
 
@@ -660,20 +658,18 @@ wasm_binding(ppux_draw_list_append, "i(i*)") {
     wa_check_mem(i_cmdlist, i_len * sizeof(uint16_t));
   }
 
-  // extend ppux_draw_lists vector:
-  int n = SNES::ppu.ppux_draw_lists.size();
-  SNES::ppu.ppux_draw_lists.resize(n + 1);
+  // extend draw_lists vector:
+  auto &draw_lists = SNES::ppu.ppux_modules[m_index].draw_lists;
+  int n = draw_lists.size();
+  draw_lists.resize(n + 1);
 
   // fill in the new cmdlist:
-  auto& dl = SNES::ppu.ppux_draw_lists[n];
-  // refer to the runtime instance's fonts and spaces collections:
-  dl.fonts = m_fonts;
-  dl.spaces = m_spaces;
+  auto& dl = draw_lists[n];
 
   // copy cmdlist data in:
-  dl.cmdlist.resize(i_len);
+  dl.resize(i_len);
   if (i_len > 0) {
-    void *dst = (void *) (dl.cmdlist.data());
+    void *dst = (void *) (dl.data());
     memcpy(dst, (const void *) i_cmdlist, i_len * sizeof(uint16_t));
   }
 

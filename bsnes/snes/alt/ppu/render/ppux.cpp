@@ -1,11 +1,14 @@
 #ifdef PPU_CPP
 
+PPU::ppux_module::ppux_module(
+  const std::string& p_key,
+  const std::shared_ptr<DrawList::FontContainer>& p_fonts,
+  const std::shared_ptr<DrawList::SpaceContainer>& p_spaces
+) : key(p_key), fonts(p_fonts), spaces(p_spaces)
+{}
+
 uint8* PPU::ppux_get_oam() {
   return memory::oam.data();
-}
-
-void PPU::ppux_draw_list_clear() {
-  ppux_draw_lists.clear();
 }
 
 struct Mode7PreTransformPlot {
@@ -55,19 +58,21 @@ void PPU::ppux_render_frame_pre() {
 
   // pre-render ppux draw_lists to frame buffers:
   memset(ppux_layer_pri, 0xFF, sizeof(ppux_layer_pri));
-  for (const auto& dl : ppux_draw_lists) {
-    // this function is called from CMD_TARGET draw list command to switch renderers:
-    DrawList::ChooseRenderer chooseRenderer = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::Renderer>& o_renderer) {
-      // select drawing target:
-      o_renderer = (i_pre_mode7_transform)
-        ? (std::shared_ptr<DrawList::Renderer>) std::make_shared<Mode7PreTransformRenderer>(i_layer, i_priority)
-        : (std::shared_ptr<DrawList::Renderer>) std::make_shared<LayerRenderer>(i_layer, i_priority);
-    };
+  for (const auto& mo : ppux_modules) {
+    for (const auto& dl : mo.draw_lists) {
+      // this function is called from CMD_TARGET draw list command to switch renderers:
+      DrawList::ChooseRenderer chooseRenderer = [=](DrawList::draw_layer i_layer, bool i_pre_mode7_transform, uint8_t i_priority, std::shared_ptr<DrawList::Renderer>& o_renderer) {
+        // select drawing target:
+        o_renderer = (i_pre_mode7_transform)
+          ? (std::shared_ptr<DrawList::Renderer>) std::make_shared<Mode7PreTransformRenderer>(i_layer, i_priority)
+          : (std::shared_ptr<DrawList::Renderer>) std::make_shared<LayerRenderer>(i_layer, i_priority);
+      };
 
-    DrawList::Context context(chooseRenderer, dl.fonts, dl.spaces);
+      DrawList::Context context(chooseRenderer, mo.fonts, mo.spaces);
 
-    // render the draw_list:
-    context.draw_list(dl.cmdlist);
+      // render the draw_list:
+      context.draw_list(dl);
+    }
   }
 }
 

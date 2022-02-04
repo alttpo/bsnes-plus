@@ -98,7 +98,7 @@ public:
   bool msg_enqueue(const std::string& instanceKey, const uint8_t *data, size_t size);
 
 private:
-  std::map<std::string, std::shared_ptr<WASMInstanceBase>> m_instances;
+  std::vector<std::shared_ptr<WASMInstanceBase>> m_instances;
 };
 
 extern WASMInterface wasmInterface;

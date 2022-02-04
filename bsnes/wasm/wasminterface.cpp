@@ -122,9 +122,8 @@ void WASMInterface::log_module_message(log_level level, const std::string& modul
 }
 
 void WASMInterface::on_nmi() {
-  for (auto &it : m_instances) {
+  for (auto &instance : m_instances) {
     WASMError err;
-    auto &instance = it.second;
 
     std::shared_ptr<WASMFunction> fn;
     if (!instance->func_find("on_nmi", fn)) {
@@ -138,9 +137,7 @@ void WASMInterface::on_nmi() {
 }
 
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
-  for (auto &it : m_instances) {
-    auto &instance = it.second;
-
+  for (auto &instance : m_instances) {
     std::shared_ptr<WASMFunction> fn;
     if (!instance->func_find("on_frame_present", fn)) {
       continue;
@@ -156,7 +153,7 @@ const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned p
 
 void WASMInterface::reset() {
   m_instances.clear();
-  SNES::ppu.ppux_draw_list_clear();
+  SNES::ppu.ppux_modules.clear();
   log_message(L_INFO, "all wasm modules removed");
 }
 
@@ -187,16 +184,21 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
   }
   log_module_message(L_DEBUG, instanceKey, {"start routine complete"});
 
-  auto it = m_instances.find(instanceKey);
-  if (it != m_instances.end()) {
-    // existing instance found so erase it:
-    //fprintf(stderr, "load_zip(): erasing existing instance key \"%s\"\n", instanceKey.c_str());
-    m_instances.erase(it);
-  }
+  // find where to add/replace the instance:
+  auto it = std::find_if(
+    m_instances.begin(),
+    m_instances.end(),
+    [&](const std::shared_ptr<WASMInstanceBase>& mo) { return mo->m_key == instanceKey; }
+  );
 
-  // emplace a new instance of the module:
-  //fprintf(stderr, "load_zip(): inserting new instance key \"%s\"\n", instanceKey.c_str());
-  m_instances.emplace_hint(it, instanceKey, m);
+  m->m_index = (it - m_instances.begin());
+  m_instances.emplace(it, m);
+  SNES::ppu.ppux_modules.emplace(
+    SNES::ppu.ppux_modules.begin() + m->m_index,
+    instanceKey,
+    m->m_fonts,
+    m->m_spaces
+  );
 
   log_module_message(L_INFO, instanceKey, {"wasm module loaded from zip"});
 
@@ -204,17 +206,38 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
 }
 
 void WASMInterface::unload_zip(const std::string &instanceKey) {
-  m_instances.erase(instanceKey);
+  auto it = std::find_if(
+    m_instances.begin(),
+    m_instances.end(),
+    [&](const std::shared_ptr<WASMInstanceBase>& mo) { return mo->m_key == instanceKey; }
+  );
+
+  if (it == m_instances.end())
+    return;
+
+  m_instances.erase(it);
+  SNES::ppu.ppux_modules.erase(SNES::ppu.ppux_modules.begin() + (it - m_instances.begin()));
+
+  // update m_index of successive instances:
+  for (; it != m_instances.end(); it++) {
+    (*it)->m_index = (it - m_instances.begin());
+  }
+
   log_module_message(L_INFO, instanceKey, {"wasm module unloaded"});
 }
 
 bool WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *data, size_t size) {
-  auto it = m_instances.find(instanceKey);
+  auto it = std::find_if(
+    m_instances.begin(),
+    m_instances.end(),
+    [&](const std::shared_ptr<WASMInstanceBase>& mo) { return mo->m_key == instanceKey; }
+  );
+
   if (it == m_instances.end()) {
     return false;
   }
 
-  auto &instance = it->second;
+  auto &instance = *it;
   return instance->msg_enqueue(std::make_shared<WASMMessage>(data, size));
 }
 

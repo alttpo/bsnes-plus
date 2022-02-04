@@ -95,6 +95,8 @@ public:
 public:
   WASMInterface* m_interface;
   const std::string m_key;
+  int m_index;
+
   std::shared_ptr<ZipArchive> m_za;
 
   WASMError m_err;
