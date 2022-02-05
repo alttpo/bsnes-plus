@@ -10,25 +10,36 @@ const (
   L_ERROR
 )
 
-//export log_go
+//go:wasm-module env
+//go:export log_go
 func log(level log_level, msg string);
 
-//export ppux_draw_list_clear
-func ppux_draw_list_clear()
-
-//export ppux_draw_list_resize
-func ppux_draw_list_resize(len uint32)
-
-//export ppux_draw_list_set
-func ppux_draw_list_set(index uint32, size uint32, cmdlist unsafe.Pointer) uint32
-
-//export ppux_draw_list_append
-func ppux_draw_list_append(size uint32, cmdlist unsafe.Pointer) uint32
-
-//export za_file_locate_go
+//go:wasm-module env
+//go:export za_file_locate_go
 func za_file_locate(i_filename string, o_fh *uint32) int32
 
-//export ppux_font_load_za
+//go:wasm-module snes
+//go:export bus_read
+func bus_read(i_address uint32, i_data unsafe.Pointer, i_size uint32)
+
+//go:wasm-module snes
+//go:export ppux_draw_list_clear
+func ppux_draw_list_clear()
+
+//go:wasm-module snes
+//go:export ppux_draw_list_resize
+func ppux_draw_list_resize(len uint32)
+
+//go:wasm-module snes
+//go:export ppux_draw_list_set
+func ppux_draw_list_set(index uint32, size uint32, cmdlist unsafe.Pointer) uint32
+
+//go:wasm-module snes
+//go:export ppux_draw_list_append
+func ppux_draw_list_append(size uint32, cmdlist unsafe.Pointer) uint32
+
+//go:wasm-module snes
+//go:export ppux_font_load_za
 func ppux_font_load_za(i_fontindex int32, i_za_fh uint32) bool
 
 const (
@@ -68,9 +79,6 @@ const (
     CMD_IMAGE
 )
 
-//export snes_bus_read
-func snes_bus_read(i_address uint32, i_data unsafe.Pointer, i_size uint32)
-
 var cmd = [...]uint16{
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
     3, CMD_PIXEL, 12, 118,
@@ -79,12 +87,18 @@ var cmd = [...]uint16{
        7, 0, 0, 0, 0,
 }
 
-//export on_nmi
+//go:export on_nmi
 func on_nmi() {
 	var module uint8
-	snes_bus_read(0x7E0010, unsafe.Pointer(&module), 1)
+	bus_read(0x7E0010, unsafe.Pointer(&module), 1)
 
 	ppux_draw_list_set(0, uint32(len(cmd)), unsafe.Pointer(&cmd))
+}
+
+//go:export on_power
+func on_power() {
+	ppux_draw_list_clear()
+	ppux_draw_list_resize(1)
 }
 
 func main() {
@@ -96,7 +110,4 @@ func main() {
     }
 
 	copy((*(*[7]uint8)(unsafe.Pointer(&cmd[len(cmd)-4])))[:], "jsd1982")
-
-	ppux_draw_list_clear()
-	ppux_draw_list_resize(1)
 }
