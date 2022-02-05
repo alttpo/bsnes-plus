@@ -17,7 +17,8 @@
     <file alias="documentation.html">../data/documentation.html</file>
     <file alias="license.html">../data/license.html</file>
 
-    <file alias="theme/dark.qss">../data/theme/dark.qss</file>
+    <file alias="dark/qplaintextedit.qss">../data/dark/qplaintextedit.qss</file>
+    <file alias="dark/qwindow.qss">../data/dark/qwindow.qss</file>
 
     <file alias="16x16/item-check-on.png">../data/icons-16x16/item-check-on.png</file>
     <file alias="16x16/item-check-off.png">../data/icons-16x16/item-check-off.png</file>

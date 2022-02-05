@@ -1,3 +1,9 @@
+* {
+    background-color: #2B2B2B;
+    color: gray;
+    font-family: Courier;
+}
+
 span.debug {
     color: green;
 }

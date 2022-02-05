@@ -10,6 +10,17 @@ WasmWindow::WasmWindow() {
   setGeometryString(&config().geometry.settingsWindow);
   application.windowList.append(this);
 
+  {
+    QFile f(":dark/qwindow.qss");
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      logMessage(L_ERROR, "could not open resource :dark/qwindow.qss");
+    } else {
+      QTextStream ts(&f);
+      const QString &sheet = ts.readAll();
+      this->setStyleSheet(sheet);
+    }
+  }
+
   layout = new QVBoxLayout;
   layout->setMargin(Style::WindowMargin);
   layout->setSpacing(Style::WidgetSpacing);
@@ -23,14 +34,10 @@ WasmWindow::WasmWindow() {
   log->setFrameStyle(0);
   log->setReadOnly(true);
   log->setMaximumBlockCount(10000);
-  QFont monospace = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-  monospace.setPointSize(12);
-  monospace.setLetterSpacing(QFont::AbsoluteSpacing, 0);
-  log->setFont(monospace);
   {
-    QFile f(":theme/dark.qss");
+    QFile f(":dark/qplaintextedit.qss");
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      logMessage(L_ERROR, "could not open resource :theme/dark.qss");
+      logMessage(L_ERROR, "could not open resource :dark/qplaintextedit.qss");
     } else {
       QTextStream ts(&f);
       const QString &sheet = ts.readAll();
