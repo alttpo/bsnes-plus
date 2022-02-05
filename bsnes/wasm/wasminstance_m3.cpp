@@ -140,10 +140,10 @@ bool WASMInstanceM3::link_module() {
   if (_catchM3(err)) return false;
 
 // link wasm_bindings.cpp member functions:
-#define wasm_link_full(name, namestr) \
+#define wasm_link_full(module, namestr, name) \
   err = m3_LinkRawFunctionEx( \
     m_module,      \
-    "*",           \
+    module,        \
     namestr,       \
     wa_sig_##name, \
     [](IM3Runtime runtime, IM3ImportContext _ctx, uint64_t * _sp, void * _mem) -> const void* { \
@@ -157,44 +157,42 @@ bool WASMInstanceM3::link_module() {
   } \
   if (_catchM3(err, namestr)) return false;
 
-#define wasm_link(name) wasm_link_full(name, #name)
+#define wasm_link(module, name) wasm_link_full(module, #name, name)
 
-  wasm_link(debugger_break);
-  wasm_link(debugger_continue);
+  wasm_link("env", log_c);
+  wasm_link("env", log_go);
 
-  wasm_link(log_c);
-  wasm_link(log_go);
+  wasm_link("env", za_file_locate_c);
+  wasm_link("env", za_file_locate_go);
+  wasm_link("env", za_file_size);
+  wasm_link("env", za_file_extract);
 
-  wasm_link(za_file_locate_c);
-  wasm_link(za_file_locate_go);
-  wasm_link(za_file_size);
-  wasm_link(za_file_extract);
+  wasm_link("env", msg_recv);
+  wasm_link("env", msg_size);
 
-  wasm_link(msg_recv);
-  wasm_link(msg_size);
+  wasm_link("snes", debugger_break);
+  wasm_link("snes", debugger_continue);
 
-  wasm_link(snes_bus_read);
-  wasm_link(snes_bus_write);
+  wasm_link_full("snes", "bus_read",  snes_bus_read);
+  wasm_link_full("snes", "bus_write", snes_bus_write);
 
-  wasm_link(ppux_spaces_reset);
+  wasm_link("snes", ppux_spaces_reset);
 
-  wasm_link(ppux_font_load_za);
-  wasm_link(ppux_font_delete);
+  wasm_link("snes", ppux_font_load_za);
+  wasm_link("snes", ppux_font_delete);
 
-  wasm_link(ppux_draw_list_clear);
-  wasm_link(ppux_draw_list_resize);
-  wasm_link(ppux_draw_list_set);
-  wasm_link(ppux_draw_list_append);
+  wasm_link("snes", ppux_draw_list_clear);
+  wasm_link("snes", ppux_draw_list_resize);
+  wasm_link("snes", ppux_draw_list_set);
+  wasm_link("snes", ppux_draw_list_append);
 
-  wasm_link(ppux_vram_write);
-  wasm_link(ppux_cgram_write);
-  wasm_link(ppux_oam_write);
+  wasm_link("snes", ppux_vram_write);
+  wasm_link("snes", ppux_cgram_write);
+  wasm_link("snes", ppux_oam_write);
 
-  wasm_link(ppux_vram_read);
-  wasm_link(ppux_cgram_read);
-  wasm_link(ppux_oam_read);
-
-  //wasm_link_full(runtime_alloc, "runtime.alloc");
+  wasm_link("snes", ppux_vram_read);
+  wasm_link("snes", ppux_cgram_read);
+  wasm_link("snes", ppux_oam_read);
 
 #undef wasm_link
 #undef wasm_link_full

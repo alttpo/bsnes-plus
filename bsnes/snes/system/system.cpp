@@ -176,6 +176,9 @@ void System::power() {
 
   input.update();
 //video.update();
+
+  // wasm: call function in all modules and runtimes:
+  wasmInterface.on_power();
 }
 
 void System::reset() {
@@ -219,6 +222,9 @@ void System::reset() {
   input.port_set_device(1, config().controller_port2);
   input.update();
 //video.update();
+
+  // wasm: call function in all modules and runtimes:
+  wasmInterface.on_reset();
 }
 
 void System::unload() {
@@ -226,6 +232,9 @@ void System::unload() {
   if(cartridge.mode() == Cartridge::Mode::SuperGameBoy) supergameboy.unload();
   
   if(cartridge.has_msu1()) msu1.unload();
+
+  // wasm: call function in all modules and runtimes:
+  wasmInterface.on_unload();
 }
 
 void System::scanline() {

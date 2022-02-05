@@ -21,13 +21,13 @@ int printf(const char* format, ...) {
 
 uint16_t bus_read_u16(uint32_t i_address) {
   uint16_t d;
-  snes_bus_read(i_address, (uint8_t *)&d, sizeof(uint16_t));
+  bus_read(i_address, (uint8_t *)&d, sizeof(uint16_t));
   return d;
 }
 
 uint8_t bus_read_u8(uint32_t i_address) {
   uint8_t d;
-  snes_bus_read(i_address, (uint8_t *)&d, sizeof(uint8_t));
+  bus_read(i_address, (uint8_t *)&d, sizeof(uint8_t));
   return d;
 }
 
@@ -280,13 +280,13 @@ void decompress_sprites() {
   memset(sprites, 0, 0x2000);
 
   // copy link 4bpp body sprites:
-  snes_bus_read(0x108000, sprites, 0x2000);
+  bus_read(0x108000, sprites, 0x2000);
   ppux_vram_write(1, 0x0000, sprites, 0x2000);
-  snes_bus_read(0x10A000, sprites, 0x2000);
+  bus_read(0x10A000, sprites, 0x2000);
   ppux_vram_write(1, 0x2000, sprites, 0x2000);
-  snes_bus_read(0x10C000, sprites, 0x2000);
+  bus_read(0x10C000, sprites, 0x2000);
   ppux_vram_write(1, 0x4000, sprites, 0x2000);
-  snes_bus_read(0x10E000, sprites, 0x2000);
+  bus_read(0x10E000, sprites, 0x2000);
   ppux_vram_write(1, 0x6000, sprites, 0x2000);
 
   // decompress sword+shield 3bpp data:
@@ -294,18 +294,18 @@ void decompress_sprites() {
   uint8_t *pak5f = &pak5e[0x600];
 
   uint32_t addr = get_graphics_addr(0x5F);
-  snes_bus_read(addr, buf, 0x1000);
+  bus_read(addr, buf, 0x1000);
   decomp3bpp(buf, pak5f);
 
   addr = get_graphics_addr(0x5E);
-  snes_bus_read(addr, buf, 0x1000);
+  bus_read(addr, buf, 0x1000);
   decomp3bpp(buf, pak5e);
 
   //hexdump(pak5e, 0xC00);
 
   // load uncompressed 3bpp graphics pack #00:
   addr = get_graphics_addr(0x00);
-  snes_bus_read(addr, buf, 0x1000);
+  bus_read(addr, buf, 0x1000);
 
   uint16_t t0C = 0;
 
@@ -385,7 +385,7 @@ void decompress_sprites() {
   uint8_t tmp[0x1000];
   uint8_t pak60[0x1000];
   addr = get_graphics_addr(0x60);
-  snes_bus_read(addr, tmp, 0x1000);
+  bus_read(addr, tmp, 0x1000);
   decomp3bpp(tmp, pak60);
 
   // bug net:
@@ -659,9 +659,9 @@ void on_nmi() {
 #if 0
     // copy 3bpp->4bpp decompressed sprites from WRAM:
     // keep the same bank offset ($9000) in VRAM as it is in WRAM, cuz why not?
-    snes_bus_read(0x7E9000, sprites, 0x2000);
+    bus_read(0x7E9000, sprites, 0x2000);
     ppux_vram_write(1, 0x9000, sprites, 0x2000);
-    snes_bus_read(0x7EB000, sprites, 0x1000);
+    bus_read(0x7EB000, sprites, 0x1000);
     ppux_vram_write(1, 0xB000, sprites, 0x1000);
 #endif
 
@@ -674,7 +674,7 @@ void on_nmi() {
   link_oam_start = bus_read_u16(0x7E0352);
   if (link_oam_start >= 0x200) return;
 
-  snes_bus_read(0x7E0800, oam, 0x2A0);
+  bus_read(0x7E0800, oam, 0x2A0);
 
   // move all previous recorded frames down by one:
   for (int j = 79; j >= 1; j--) {
@@ -790,11 +790,15 @@ void on_nmi() {
   }
 }
 
-__attribute__((export_name("_start")))
-void start() {
+// called when SNES powers up:
+__attribute__((export_name("on_power")))
+void on_power() {
   log(L_DEBUG, "decompress sprites");
   decompress_sprites();
+}
 
+__attribute__((export_name("_start")))
+void start() {
   // load PCF font from ZIP archive:
   uint32_t fh;
   log(L_DEBUG, "load PCF font");

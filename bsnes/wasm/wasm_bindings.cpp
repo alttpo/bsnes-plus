@@ -5,27 +5,6 @@
   const char* WASMInstanceBase::wa_sig_##name = sig; \
   const char* WASMInstanceBase::wa_fun_##name(void* _mem, uint64_t* _sp)
 
-//i32 runtime_alloc(i32, i32, i32)
-wasm_binding(runtime_alloc, "i(iii)") {
-  wa_return_type(int32_t);
-
-  wa_return(0);
-}
-
-//void debugger_break();
-wasm_binding(debugger_break, "v()") {
-  m_interface->m_do_break();
-
-  wa_success();
-}
-
-//void debugger_continue();
-wasm_binding(debugger_continue, "v()") {
-  m_interface->m_do_continue();
-
-  wa_success();
-}
-
 //void log_c(int32_t level, const char* msg);
 wasm_binding(log_c, "v(i*)") {
   wa_arg    (int32_t,     i_level);
@@ -161,6 +140,20 @@ wasm_binding(msg_recv, "i(*i)") {
   memcpy((void *)o_data, (const void *)msg->m_data, msg->m_size);
 
   wa_return(0);
+}
+
+//void debugger_break();
+wasm_binding(debugger_break, "v()") {
+  m_interface->m_do_break();
+
+  wa_success();
+}
+
+//void debugger_continue();
+wasm_binding(debugger_continue, "v()") {
+  m_interface->m_do_continue();
+
+  wa_success();
 }
 
 //void ppux_spaces_reset();

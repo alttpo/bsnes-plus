@@ -121,12 +121,12 @@ void WASMInterface::log_module_message(log_level level, const std::string& modul
   log_message(level, m);
 }
 
-void WASMInterface::on_nmi() {
+void WASMInterface::run_func(const std::string& name) {
   for (auto &instance : m_instances) {
     WASMError err;
 
     std::shared_ptr<WASMFunction> fn;
-    if (!instance->func_find("on_nmi", fn)) {
+    if (!instance->func_find(name, fn)) {
       continue;
     }
 
@@ -136,18 +136,24 @@ void WASMInterface::on_nmi() {
   }
 }
 
+void WASMInterface::on_power() {
+  run_func("on_power");
+}
+
+void WASMInterface::on_reset() {
+  run_func("on_reset");
+}
+
+void WASMInterface::on_unload() {
+  run_func("on_unload");
+}
+
+void WASMInterface::on_nmi() {
+  run_func("on_nmi");
+}
+
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
-  for (auto &instance : m_instances) {
-    std::shared_ptr<WASMFunction> fn;
-    if (!instance->func_find("on_frame_present", fn)) {
-      continue;
-    }
-
-    if (!instance->func_invoke(fn, 0, 0, nullptr)) {
-      continue;
-    }
-  }
-
+  run_func("on_frame_present");
   return data;
 }
 

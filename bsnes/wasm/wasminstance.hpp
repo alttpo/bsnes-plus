@@ -53,11 +53,6 @@ public:
   static const char *wa_sig_##name; \
   const char* wa_fun_##name(void* _mem, uint64_t* _sp)
 
-  decl_binding(runtime_alloc);
-
-  decl_binding(debugger_break);
-  decl_binding(debugger_continue);
-
   decl_binding(log_c);
   decl_binding(log_go);
 
@@ -68,6 +63,9 @@ public:
 
   decl_binding(msg_recv);
   decl_binding(msg_size);
+
+  decl_binding(debugger_break);
+  decl_binding(debugger_continue);
 
   decl_binding(snes_bus_read);
   decl_binding(snes_bus_write);

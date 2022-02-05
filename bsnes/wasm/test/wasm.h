@@ -7,6 +7,8 @@ void *memset(void *data, int c, unsigned long len);
 __attribute__((import_module("env"), import_name("_memcpy")))
 void *memcpy(void *data, const void *src, unsigned long len);
 
+// env:
+
 __attribute__((import_module("env"), import_name("puts")))
 int32_t puts(const char *i_str);
 
@@ -23,8 +25,16 @@ typedef enum log_level {
 __attribute__((import_module("env"), import_name("log_c")))
 void log(log_level level, const char* msg);
 
+__attribute__((import_module("env"), import_name("za_file_locate_c")))
+int32_t za_file_locate(const char *i_filename, uint32_t* o_fh);
 
-// ppux:
+__attribute__((import_module("env"), import_name("za_file_size")))
+int32_t za_file_size(int32_t fh, uint64_t* o_size);
+
+__attribute__((import_module("env"), import_name("za_file_extract")))
+int32_t za_file_extract(int32_t fh, void *o_data, uint64_t i_size);
+
+// snes:
 
 enum draw_color_kind {
   COLOR_STROKE,
@@ -71,72 +81,53 @@ enum draw_layer : uint16_t {
   COL = 5
 };
 
-__attribute__((import_module("env"), import_name("za_file_locate_c")))
-int32_t za_file_locate(const char *i_filename, uint32_t* o_fh);
-
-__attribute__((import_module("env"), import_name("za_file_size")))
-int32_t za_file_size(int32_t fh, uint64_t* o_size);
-
-__attribute__((import_module("env"), import_name("za_file_extract")))
-int32_t za_file_extract(int32_t fh, void *o_data, uint64_t i_size);
-
-__attribute__((import_module("env"), import_name("ppux_font_load_za")))
+__attribute__((import_module("snes"), import_name("ppux_font_load_za")))
 int32_t ppux_font_load_za(int32_t i_fontindex, int32_t i_za_fh);
 
-__attribute__((import_module("env"), import_name("ppux_font_delete")))
+__attribute__((import_module("snes"), import_name("ppux_font_delete")))
 void ppux_font_delete(int32_t i_fontindex);
 
-__attribute__((import_module("env"), import_name("ppux_vram_reset")))
+__attribute__((import_module("snes"), import_name("ppux_vram_reset")))
 void ppux_vram_reset();
 
-__attribute__((import_module("env"), import_name("ppux_cgram_reset")))
+__attribute__((import_module("snes"), import_name("ppux_cgram_reset")))
 void ppux_cgram_reset();
 
-__attribute__((import_module("env"), import_name("ppux_vram_write")))
+__attribute__((import_module("snes"), import_name("ppux_vram_write")))
 int32_t ppux_vram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_cgram_write")))
+__attribute__((import_module("snes"), import_name("ppux_cgram_write")))
 int32_t ppux_cgram_write(uint32_t i_space, uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_oam_write")))
+__attribute__((import_module("snes"), import_name("ppux_oam_write")))
 int32_t ppux_oam_write(uint32_t i_offset, uint8_t *i_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_vram_read")))
+__attribute__((import_module("snes"), import_name("ppux_vram_read")))
 int32_t ppux_vram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_cgram_read")))
+__attribute__((import_module("snes"), import_name("ppux_cgram_read")))
 int32_t ppux_cgram_read(uint32_t i_space, uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_oam_read")))
+__attribute__((import_module("snes"), import_name("ppux_oam_read")))
 int32_t ppux_oam_read(uint32_t i_offset, uint8_t *o_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("ppux_draw_list_clear")))
+__attribute__((import_module("snes"), import_name("ppux_draw_list_clear")))
 void ppux_draw_list_clear();
 
-__attribute__((import_module("env"), import_name("ppux_draw_list_resize")))
+__attribute__((import_module("snes"), import_name("ppux_draw_list_resize")))
 void ppux_draw_list_resize(uint32_t i_len);
 
-__attribute__((import_module("env"), import_name("ppux_draw_list_set")))
+__attribute__((import_module("snes"), import_name("ppux_draw_list_set")))
 uint32_t ppux_draw_list_set(uint32_t i_index, uint32_t i_len, uint16_t* i_cmdlist);
 
-__attribute__((import_module("env"), import_name("ppux_draw_list_append")))
+__attribute__((import_module("snes"), import_name("ppux_draw_list_append")))
 uint32_t ppux_draw_list_append(uint32_t i_len, uint16_t* i_cmdlist);
 
-// snes:
+__attribute__((import_module("snes"), import_name("bus_read")))
+void bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
 
-__attribute__((import_module("env"), import_name("snes_bus_read")))
-void snes_bus_read(uint32_t i_address, uint8_t *i_data, uint32_t i_size);
-
-__attribute__((import_module("env"), import_name("snes_bus_write")))
-void snes_bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
-
-// msg:
-
-__attribute__((import_module("env"), import_name("msg_recv")))
-int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
-
-__attribute__((import_module("env"), import_name("msg_size")))
-int32_t msg_size(uint16_t *o_size);
+__attribute__((import_module("snes"), import_name("bus_write")))
+void bus_write(uint32_t i_address, uint8_t *o_data, uint32_t i_size);
 
 // debugger:
 
@@ -145,3 +136,11 @@ void debugger_break();
 
 __attribute__((import_module("env"), import_name("debugger_continue")))
 void debugger_continue();
+
+// msg:
+
+__attribute__((import_module("env"), import_name("msg_recv")))
+int32_t msg_recv(uint8_t *o_data, uint32_t i_size);
+
+__attribute__((import_module("env"), import_name("msg_size")))
+int32_t msg_size(uint16_t *o_size);
