@@ -1,6 +1,6 @@
 * {
-    background-color: #2B2B2B;
-    color: gray;
+    background-color: #1e1e1e;
+    color: silver;
     font-family: Courier;
 }
 
