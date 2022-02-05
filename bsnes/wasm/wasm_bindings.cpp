@@ -573,6 +573,10 @@ wasm_binding(snes_bus_read, "v(i*i)") {
 
   wa_check_mem(o_data, i_size);
 
+  if (!SNES::cartridge.loaded()) {
+    wa_trap("[trap] cannot read from bus; no cartridge loaded");
+  }
+
   for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
     uint8_t b;
     b = SNES::bus.read(a);
@@ -589,6 +593,10 @@ wasm_binding(snes_bus_write, "v(i*i)") {
   wa_arg    (uint32_t, i_size);
 
   wa_check_mem(i_data, i_size);
+
+  if (!SNES::cartridge.loaded()) {
+    wa_trap("[trap] cannot write to bus; no cartridge loaded");
+  }
 
   for (uint32_t a = i_address, o = 0; o < i_size; o++, a++) {
     uint8_t b = i_data[o];
