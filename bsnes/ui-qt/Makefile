@@ -87,7 +87,7 @@ $(objdir)/ui-wasm.o: $(ui)/wasm/wasm.cpp $(headers) $(wildcard $(ui)/wasm/*.cpp)
 $(objdir)/ruby.o: ruby/ruby.cpp $(call rwildcard,ruby/*)
 	$(call compile,$(rubydef) $(rubyflags))
 
-obj/resource.rcc: $(ui)/resource/resource.qrc $(ui)/data/*
+obj/resource.rcc: $(ui)/resource/resource.qrc $(call rwildcard,$(ui)/data/*)
 	$(rcc) $(ui)/resource/resource.qrc -o obj/resource.rcc
 
 $(objdir)/resource.o: $(ui)/resource/resource.rc
