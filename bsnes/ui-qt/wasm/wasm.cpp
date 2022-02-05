@@ -27,6 +27,16 @@ WasmWindow::WasmWindow() {
   monospace.setPointSize(12);
   monospace.setLetterSpacing(QFont::AbsoluteSpacing, 0);
   log->setFont(monospace);
+  {
+    QFile f(":theme/dark.qss");
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      logMessage(L_ERROR, "could not open resource :theme/dark.qss");
+    } else {
+      QTextStream ts(&f);
+      const QString &sheet = ts.readAll();
+      log->document()->setDefaultStyleSheet(sheet);
+    }
+  }
   layout->addWidget(log);
 
   connect(this, SIGNAL(appendHtml(const QString&)), log, SLOT(appendHtml(const QString&)));
@@ -46,16 +56,16 @@ void WasmWindow::logMessage(log_level level, const std::string& msg) {
   qmsg.append("</span>");
 
   if (level <= L_DEBUG) {
-    qmsg.append(" <span style='color:green;'>DEBUG ");
+    qmsg.append(" <span class='debug'>DEBUG ");
   }
   else if (level <= L_INFO) {
-    qmsg.append(" <span style='color:gray'>INFO&nbsp; ");
+    qmsg.append(" <span class='info'>INFO&nbsp; ");
   }
   else if (level <= L_WARN) {
-    qmsg.append(" <span style='color:yellow'>WARN&nbsp; ");
+    qmsg.append(" <span class='warn'>WARN&nbsp; ");
   }
   else if (level <= L_ERROR) {
-    qmsg.append(" <span style='color:red'>ERROR ");
+    qmsg.append(" <span class='error'>ERROR ");
   }
 
   qmsg.append(QString::fromStdString(msg).toHtmlEscaped());

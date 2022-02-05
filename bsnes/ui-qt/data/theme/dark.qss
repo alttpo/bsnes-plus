@@ -1,0 +1,15 @@
+span.debug {
+    color: green;
+}
+
+span.info {
+    color: silver;
+}
+
+span.warn {
+    color: darkorange;
+}
+
+span.error {
+    color: red;
+}
