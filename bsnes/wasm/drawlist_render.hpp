@@ -388,8 +388,8 @@ struct GenericRenderer : public DrawList::Renderer {
 
   void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) override {
     PLOT plot(layer, priority);
-    font.draw_text_utf8(s, len, x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
-    font.draw_text_utf8(s, len, x0, y0, stroke_color, plot);
+    font.draw_text_utf8<width, height>(s, len, x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
+    font.draw_text_utf8<width, height>(s, len, x0, y0, stroke_color, plot);
   }
 
 

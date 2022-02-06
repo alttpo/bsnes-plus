@@ -63,7 +63,7 @@ struct Font {
     return true;
   }
 
-  template<typename PLOT>
+  template<unsigned width, unsigned height, typename PLOT>
   void draw_text_utf8(uint8_t* s, uint16_t len, int x0, int y0, uint16_t color, PLOT plot) {
     uint8_t gw, gh;
 
@@ -78,9 +78,20 @@ struct Font {
         continue;
       }
 
+      if (x0 >= width) break;
+      if (y0 >= height) break;
+
       // have code point:
       //printf("U+%04x\n", codepoint);
-      draw_glyph(gw, gh, codepoint, color, [&](int rx, int ry, uint16_t color) { plot(x0+rx, y0+ry, color); });
+      draw_glyph(gw, gh, codepoint, color, [&](int rx, int ry, uint16_t color) {
+        int x = x0+rx;
+        int y = y0+ry;
+        if (y < 0) return;
+        if (y >= height) return;
+        if (x < 0) return;
+        if (x >= width) return;
+        plot(x, y, color);
+      });
 
       x0 += gw;
     }
