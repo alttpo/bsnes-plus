@@ -177,6 +177,8 @@ void System::power() {
   input.update();
 //video.update();
 
+  powered = true;
+
   // wasm: call function in all modules and runtimes:
   wasmInterface.on_power();
 }
@@ -233,6 +235,8 @@ void System::unload() {
   
   if(cartridge.has_msu1()) msu1.unload();
 
+  powered = false;
+
   // wasm: call function in all modules and runtimes:
   wasmInterface.on_unload();
 }
@@ -245,7 +249,9 @@ void System::scanline() {
 void System::frame() {
 }
 
-System::System() : interface(0) {
+bool System::has_power() const { return powered; }
+
+System::System() : interface(0), powered(false) {
   region = Region::Autodetect;
   expansion = ExpansionPortDevice::None;
 }

@@ -121,39 +121,43 @@ void WASMInterface::log_module_message(log_level level, const std::string& modul
   log_message(level, m);
 }
 
-void WASMInterface::run_func(const std::string& name) {
+bool WASMInterface::run_func(const std::shared_ptr<WASMInstanceBase>& instance, const std::string& name) {
+  std::shared_ptr<WASMFunction> fn;
+  if (!instance->func_find(name, fn)) {
+    return false;
+  }
+
+  if (!instance->func_invoke(fn, 0, 0, nullptr)) {
+    return false;
+  }
+
+  return true;
+}
+
+void WASMInterface::run_func_for_each(const std::string& name) {
   for (auto &instance : m_instances) {
-    WASMError err;
-
-    std::shared_ptr<WASMFunction> fn;
-    if (!instance->func_find(name, fn)) {
-      continue;
-    }
-
-    if (!instance->func_invoke(fn, 0, 0, nullptr)) {
-      continue;
-    }
+    run_func(instance, name);
   }
 }
 
 void WASMInterface::on_power() {
-  run_func("on_power");
+  run_func_for_each("on_power");
 }
 
 void WASMInterface::on_reset() {
-  run_func("on_reset");
+  run_func_for_each("on_reset");
 }
 
 void WASMInterface::on_unload() {
-  run_func("on_unload");
+  run_func_for_each("on_unload");
 }
 
 void WASMInterface::on_nmi() {
-  run_func("on_nmi");
+  run_func_for_each("on_nmi");
 }
 
 const uint16_t *WASMInterface::on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace) {
-  run_func("on_frame_present");
+  run_func_for_each("on_frame_present");
   return data;
 }
 
@@ -205,6 +209,10 @@ bool WASMInterface::load_zip(const std::string &instanceKey, const uint8_t *data
   log_module_message(L_DEBUG, instanceKey, {"start routine executing"});
   m->run_start();
   log_module_message(L_DEBUG, instanceKey, {"start routine completed"});
+
+  if (SNES::system.has_power()) {
+    run_func(m, "on_power");
+  }
 
   return true;
 }

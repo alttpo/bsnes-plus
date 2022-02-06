@@ -17,6 +17,8 @@ public:
   void frame();
   void scanline();
 
+  bool has_power() const;
+
   //return *active* system information (settings are cached upon power-on)
   readonly<Region> region;
   readonly<ExpansionPortDevice> expansion;
@@ -30,6 +32,7 @@ public:
   System();
 
 private:
+  bool powered;
   Interface *interface;
   bool runthreadtosave(cothread_t&);
 

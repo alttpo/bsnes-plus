@@ -68,7 +68,8 @@ public:
   const uint16_t *on_frame_present(const uint16_t *data, unsigned pitch, unsigned width, unsigned height, bool interlace);
 
 private:
-  void run_func(const std::string& name);
+  bool run_func(const std::shared_ptr<WASMInstanceBase>& instance, const std::string& name);
+  void run_func_for_each(const std::string& name);
 
 public:
   void register_debugger(const std::function<void()>& do_break, const std::function<void()>& do_continue);
