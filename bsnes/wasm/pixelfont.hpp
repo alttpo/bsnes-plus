@@ -32,6 +32,7 @@ struct Font {
   );
 
   uint32_t find_glyph(uint32_t codePoint) const;
+  int calc_width(uint8_t* s, uint16_t len) const;
 
   template<typename PLOT>
   bool draw_glyph(uint8_t& width, uint8_t& height, uint32_t codePoint, uint16_t color, PLOT plot) {
@@ -77,9 +78,6 @@ struct Font {
       if (decode(&state, &codepoint, c)) {
         continue;
       }
-
-      if (x0 >= width) break;
-      if (y0 >= height) break;
 
       // have code point:
       //printf("U+%04x\n", codepoint);

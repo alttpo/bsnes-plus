@@ -1,6 +1,4 @@
 
-#include "drawlist.hpp"
-
 namespace DrawList {
 
 LocalSpace::LocalSpace() {}
@@ -76,6 +74,7 @@ void Context::draw_list(const std::vector<uint16_t>& cmdlist) {
   uint32_t  end = cmdlist.size();
   uint16_t* p = start;
 
+  text_alignment text_align = static_cast<text_alignment>(TEXT_HALIGN_LEFT | TEXT_VALIGN_TOP);
   uint16_t fontindex = 0;
   uint16_t colorstate[COLOR_MAX] = { 0x7fff, };
   uint16_t& stroke_color  = colorstate[COLOR_STROKE];
@@ -284,6 +283,10 @@ void Context::draw_list(const std::vector<uint16_t>& cmdlist) {
         fontindex = index;
         break;
       }
+      case CMD_TEXT_ALIGN: {
+        text_align = static_cast<text_alignment>(*d++);
+        break;
+      }
       case CMD_TEXT_UTF8: {
         while (d - args < len) {
           // need a complete command:
@@ -323,7 +326,7 @@ void Context::draw_list(const std::vector<uint16_t>& cmdlist) {
             continue;
           }
 
-          m_renderer->draw_text_utf8(str, textchars, *font, x0, y0);
+          m_renderer->draw_text_utf8(str, textchars, *font, x0, y0, text_align);
         }
         break;
       }

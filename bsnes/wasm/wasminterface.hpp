@@ -50,6 +50,7 @@ public:
 };
 
 #include "ziparchive.hpp"
+#include "drawlist_fwd.hpp"
 #include "pixelfont.hpp"
 #include "drawlist.hpp"
 

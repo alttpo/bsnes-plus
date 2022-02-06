@@ -253,9 +253,12 @@ bool WASMInterface::msg_enqueue(const std::string &instanceKey, const uint8_t *d
   return instance->msg_enqueue(std::make_shared<WASMMessage>(data, size));
 }
 
+#include "drawlist.hpp"
+
 #include "wasminstance.cpp"
 
 #include "ziparchive.cpp"
+
 #include "pixelfont.cpp"
 #include "drawlist.cpp"
 #include "wasm_bindings.cpp"

@@ -386,8 +386,29 @@ struct GenericRenderer : public DrawList::Renderer {
     DrawList::draw_line<width, height>(x0, y0, x1, y1, stroke_color, plot);
   }
 
-  void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) override {
+  void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0, text_alignment align) override {
     PLOT plot(layer, priority);
+
+    // handle horizontal alignment:
+    if ((align & DrawList::TEXT_HALIGN_CENTER) || (align & DrawList::TEXT_HALIGN_RIGHT)) {
+      // determine text width:
+      int strwidth = font.calc_width(s, len);
+
+      // adjust starting x position:
+      if (align & DrawList::TEXT_HALIGN_CENTER) {
+        x0 -= strwidth / 2;
+      } else {
+        x0 -= strwidth;
+      }
+    }
+
+    // handle vertical alignment (assuming no newline handling):
+    if (align & DrawList::TEXT_VALIGN_MIDDLE) {
+      y0 -= font.m_height / 2;
+    } else if (align & DrawList::TEXT_VALIGN_BOTTOM) {
+      y0 -= font.m_height;
+    }
+
     font.draw_text_utf8<width, height>(s, len, x0, y0, outline_color, Outliner<width, height, PLOT>(plot));
     font.draw_text_utf8<width, height>(s, len, x0, y0, stroke_color, plot);
   }

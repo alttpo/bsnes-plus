@@ -2,53 +2,6 @@
 
 namespace DrawList {
 
-enum draw_color_kind {
-  COLOR_STROKE,
-  COLOR_FILL,
-  COLOR_OUTLINE,
-
-  COLOR_MAX
-};
-
-const uint16_t color_none = 0x8000;
-
-enum draw_cmd : uint16_t {
-  // commands which affect state:
-  ///////////////////////////////
-
-  // 4, CMD_TARGET, draw_layer, pre_mode7_transform, priority
-  CMD_TARGET = 1,
-  CMD_COLOR_DIRECT_BGR555,
-  CMD_COLOR_DIRECT_RGB888,
-  CMD_COLOR_PALETTED,
-  CMD_FONT_SELECT,
-
-  // commands which use state:
-  ///////////////////////////////
-  CMD_TEXT_UTF8 = 0x40,
-  CMD_PIXEL,
-  CMD_HLINE,
-  CMD_VLINE,
-  CMD_LINE,
-  CMD_RECT,
-  CMD_RECT_FILL,
-
-  // commands which ignore state:
-  ///////////////////////////////
-  CMD_VRAM_TILE = 0x80,
-  CMD_IMAGE,
-};
-
-enum draw_layer : uint16_t {
-  BG1 = 0,
-  BG2 = 1,
-  BG3 = 2,
-  BG4 = 3,
-  OAM = 4,
-  BACK = 5,
-  COL = 5
-};
-
 struct FontContainer {
   void load_pcf(int fontindex, const uint8_t* pcf_data, int pcf_size);
 
@@ -122,7 +75,7 @@ struct Renderer {
   virtual void draw_rect(int x0, int y0, int w, int h) = 0;
   virtual void draw_rect_fill(int x0, int y0, int w, int h) = 0;
   virtual void draw_line(int x1, int y1, int x2, int y2) = 0;
-  virtual void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0) = 0;
+  virtual void draw_text_utf8(uint8_t* s, uint16_t len, PixelFont::Font& font, int x0, int y0, text_alignment align) = 0;
 
   virtual uint16_t* draw_image(int x0, int y0, int w, int h, uint16_t* d) = 0;
   virtual void draw_vram_tile(int x0, int y0, int w, int h, bool hflip, bool vflip, uint8_t bpp, uint16_t vram_addr, uint8_t palette, uint8_t* vram, uint8_t* cgram) = 0;

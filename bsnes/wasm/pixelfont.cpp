@@ -48,4 +48,30 @@ uint32_t Font::find_glyph(uint32_t codePoint) const {
   return index;
 }
 
+int Font::calc_width(uint8_t* s, uint16_t len) const {
+  int strwidth = 0;
+  uint32_t codepoint = 0;
+  uint32_t state = 0;
+
+  // determine text width:
+  for (unsigned n = 0; n < len; ++s, ++n) {
+    uint8_t c = *s;
+    if (c == 0) break;
+
+    if (decode(&state, &codepoint, c)) {
+      continue;
+    }
+
+    auto glyphIndex = find_glyph(codepoint);
+    if (glyphIndex == UINT32_MAX) {
+      continue;
+    }
+
+    const auto& g = m_glyphs[glyphIndex];
+    strwidth += g.m_width;
+  }
+
+  return strwidth;
+}
+
 }
