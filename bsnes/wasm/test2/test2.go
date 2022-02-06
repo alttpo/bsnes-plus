@@ -1,5 +1,7 @@
 package main
 
+import "encoding/binary"
+import "math"
 import "unsafe"
 
 type log_level int32
@@ -87,10 +89,18 @@ var cmd = [...]uint16{
        7, 0, 0, 0, 0,
 }
 
+var f float64
+
 //go:export on_nmi
 func on_nmi() {
 	var module uint8
 	bus_read(0x7E0010, unsafe.Pointer(&module), 1)
+
+    v := math.Sin(f * math.Pi)
+    f += math.Pi / 256.0
+    binary.LittleEndian.PutUint16(
+        (*(*[2]uint8)(unsafe.Pointer(&cmd[len(cmd)-7])))[:],
+        uint16(v * 127.0 + 128.0))
 
 	ppux_draw_list_set(0, uint32(len(cmd)), unsafe.Pointer(&cmd))
 }
