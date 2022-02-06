@@ -55,6 +55,15 @@ const (
 const color_none uint16 = 0x8000
 
 const (
+    TEXT_HALIGN_LEFT   = 0
+    TEXT_HALIGN_CENTER = 1 << 0
+    TEXT_HALIGN_RIGHT  = 1 << 1
+    TEXT_VALIGN_TOP    = 0
+    TEXT_VALIGN_MIDDLE = 1 << 2
+    TEXT_VALIGN_BOTTOM = 1 << 3
+)
+
+const (
     // commands which affect state:
     ///////////////////////////////
     CMD_TARGET uint16 = iota + 1
@@ -62,6 +71,7 @@ const (
     CMD_COLOR_DIRECT_RGB888
     CMD_COLOR_PALETTED
     CMD_FONT_SELECT
+    CMD_TEXT_ALIGN
 )
 const (
     // commands which use state:
@@ -85,6 +95,7 @@ var cmd = [...]uint16{
     3, CMD_COLOR_DIRECT_BGR555, COLOR_STROKE, 0x1F3F,
     3, CMD_PIXEL, 12, 118,
     7, CMD_COLOR_DIRECT_RGB888, COLOR_STROKE, 0x00FF, 0x3F00, COLOR_OUTLINE, 0x005F, 0x1F00,
+    2, CMD_TEXT_ALIGN, TEXT_HALIGN_CENTER | TEXT_VALIGN_TOP,
     8, CMD_TEXT_UTF8, 0, 2,
        7, 0, 0, 0, 0,
 }
@@ -96,8 +107,11 @@ func on_nmi() {
 	var module uint8
 	bus_read(0x7E0010, unsafe.Pointer(&module), 1)
 
-    v := math.Sin(f * math.Pi)
-    f += math.Pi / 256.0
+    v := math.Sin(f)
+    f += 2.0 * math.Pi / 256.0
+    if f >= math.Pi * 2.0 {
+        f -= math.Pi * 2.0
+    }
     binary.LittleEndian.PutUint16(
         (*(*[2]uint8)(unsafe.Pointer(&cmd[len(cmd)-7])))[:],
         uint16(v * 127.0 + 128.0))
