@@ -68,7 +68,7 @@ jobs:
 
       - name: Build bsnes-plus
         run: |
-          mingw32-make -C bsnes -j8 platform=win profile=performance local=false
+          mingw32-make -C bsnes -j8 local=false
 
           cd bsnes\out
 
