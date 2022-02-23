@@ -104,7 +104,10 @@ objects := $(patsubst %,$(objdir)/%.o,$(objects))
 
 # targets
 build: ui_build $(objects)
-ifeq ($(platform),osx)
+ifeq ($(platform),$(filter $(platform),win msys))
+	copy ..\external\qt\mingw-w64\bin\Qt*.dll out
+	xcopy /Y /E ..\external\qt\mingw-w64\plugins out
+else ifeq ($(platform),osx)
 	test -d $(osxbundle) || mkdir -p $(osxbundle)/Contents/MacOS
 	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/$(out) $(objects) $(link))
 	mkdir -p $(osxbundle)/Contents/Resources
