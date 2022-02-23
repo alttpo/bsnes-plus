@@ -8,7 +8,8 @@ ifeq ($(ui),)
 endif
 
 ifeq ($(profile),)
-  profile := compatibility
+  #profile := compatibility
+  profile := performance
   ifeq ($(out),)
     out   := bsnes
   endif
@@ -109,7 +110,8 @@ ifeq ($(platform),$(filter $(platform),win msys))
 	xcopy /Y /E ..\external\qt\mingw-w64\plugins out
 else ifeq ($(platform),osx)
 	test -d $(osxbundle) || mkdir -p $(osxbundle)/Contents/MacOS
-	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/$(out) $(objects) $(link))
+	# NOTE(jsd): we force the output binary to `bsnes` because it is referenced in Info.plist
+	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/bsnes $(objects) $(link))
 	mkdir -p $(osxbundle)/Contents/Resources
 	cp -f data/bsnes.icns $(osxbundle)/Contents/Resources/AppIcon.icns
 	sed 's/@VERSION/v$(version)/g' data/Info.plist > $(osxbundle)/Contents/Info.plist
@@ -126,7 +128,7 @@ ifeq ($(platform),x)
 	install -D -m 644 data/bsnes.desktop $(DESTDIR)$(prefix)/share/applications/bsnes.desktop
 	test -d ~/.bsnes || mkdir ~/.bsnes
 else ifeq ($(platform),osx)
-	mv -f $(osxbundle) /Applications/bsnes+.app
+	mv -f $(osxbundle) /Applications/bsnes-plus.app
 	test -d ~/.bsnes || mkdir ~/.bsnes
 else
 	@echo Install not available for current platform
@@ -138,7 +140,7 @@ ifeq ($(platform),x)
 	rm $(DESTDIR)$(prefix)/share/pixmaps/bsnes.png
 	rm $(DESTDIR)$(prefix)/share/applications/bsnes.desktop
 else ifeq ($(platform),osx)
-	rm -rf /Applications/bsnes+.app
+	rm -rf /Applications/bsnes-plus.app
 else
 	@echo Install not available for current platform
 endif
