@@ -60,11 +60,11 @@ jobs:
           copy "C:\msys64\mingw64\bin\libstdc++-6.dll"
           copy "C:\msys64\mingw64\bin\libwinpthread-1.dll"
 
-      - name: Build wasm3
-        run: |
-          cd external/wasm3
-          cmake -G "MinGW Makefiles" -B build
-          cmake --build build --parallel 8
+      #- name: Build wasm3
+      #  run: |
+      #    cd external/wasm3
+      #    cmake -G "MinGW Makefiles" -B build
+      #    cmake --build build --parallel 8
 
       - name: Build bsnes-plus
         run: |

@@ -105,10 +105,7 @@ objects := $(patsubst %,$(objdir)/%.o,$(objects))
 
 # targets
 build: ui_build $(objects)
-ifeq ($(platform),win)
-	copy ..\external\qt\mingw-w64\bin\Qt*.dll out
-	xcopy /Y /E ..\external\qt\mingw-w64\plugins out
-else ifeq ($(platform),osx)
+ifeq ($(platform),osx)
 	test -d $(osxbundle) || mkdir -p $(osxbundle)/Contents/MacOS
 	# NOTE(jsd): we force the output binary to `bsnes` because it is referenced in Info.plist
 	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/bsnes $(objects) $(link))
