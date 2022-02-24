@@ -20,11 +20,11 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Build wasm3
-        run: |
-          cd external/wasm3
-          cmake -B build
-          cmake --build build --parallel 8
+      #- name: Build wasm3
+      #  run: |
+      #    cd external/wasm3
+      #    cmake -B build
+      #    cmake --build build --parallel 8
 
       - name: Build bsnes-plus
         run: make -j4 qtpath=/usr/local/opt/qt@5 local=false
@@ -68,7 +68,7 @@ jobs:
 
       - name: Build bsnes-plus
         run: |
-          mingw32-make -C bsnes -j8 platform=win local=false
+          mingw32-make -j4 platform=win local=false
 
           cd bsnes\out
 
