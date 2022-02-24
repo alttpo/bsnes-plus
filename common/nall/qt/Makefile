@@ -11,7 +11,7 @@
 # $(qtdlls) -- dlls to be copied to output directory on windows
 # $(qtplatformdlls) -- dlls to copied to "output/platforms" on windows
 
-ifeq ($(platform),$(filter $(platform),x msys))
+ifeq ($(platform),x)
   qtlibs := $(subst Qt,Qt5,$(qtlibs))
 
   qtinc := `pkg-config --cflags $(qtlibs)`
@@ -39,7 +39,7 @@ else ifeq ($(platform),osx)
   qtlib += -framework OpenGL
   qtlib += -framework AppKit
   qtlib += -framework ApplicationServices
-else ifeq ($(platform),win)
+else ifeq ($(platform),$(filter $(platform),win msys))
   ifeq ($(qtpath),)
     qtpath := ../external/qt/mingw-w64
     winqtpath := $(subst /,\,$(qtpath))
