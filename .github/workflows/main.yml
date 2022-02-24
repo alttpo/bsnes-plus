@@ -70,12 +70,12 @@ jobs:
         run: |
           mingw32-make -j4 platform=win local=false
 
-          cd bsnes\out
+        #  cd bsnes\out
 
-          move ..\..\snesfilter\snesfilter.dll
-          move ..\..\snesreader\snesreader.dll
-          move ..\..\snesmusic\snesmusic.dll
-          move ..\..\supergameboy\supergameboy.dll
+        #  move ..\..\snesfilter\snesfilter.dll
+        #  move ..\..\snesreader\snesreader.dll
+        #  move ..\..\snesmusic\snesmusic.dll
+        #  move ..\..\supergameboy\supergameboy.dll
 
       - name: Upload
         uses: actions/upload-artifact@v2
