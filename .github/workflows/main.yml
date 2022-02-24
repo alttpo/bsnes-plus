@@ -27,7 +27,7 @@ jobs:
           cmake --build build --parallel 8
 
       - name: Build bsnes-plus
-        run: make -C bsnes -j8 qtpath=/usr/local/opt/qt@5 local=false
+        run: make -j4 qtpath=/usr/local/opt/qt@5 local=false
 
       - uses: actions/upload-artifact@v2
         name: Upload
