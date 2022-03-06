@@ -47,6 +47,8 @@ jobs:
 
       - name: Prepare artifacts
         run: |
+          Get-ChildItem -Recurse c:\msys64
+
           cd bsnes\out
 
           mkdir bsxdat
