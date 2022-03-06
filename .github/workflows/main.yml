@@ -129,7 +129,11 @@ jobs:
             #mkdir ${outdir}/bsxdat
             #cp -a ${srcdir}/data/bsxdat/* ${outdir}/bsxdat
 
-            zip -r ../bsnes-plus-${os}.zip ${outdir}
+            case ${os} in
+              windows) zip -r ../bsnes-plus-windows.zip ${outdir} ;;
+              *) 7z a -r ../bsnes-plus-${os}.tar ${outdir} ;
+                 7z a ../bsnes-plus-${os}.tar.gz ../bsnes-plus-${os}.tar ;;
+            esac
 
             cd -
           done
@@ -219,4 +223,4 @@ jobs:
       - name: Upload bsnes-plus-macos
         uses: actions/upload-release-asset@v1
         env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
-        with: { upload_url: '${{ env.UPLOAD_URL }}', asset_path: 'bsnes-plus-macos.zip', asset_name: 'bsnes-plus-macos.zip', asset_content_type: 'application/zip' }
+        with: { upload_url: '${{ env.UPLOAD_URL }}', asset_path: 'bsnes-plus-macos.tar.gz', asset_name: 'bsnes-plus-macos.tar.gz', asset_content_type: 'application/gzip' }
