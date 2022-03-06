@@ -103,6 +103,26 @@ include $(ui)/Makefile
 
 objects := $(patsubst %,$(objdir)/%.o,$(objects))
 
+ifeq ($(platform),osx)
+  ifeq ($(qtabspath),)
+    ifeq ($(qtsympath),)
+      ifeq ($(qtpath),)
+        qtabspath := /usr/local/Cellar/qt@5/5.15.2_1
+        qtsympath := /usr/local/opt/qt@5
+      else
+        qtabspath := $(qtpath)
+        qtsympath := $(qtpath)
+      endif
+    else
+      qtabspath := $(qtsympath)
+    endif
+  else
+    ifeq ($(qtsympath),)
+      qtsympath := $(qtabspath)
+    endif
+  endif
+endif
+
 # targets
 build: ui_build $(objects)
 ifeq ($(platform),osx)
@@ -112,6 +132,60 @@ ifeq ($(platform),osx)
 	mkdir -p $(osxbundle)/Contents/Resources
 	cp -f data/bsnes.icns $(osxbundle)/Contents/Resources/AppIcon.icns
 	sed 's/@VERSION/v$(version)/g' data/Info.plist > $(osxbundle)/Contents/Info.plist
+
+	# deploy Qt plugins into app bundle:
+	rm -fr $(osxbundle)/Contents/MacOS/platforms
+	mkdir -p $(osxbundle)/Contents/MacOS/platforms
+	cp $(qtsympath)/plugins/platforms/libqcocoa.dylib $(osxbundle)/Contents/MacOS/platforms
+	install_name_tool -id @executable_path/platforms/libqcocoa.dylib $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+	# fix up plugin paths:
+	install_name_tool -change $(qtsympath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+	install_name_tool -change $(qtsympath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+	install_name_tool -change $(qtsympath)/lib/QtWidgets.framework/Versions/5/QtWidgets @executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+  ifneq ($(qtabspath),)
+	install_name_tool -change $(qtabspath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+	install_name_tool -change $(qtabspath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+	install_name_tool -change $(qtabspath)/lib/QtWidgets.framework/Versions/5/QtWidgets @executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets $(osxbundle)/Contents/MacOS/platforms/libqcocoa.dylib
+  endif
+
+	# deploy Qt frameworks into app bundle:
+	rm -fr $(osxbundle)/Contents/Frameworks
+	mkdir -p $(osxbundle)/Contents/Frameworks
+	cp -R $(qtsympath)/lib/QtCore.framework $(osxbundle)/Contents/Frameworks
+	cp -R $(qtsympath)/lib/QtGui.framework $(osxbundle)/Contents/Frameworks
+	cp -R $(qtsympath)/lib/QtWidgets.framework $(osxbundle)/Contents/Frameworks
+	cp -R $(qtsympath)/lib/QtNetwork.framework $(osxbundle)/Contents/Frameworks
+	cp -R $(qtsympath)/lib/QtOpenGL.framework $(osxbundle)/Contents/Frameworks
+
+	install_name_tool -id @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtCore.framework/Versions/5/QtCore
+	install_name_tool -id @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtGui.framework/Versions/5/QtGui
+	install_name_tool -id @executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets $(osxbundle)/Contents/Frameworks/QtWidgets.framework/Versions/5/QtWidgets
+	install_name_tool -id @executable_path/../Frameworks/QtNetwork.framework/Versions/5/QtNetwork $(osxbundle)/Contents/Frameworks/QtNetwork.framework/Versions/5/QtNetwork
+	install_name_tool -id @executable_path/../Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+
+	install_name_tool -change $(qtsympath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/MacOS/bsnes
+	install_name_tool -change $(qtsympath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/MacOS/bsnes
+	install_name_tool -change $(qtsympath)/lib/QtWidgets.framework/Versions/5/QtWidgets @executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets $(osxbundle)/Contents/MacOS/bsnes
+	install_name_tool -change $(qtsympath)/lib/QtNetwork.framework/Versions/5/QtNetwork @executable_path/../Frameworks/QtNetwork.framework/Versions/5/QtNetwork $(osxbundle)/Contents/MacOS/bsnes
+	install_name_tool -change $(qtsympath)/lib/QtOpenGL.framework/Versions/5/QtOpenGL @executable_path/../Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL $(osxbundle)/Contents/MacOS/bsnes
+
+	# qt could be installed via symlink or abs path, so fix up both:
+	install_name_tool -change $(qtsympath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtGui.framework/Versions/5/QtGui
+	install_name_tool -change $(qtsympath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtWidgets.framework/Versions/5/QtWidgets
+	install_name_tool -change $(qtsympath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtWidgets.framework/Versions/5/QtWidgets
+	install_name_tool -change $(qtsympath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtNetwork.framework/Versions/5/QtNetwork
+	install_name_tool -change $(qtsympath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+	install_name_tool -change $(qtsympath)/lib/QtWidgets.framework/Versions/5/QtWidgets @executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+	install_name_tool -change $(qtsympath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+  ifneq ($(qtabspath),)
+	install_name_tool -change $(qtabspath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtGui.framework/Versions/5/QtGui
+	install_name_tool -change $(qtabspath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtWidgets.framework/Versions/5/QtWidgets
+	install_name_tool -change $(qtabspath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtWidgets.framework/Versions/5/QtWidgets
+	install_name_tool -change $(qtabspath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtNetwork.framework/Versions/5/QtNetwork
+	install_name_tool -change $(qtabspath)/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+	install_name_tool -change $(qtabspath)/lib/QtWidgets.framework/Versions/5/QtWidgets @executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+	install_name_tool -change $(qtabspath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
+  endif
 else
 #	$(foreach qtdll,$(qtdlls),xcopy $(winqtpath)\bin\$(qtdll) .\out\ /D /Y &)
 #	$(foreach qtplatformdll,$(qtplatformdlls),xcopy $(winqtpath)\$(qtplatformdll) .\out\platforms\ /D /Y &)
