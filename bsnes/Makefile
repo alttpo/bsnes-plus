@@ -156,6 +156,11 @@ ifeq ($(platform),osx)
 	cp -R $(qtsympath)/lib/QtWidgets.framework $(osxbundle)/Contents/Frameworks
 	cp -R $(qtsympath)/lib/QtNetwork.framework $(osxbundle)/Contents/Frameworks
 	cp -R $(qtsympath)/lib/QtOpenGL.framework $(osxbundle)/Contents/Frameworks
+	rm -fr $(osxbundle)/Contents/Frameworks/QtCore.framework/Versions/5/Headers
+	rm -fr $(osxbundle)/Contents/Frameworks/QtGui.framework/Versions/5/Headers
+	rm -fr $(osxbundle)/Contents/Frameworks/QtWidgets.framework/Versions/5/Headers
+	rm -fr $(osxbundle)/Contents/Frameworks/QtNetwork.framework/Versions/5/Headers
+	rm -fr $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/Headers
 
 	install_name_tool -id @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore $(osxbundle)/Contents/Frameworks/QtCore.framework/Versions/5/QtCore
 	install_name_tool -id @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtGui.framework/Versions/5/QtGui
