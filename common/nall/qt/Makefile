@@ -42,7 +42,7 @@ else ifeq ($(platform),osx)
 else ifeq ($(platform),$(filter $(platform),win msys))
   ifeq ($(qtpath),)
     qtpath := ../external/qt/mingw-w64
-    winqtpath := $(subst /,\,$(qtpath))
+    #winqtpath := $(subst /,\,$(qtpath))
   endif
 
   qtinc := -I$(qtpath)/include
@@ -59,7 +59,7 @@ else ifeq ($(platform),$(filter $(platform),win msys))
   # qtlib += -lqjpeg -lqmng
 
   qtdlls := $(qtlibs:Qt%=Qt5%.dll)
-  qtplatformdlls := plugins\platforms\qwindows.dll
+  qtplatformdlls := plugins/platforms/qwindows.dll
 
 endif
 

@@ -1,6 +1,7 @@
+.PHONY: bsnes clean;
 
-build: external/wasm3/build/source/libm3.a
-	$(MAKE) -C bsnes build
+bsnes: external/wasm3/build/source/libm3.a
+	$(MAKE) -C bsnes package
 
 external/wasm3/build/source/libm3.a:
 	$(MAKE) -C external/wasm3

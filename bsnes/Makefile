@@ -124,14 +124,28 @@ ifeq ($(platform),osx)
 endif
 
 # targets
-build: ui_build $(objects)
-ifeq ($(platform),osx)
+build: ui_build $(objects);
+
+package: build plugins
+ifeq ($(platform),x)
+	cp ../snesreader/libsnesreader.so ./out
+	cp ../snesreader/libsnesfilter.so ./out
+	cp ../snesreader/libsnesmusic.so ./out
+	cp ../snesreader/libsupergameboy.so ./out
+else ifeq ($(platform),osx)
 	test -d $(osxbundle) || mkdir -p $(osxbundle)/Contents/MacOS
 	# NOTE(jsd): we force the output binary to `bsnes` because it is referenced in Info.plist
 	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/bsnes $(objects) $(link))
+
 	mkdir -p $(osxbundle)/Contents/Resources
 	cp -f data/bsnes.icns $(osxbundle)/Contents/Resources/AppIcon.icns
 	sed 's/@VERSION/v$(version)/g' data/Info.plist > $(osxbundle)/Contents/Info.plist
+
+	mkdir -p $(osxbundle)/Contents/Frameworks
+	cp -f ../snesreader/libsnesreader.dylib $(osxbundle)/Contents/Frameworks/libsnesreader.dylib
+	cp -f ../snesfilter/libsnesfilter.dylib $(osxbundle)/Contents/Frameworks/libsnesfilter.dylib
+	cp -f ../snesmusic/libsnesmusic.dylib $(osxbundle)/Contents/Frameworks/libsnesmusic.dylib
+	cp -f ../supergameboy/libsupergameboy.dylib $(osxbundle)/Contents/Frameworks/libsupergameboy.dylib
 
 	# deploy Qt plugins into app bundle:
 	rm -fr $(osxbundle)/Contents/MacOS/platforms
@@ -192,9 +206,19 @@ ifeq ($(platform),osx)
 	install_name_tool -change $(qtabspath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
   endif
 else
-#	$(foreach qtdll,$(qtdlls),xcopy $(winqtpath)\bin\$(qtdll) .\out\ /D /Y &)
-#	$(foreach qtplatformdll,$(qtplatformdlls),xcopy $(winqtpath)\$(qtplatformdll) .\out\platforms\ /D /Y &)
-	$(strip $(cpp) -o out/$(out) $(objects) $(link))
+	mkdir -p ./out
+	mkdir -p ./out/platforms
+
+	$(foreach qtdll,$(qtdlls),cp -a $(qtpath)/bin/$(qtdll) ./out ;)
+	$(foreach qtplatformdll,$(qtplatformdlls),cp -a $(qtpath)/$(qtplatformdll) ./out/platforms/ ;)
+
+#	$(strip $(cpp) -o out/$(out) $(objects) $(link))
+	$(cpp) -o out/$(out) $(objects) $(link)
+
+	cp -a ../snesreader/snesreader.dll ./out
+	cp -a ../snesfilter/snesfilter.dll ./out
+	cp -a ../snesmusic/snesmusic.dll ./out
+	cp -a ../supergameboy/supergameboy.dll ./out
 endif
 
 install: build plugins
@@ -226,13 +250,6 @@ plugins: build
 	@$(MAKE) -C ../snesfilter
 	@$(MAKE) -C ../snesmusic
 	@$(MAKE) -C ../supergameboy
-ifeq ($(platform),osx)
-	mkdir -p $(osxbundle)/Contents/Frameworks
-	cp -f ../snesreader/libsnesreader.dylib $(osxbundle)/Contents/Frameworks/libsnesreader.dylib
-	cp -f ../snesfilter/libsnesfilter.dylib $(osxbundle)/Contents/Frameworks/libsnesfilter.dylib
-	cp -f ../snesmusic/libsnesmusic.dylib $(osxbundle)/Contents/Frameworks/libsnesmusic.dylib
-	cp -f ../supergameboy/libsupergameboy.dylib $(osxbundle)/Contents/Frameworks/libsupergameboy.dylib
-endif
 
 distribution: clean build plugins
 ifeq ($(platform),osx)
