@@ -24,6 +24,9 @@ struct Mode7PreTransformPlot {
 
     // TODO: priority
 
+    x &= 1023;
+    y &= 1023;
+
     auto offs = (y << 10) + x;
     ppu.ppux_mode7_col[layer][offs] = color;
   }
@@ -77,6 +80,9 @@ void PPU::ppux_render_frame_pre() {
 }
 
 void PPU::ppux_mode7_fetch(int32 px, int32 py, int32 tile, unsigned layer, int32 &palette, uint16& color) {
+  px &= 1023;
+  py &= 1023;
+
   int32 ix = (py << 10) + px;
 
   color = ppux_mode7_col[layer][ix];
