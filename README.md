@@ -31,12 +31,6 @@ Non-debugging features:
 - IPS and BPS soft patching
 - Multiple emulation improvements backported from bsnes/higan (mostly via bsnes-classic)
 
-## Development builds
-
-[![Build status](https://ci.appveyor.com/api/projects/status/2eatkcuu14r8rnfx/branch/master?svg=true)](https://ci.appveyor.com/project/devinacker/bsnes-plus/branch/master)
-
-Up-to-date development builds are available [from AppVeyor](https://ci.appveyor.com/project/devinacker/bsnes-plus/branch/master/artifacts) (64-bit Windows, compatibility and accuracy profiles).
-
 ## Building on Windows
 
 - [Get mingw-w64](http://mingw-w64.yaxm.org/doku.php/download) (make sure toolchain supports 64-bit builds)
@@ -45,7 +39,12 @@ Up-to-date development builds are available [from AppVeyor](https://ci.appveyor.
 
 ## Building on OS X
 
-Currently, OS X is not officially 100% supported. See [this fork](https://github.com/Optiroc/bsnes-plus) for now.
+```
+brew install qt@5
+make
+```
+
+Unfortunately due to complexity with homebrew's mixed inclusion of paths using symlinks and absolute paths in the dylib files of qt, the build is sensitive to the specific qt@5 package version installed and its installed absolute path. Currently the Makefiles assume qt 5.15.2_1 but this can be overridden by specifying the Makefile variable `qtabspath` which should point at the Cellar folder for the qt@5 installation.
 
 ## Building on Linux / other *nix
 
