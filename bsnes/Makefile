@@ -124,18 +124,18 @@ ifeq ($(platform),osx)
 endif
 
 # targets
-build: ui_build $(objects);
-
-package: build plugins
+build: plugins ui_build $(objects);
 ifeq ($(platform),x)
+	$(cpp) -o out/$(out) $(objects) $(link)
 	cp ../snesreader/libsnesreader.so ./out
-	cp ../snesreader/libsnesfilter.so ./out
-	cp ../snesreader/libsnesmusic.so ./out
-	cp ../snesreader/libsupergameboy.so ./out
+	cp ../snesfilter/libsnesfilter.so ./out
+	cp ../snesmusic/libsnesmusic.so ./out
+	cp ../supergameboy/libsupergameboy.so ./out
 else ifeq ($(platform),osx)
 	test -d $(osxbundle) || mkdir -p $(osxbundle)/Contents/MacOS
 	# NOTE(jsd): we force the output binary to `bsnes` because it is referenced in Info.plist
-	$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/bsnes $(objects) $(link))
+	#$(strip $(cpp) -o $(osxbundle)/Contents/MacOS/bsnes $(objects) $(link))
+	$(cpp) -o $(osxbundle)/Contents/MacOS/bsnes $(objects) $(link)
 
 	mkdir -p $(osxbundle)/Contents/Resources
 	cp -f data/bsnes.icns $(osxbundle)/Contents/Resources/AppIcon.icns
@@ -206,14 +206,12 @@ else ifeq ($(platform),osx)
 	install_name_tool -change $(qtabspath)/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui $(osxbundle)/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
   endif
 else
-	mkdir -p ./out
-	mkdir -p ./out/platforms
+	#$(strip $(cpp) -o out/$(out) $(objects) $(link))
+	$(cpp) -o out/$(out) $(objects) $(link)
 
+	mkdir -p ./out/platforms
 	$(foreach qtdll,$(qtdlls),cp -a $(qtpath)/bin/$(qtdll) ./out ;)
 	$(foreach qtplatformdll,$(qtplatformdlls),cp -a $(qtpath)/$(qtplatformdll) ./out/platforms/ ;)
-
-#	$(strip $(cpp) -o out/$(out) $(objects) $(link))
-	$(cpp) -o out/$(out) $(objects) $(link)
 
 	cp -a ../snesreader/snesreader.dll ./out
 	cp -a ../snesfilter/snesfilter.dll ./out
@@ -221,7 +219,7 @@ else
 	cp -a ../supergameboy/supergameboy.dll ./out
 endif
 
-install: build plugins
+install: build
 ifeq ($(platform),x)
 	install -D -m 755 out/$(out) $(DESTDIR)$(prefix)/bin/$(out)
 	install -D -m 644 data/bsnes.png $(DESTDIR)$(prefix)/share/pixmaps/bsnes.png
@@ -245,7 +243,7 @@ else
 	@echo Install not available for current platform
 endif
 
-plugins: build
+plugins:
 	@$(MAKE) -C ../snesreader
 	@$(MAKE) -C ../snesfilter
 	@$(MAKE) -C ../snesmusic
