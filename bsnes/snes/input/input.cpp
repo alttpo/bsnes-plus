@@ -369,6 +369,20 @@ void Input::poll() {
       if(x < 0) x = -x;
       if(y < 0) y = -y;
 
+      if (port[i].mouse.speed == 0) {
+        // 0.5x
+        x >>= 1;
+        y >>= 1;
+      } else if (port[i].mouse.speed == 1) {
+        // 0.75x
+        x *= 3;
+        y *= 3;
+        x >>= 2;
+        y >>= 2;
+      } else {
+        // 1x
+      }
+
       port[i].mouse.x = min(127, x);
       port[i].mouse.y = min(127, y);
     }

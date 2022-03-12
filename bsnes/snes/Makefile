@@ -38,7 +38,7 @@ endif
 $(objdir)/libco.o  : libco/libco.c libco/*
 $(objdir)/libsnes.o: $(snes)/libsnes/libsnes.cpp $(snes)/libsnes/*
 
-$(objdir)/snes-system.o   : $(snes)/system/system.cpp $(call rwildcard,$(snes)/system/) $(call rwildcard,$(snes)/video/) $(call rwildcard,$(snes)/debugger)
+$(objdir)/snes-system.o   : $(snes)/system/system.cpp $(call rwildcard,$(snes)/system/) $(call rwildcard,$(snes)/input/) $(call rwildcard,$(snes)/audio/) $(call rwildcard,$(snes)/video/) $(call rwildcard,$(snes)/debugger)
 $(objdir)/snes-memory.o   : $(snes)/memory/memory.cpp $(call rwildcard,$(snes)/memory/)
 $(objdir)/snes-cpucore.o  : $(snes)/cpu/core/core.cpp $(call rwildcard,$(snes)/cpu/core/)
 $(objdir)/snes-smpcore.o  : $(snes)/smp/core/core.cpp $(call rwildcard,$(snes)/smp/core/)
