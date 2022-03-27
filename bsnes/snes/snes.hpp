@@ -1,6 +1,6 @@
 namespace SNES {
   namespace Info {
-    static const char Name[] = "bsnes-plus";
+    static const char Name[] = "bsnes-wasm";
     #ifndef BSNES_VERSION
       #define BSNES_VERSION "05"
     #endif
